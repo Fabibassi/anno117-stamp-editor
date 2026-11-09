@@ -1,0 +1,36 @@
+﻿use std::fs;
+
+#[test]
+fn baulette_has_no_crane_and_centers_goods_icons() {
+    let app = fs::read_to_string("src/app.rs").expect("src/app.rs");
+    assert!(
+        !app.contains("ICON_CRANE"),
+        "Baukran must stay removed from the Baulette"
+    );
+    assert!(
+        app.contains("chrome PNGs are off-center")
+            && app.contains("circle_filled")
+            && app.contains("Rect::from_center_size(c, Vec2::splat(icon_side))"),
+        "goods_tile must draw its own centered circle + centered icon (not chrome frames)"
+    );
+    assert!(
+        app.contains("build_bar_h") && app.contains("show_upper_preview"),
+        "Baulette height must follow content (no fixed empty band)"
+    );
+    assert!(
+        !app.contains("BUILD_BAR_H: f32 = 210"),
+        "old 210px Baulette height must stay gone"
+    );
+    assert!(
+        app.contains("TopBottomPanel::bottom(\"baulette\")")
+            && app.contains("exact_height(build_bar_h)"),
+        "Baulette must be a bottom TopBottomPanel with content-driven height"
+    );
+    let bottom = app.find("TopBottomPanel::bottom(\"baulette\")").unwrap();
+    let side = app.find("SidePanel::left(\"stamps\")").unwrap();
+    let central = app.find("CentralPanel::default").unwrap();
+    assert!(
+        bottom < side && side < central,
+        "panel order: baulette bottom before side before central"
+    );
+}

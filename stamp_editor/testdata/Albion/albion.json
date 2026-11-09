@@ -1,0 +1,357 @@
+{
+    "Version": 1,
+    "Stamps": [
+        {
+            "Name": "Albion",
+            "FolderName": "",
+            "RegionGUID": 6626,
+            "PipetteData": "",
+            "IconGUID": 41811,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Granite x5",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVc1OwkAQHqGlUA569+gLkPgC/NQQDkQi6slEG1lLk9I2/VG87RvoI5DwAl44cJKEIxd9A+PBlzAGZ/tja0OEKpFJJt1v9pv9Zja7XQCADDqHvkXRIbJs8GWxPONRhi4mAC8TCHKY8TGeF6P+mj8Z42WR1x76mK3P0cXc7/r3ZYCnpfqwov7dblp91j9suH/6uC79/X5a/QH2/lBe1/6n75/ZJvUH5f/WDy0XfIWAz9MoFsbjdeRwfu88Wl9APNz2neE84lGAk/2ums/G4xT5o0T+NKX+aEH9afSnC/RnKfsf/0E/mT/8hf5sSf3J87AuHJ7bAuqeBXgHXUT8LPj+iv4mRDXHrRAbs7kiO++ldwlM9JiJK/LCNTn82wn4WvF4G/IYEUFSLWipJnEcIsmODAcdhdhQdVWto+pKQ78y4FrWXAJNYnfrlmx2PZpENOKQI3LpQEPRDYv4eS1Du1UM3WZ6Re+dzNAszVGO8lSgeVqgIi3StiP3zFNi2aqhY4oN9ZOGBIqrdqBm9EyN9A9vdGJh7Eu0Zri6w7hN1Utpyn04VjXixyuVahUkS1ZYQTWiO8Tye9bYA4QXvyT4+/Mxn88/AQUXp6p42gMAAAAAAcgHAAA=",
+            "IconGUID": 41811,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Mud x5",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVc1OwkAQHvkrfwmevHgx8UX4qSEciMQfrrqRtWxSWtJuFW/7BvoOPgIPUHgC4s0j3nwHY3CWtrYSFIokTDLZ/abz7Ted7nYBABLoKfQ9gQ6hJf1RxrIyT0g0HQFcj8DnSEtH8uYxAStN5iUx7/XAw3L91C+8n/rSdqk/Le9YX/a/vOP3L+/4+29N//EwxOnI/v+rnsAy/qj4+RkRxoJ4tC4Fnx9fhetnET+XPJc4h3ji48X3X5cv5+MY/MkS/Tj8YcnzgO/6eFO+nLsx+O4SfTemvrtF/jBm/9wl+uOY33/8D/3hAt/doP7xiv2zeB62hYNzm0fdjo/30QuIXxTP39HflLDmqOUic/msKM/704cKR+gRy6+ZF6yZwhtVwdszjX+DLEbyoDILWqxPOacq4QROOhq1oeowvcMMrWHcmnBHdIdCk9rdukX63XmaSnXK6Rm94dDQDNOiHq9l6g+aadhSrzi/txMiKRSREhmRFlmRE3lREEVxzkmv36aWzUwDSTbULxsqaA7rQM3s9XU6OL03qIWxb9ma6Rgc2sRihPusJvMGMoALplMvo1KpVkG1iCaLq1GDUyvsgYPewp6PFK9fn7PZ7AuWxLySeNoDAAAAAAFoCAAA",
+            "IconGUID": 5848,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Mud x8",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVktOwzAQHegnbagEKzYsuQBHoG0Q6gKB+G2RRU1qKU2qxOWz8w1gyYIdF0DKAVqUA1SoG5YsEVdAqIyblISoCEwRGWnivMk8v/E4sgwAMI+eR58T6BBbLhplrCTzhERPfXzcQ8SRVkjkjWMCvjWZl8O8x+UQy/nzX/A+648tQ/2n9Yz1+8k5Mlr/v+v/ld7lSowLif9dsf/VjP//asb7/6/6EytGoxblF0Ucm8STdWj4ffUonr+E+HYxdInLiAcRTq/3p3z57ivwB1P0fUV9P8H3Z+RLHCjw/RS/p6jvT6lfRb+X4qv2rzel/kBx/9L6gWL/gxnWn+ZLPFTsfzDD+nsp/uAX/Uvzh4rrH37DT58Hf4Un55aOutcRXkJfQPyghf6M/qLFNSetnHiX3yryvLt6NeAOPWH6D/Mmc+bxBqfhba2Ap2EJIzoYzIUd1qGcU4NwAhtNk3pQ6zKryWyzYZ84cEqsLoUt6rU2XdJpjdMMalFOd+kxh4ZpOy4NeTuOdWE6tif1KuN74rzICU3kRVEUREmUhS4WREXscdLuHFLXY46NJA82DxoGmF3WhLrT7lj0fPvMpi7GPmTrTtfmcEhcRnjE2mLhQM5hn1k0zKhWazUwXGLK4urU5tSNe3CD3sdGrOlhv95Go9E7TLjcvXjaAwAAAAAB2AoAAA==",
+            "IconGUID": 5848,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Tiles x8",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVstKw0AUvdqkSdOF3blwI/gDunZh2kZqF8XiayvBjmkgTUIeWsHF/IG/UOjSRdfd1U/oBwhu/QVF6p08TCxKGynmwmFy7pw7Z+5kIAEAWEdwiDWKgCQK0chyItNRxuQJsieIaljwKV2Qo7AwmK6Aur1+yNn63C913/1BRqzM/2Erq//2JDyD1fjvb2b2l3P2R296kG//ufpj/wM53/5z9cf+K9V8+/9f/ziK0ShEep4muTif3kcR53cuk/UF5MONEIyLyMcRn+932Xr2PMpQP/7Bf5rRf5Sqf8zoP18//IP/dMH+59/Hqnh8b0roexTxCkJCPhVCPCNehWTP6Silntlcmd23lzcFBu9KWictqYvX5PALLuDXmsfbKGJGAkV3oK3bxPOIonoqHHY04kLN142ObmpN89qCG9XwCbSI2204qt0NZAoxiEdOyJUHTc20HBLWtS3jTrNMl/mVg/+EdVqgRcpRngpUpCUq0TI99dSefUEcV7dMLHGhcd5UQPP1DtStnm2Q/vGtSRzMfZnWLd/0mLalByUttQ9nukHCfLVaq4HiqBrbUJ2YHnHCnu8REzzjXTE8n4/ZbPYJn7yipXjaAwAAAAAByAgAAA==",
+            "IconGUID": 5947,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Wattle & Daub x2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrNVs1u00AQnjb/v05bqSBxAXFFgkfIj1GUQ9WKQDlSlyzuSq4d2U6b3uYN6CMg8RTc2kfIDaT2AXrjihAKM/Yau1FaBymljDQez+zsfrPzrX8AAFZJs6QrSAqxZJTlWJHzkL3mGUDjHNQcllwiL4ghpArnZSjv22bo8/pZDBdpPbmeex0fmneJv5KKv0f4e2fLwv86u/85MoNP2I+Xhv/xUeznEvwvXs8p19NcVj3PH/x1P5r3i8/7L7bu8Tw0/zV+JHllCyo/j3EsiifrKND403fx+kXyv2gAn7XQLyl/os3HKyzZj/ZdJlxFOzRIK+RfUPKE9JL0qhDXnJRS4p7HqtyvTz/1QBNSnukD9/nHZjxeUfNrGGJOFF5VjdfUvDqNP0vUrZH/UPn8QmiQP2XRAht08RYb5UUWVDzFwp3am4T7sxZ+f85Z530v6ipXU/nrifPLvG4k+nuR4PUmWYSvyxS+XizC1zRi5DYL3/9Tm8JXyNm87+sifEX9vVqAr7TnMMLM0h9Pgf5ucvS2KhJ6iZ7QCrFXo1FdurAjh8L3hW74BrwcmMKD9khaA2mbPfuDA0eGNRKwJbyDrmsMD4I0XVjCF6/Eex+CS8+0HVeEk3cc68R0bA/6o/3X0hJdVw4guJh86bjCUFN5z8F/2CpmsIBZzGMOi1jDEpaxghpWsY4NXMN13MC+bxwOd4XrSccmDA+6b3o6mCNe0jkcWmK8fWwLl2J/Su04I9uHXcOVhq9mbUk7qGXblaa03/aDmDEGLjRMb7XabTgB3TVMLrIjbF+4MIZ96Xu0WYuWOhKML+2BGKvuBHLMh4QIOS2FvPyaTqe/AYBEWGR42gMAAAAAAXAKAAA=",
+            "IconGUID": 5849,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Eels x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVc1KAzEQHvu3/QM9ePPoi9R2RXooFv+uEmxcA+tu2U213vIGvoAHwRcQikhPFUSKNz158OIDiHgXqZPu1l1CxYaKHRiSb3a+fJMhmwAAJNBT6HMCHSJLhqOMZWWekOjlBuD8BkKOtHQsbxgT8KvJvCTmdRYDLNdP/cBT9Euz0P8rvdOlCKdj/dbYv+x/acb9/1f9kWXC0QjzMyKKjeLxOgz8vrwbrZ9FfDEfuMQ5xL0Qq/udlC/nTxr8nsJ/1tTvjan/WoP/PEZfp/4rzO3E+N0QT8rvjuH3Nfh3Cv9eU1/l32nqy37fKv3X7V9/yv33lf33Nc/v0xT19xT+uPOj/o9/hUf3Rh51z0K8gF5A/GgE/ob+akQ1xy0Xm8tvRXnfvH+Y8IAes/yEeaM1U/iCGvhapvE2ymIkDybzoM6alHNqEk5gtWFRH8otZjeYY1WdfReOiN2iUKP+wZpHmgfDNJPalNMNusehajmuRwNe3bVPLNfxpV5x+E4nRFIYIiUyIi2yIifyoiCKYpOTw+YO9XzmOkjyYW27aoLVYg2ouIdNm7bXjx3qYexbtuK2HA47xGOEh6waCwbShi1m0yBjZaVcBtMjliyuQh1OvagHHL2EPb80gn59DgaDL+bExYx42gMAAAAAAVgIAAA=",
+            "IconGUID": 5299,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Reed Shoes x2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNq9VM1u00AQHhonjvPntBIVV8SFt6BJjKIcqkaEnyN1yeKu5K4te1PS2zwKEs/AvZy40iPiwAEuPAIgFGbsdW2qkHJAHWm8/ma+3W/2FwBgi9wiv4XkUFrNtBxrMg8ZHZ4DfNgD04etXuFlMczH3GTMqxHv2+0c8/gWruf+qc92vT78o/7H3Sv6NMjg7ib9w72bnn9hDdPahl/HMlbEq3U0KH/veTm+TfiNC/DezXGT8FuD15n9n3Exb4d0HYP75C3CF0T+Qv6J/Ktd1lw1p/LPuTav1/kPD6Y/vSqvdWUdeJ2/75b5tunfMboXRq9j8l3Tr0v5+5W6e4R7BsfkLuEVG9xc+zfj+fSz8/Oa7uedd+vOc1G7a/jblfPG+7BTWQ/eh8/29fdo0z4UmhbdBptekzqd1iapO7RDbVrtLmU9mcBUxkJr4fnah4fzQKQwXMhwLlUwUS8jOPXDhYB9kR6PEz8+zmieCIUWj8QLDdlnEqgoEXnnaRSeBZFKYbY4eixDMU7kHLJPwJ9RInzTleecvXtbWMMGWlhHGzvYRAdb2MM2dtHFPm7jDs60fxI/FUkqI0UKKYyfTDwIFjxgdBKHYnnwSomEYpeFjqKF0szdlyrTP0hkINWzWRbzl8DF5aTBYDiEM/ASP+DCRkJpkcASjqROaYKhr+WpYFWp5mJpVuTSHvCrZOUPEe/Hr9Vq9RvRr+QceNoDAAAAAAHYBQAA",
+            "IconGUID": 5609,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Reed Shoes x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVr1v01AQvzRJ8520jejCwsfCwMB/QD6MogxVKwJlpC55uE9y7chxSrrdxsjKiMQ/QMWIItoRsdARhBADVGJjRQiFe/YztoxJ4pKqJ53P9+7u/e693/OTAQAWSFOkCSQFX5LSirGsyEPHPQTAmyBrhKQDec4YunNOEpGXpLxvF1xfzJ/C6NwQfu188V/Q+rdq0/Dh7PBr54sv5N3c8J9c9P104PzF4+Pz3Pp5vxrCp0nql6fxcXb4iQh8Txalzcj8RfTHvPFgHxmKX73vz58l/6ACMKq4fo78l9IPr3fWeuG/iVH/KlQ/iok/iqiPg/9c5p+2/4NQfVz8Uaj+bUR9mM95+d65yxPuFekvkRbIP6bkT6QnpF8zfs9ByQXeRawoznnvpwJbpAHJh/ZBnPMfq368IOtLEvdY4hVlvCTryhS/Hui7Qn5V+k9F7+SPhVT+04JjHRb+spKbuPZfIta97NwP144ALh1F3TtlmVuR+SuB+0TwVQ3s20fSL5nJmLPw8GEKDzem8BDcyNPY75513qKsyHH3V1iA2e1kHg5fB3lIxOTB27eTGXiY9t14mCn6m8nQ31iabvcsoefoiyoQKyWKKtyCDd5jts0U1VbhVldjfWgMuN7lhtY2Hpqwp+oDBmusv9Oy1N6Ok6YwndnsNntgg/Noa4ZpMbd4w9T3NdPoQ2ewfYfrrGXxLjgPTTyaFlNlKbi8J3ABk5jBFC5iGrNYwhzmsYAVLGIZl3AZV7CKHVvd7W0yq89NgzD60LrbVkAbiCnN3Z7OhuuPDGbR2J9Wm+bAsGFTtbhqy6o1bji9rFtc48a9jjOmDkE06qbX640G7INiqZposskMm1kwhG1u92mxOk21xwQ+N7psKHfHkcekz+hSq+VdXn6Nx+Pf21RwgXjaAwAAAAABIAsAAA==",
+            "IconGUID": 5609,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Reeds x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNq1Vktv00AQnjydt/uQeuEC4sKRf9A8jKIcqkYEyhFcsrgruXbkOCW97YEDN/gP/AJOnCql4oQ4cUTkQpH6A7ghQGHW3sRL6iROm4w0Xs/Ocz/PrhcAII6cRI4xZAgoIUY+l+F2jEu3BwBvByB8OKUkO2+OwULidgm0+7rjyzx+kvlBKnf+t53KX15n/tiM/KvK9+ZWIKckvCfrD6EQ/MvrWn88Gv5ry58IyT+mtBgVYZ9mwdx4Xq5DQf3dp0H8DMofVYB3qi9nhfxevbreWf7c94PkfybkqP6fpvx/LOnP6z2bqv+zGo6XsmJ5/N1ymPeekDeQ8yh/UXz+iXypBDXLlJXeua7A++T+Hw06vzXZLjeFA++TXzuBPi/8i1JeTgWhLwq/EurLUt0qC2I3ee0ojyLR2G7WOJqMs4jXu+nti1fniN552HlXEraqsN+S9hHHeVta73fkb8r8PRYFv4s147cIuagABvjBroxfbEn8LqQ+XQV+PNbw5vhNjQv7bQ7eUfoPdsPO+6j9NxT9d7mi/rsJflf757rILdN/AX6Ja/TfcOqcnEfzzslxziTe4BS8raXwb5jB7FlEKY9oFlGrUQeatENcl2i6q8ODtkG6UO1Rs00to2G9sOFEN3sE9kj3qO7onSPPTCMmcclD8twF79EwLNshvnPTNk8N2+pCq3f4iJqk7tA2eA+DP2oO0YUrX7N3r4yzBFNYkqVZimVYkWVZjuWZygqsxDbYJtti26zl6sedA+J0qW1hji7UHzc0MHo8pH3cMUl//6VFHJyblFqze5YLB7pDdVd47VHLq2XfoQa1nrS8Ob0PvFDfvFKpVuEUNEc3eJE1YrnEgT4cUreLizUx1Anh+anVJn2BjkevkQf4E3uW87/L39Fo9A9Cw/zDeNoDAAAAAAFACwAA",
+            "IconGUID": 5849,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Tunics x1",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNqtVM1u00AQHhInzr/TcOAK4sIbwLFJDFEOVSvCzxG5ZHBXctfRet2mUg/zCBy58gQ8AJc+Qo8ICdTnQEJh1t7UJiptDow0a8/MN/vNzo4NAFBhdVjvESsUUrVP42sYHGXmBcDHXbA5RmolXOYjuFMMrsq4wXlum/0dyjcZPvobu8G/uw1/ZUv+Fw82+G+Run26Fl+jwrf2l+uoc/zxu2J/l+3PHsBXL7cbbH+x9k3i/md7fe4mFbE+a4vtS3b8YP3G+tMtai5Ls/RuYm3TL/rlwxVrSVobfTB9vn9exNs2v2N5Ly1fx8a7Nq/L8YeluntU7P2E1WN7taX8605NHf3s3onn+uripjnsWaxn8TulOTH9G5TOYfr33b17/m/r35rT4Sl2+Sus8ZQ1mL3Jp29zl7oc9YWCA7FArdEPdADP5yEmMEpFNBcynMoPMZwEUYqwh8nRRAWLowzmY4QaX+J7DdkyDWWsME8+iKOzMJYJzNLDVyLCiRJzyJbQLGOFgU01Z87+FxWqUp0cqpFLHWpQk1rUozZ1yaM+7dCAZjo4XrxBlYhYMkMCk9dTH8LUbBgfLyJc7p9KVOy7LnQcp1Ib7J6QGf++EqGQb2eZL1iCKS4HDYejEZyBr4LQFDZGqVHBEg6FTviAUaDFCRpWIee4tB25lqesn/gn98zJ7+P3arX6A1kjwFV42gMAAAAAARAFAAA=",
+            "IconGUID": 5958,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Tunics x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFV81u00AQnvw6P03dhgMHOBRx5cAjuG2g6qFqRfk5Ipcs7kquHdlOSaUe9g3gFTj2CSoOlVNx4NpjJThE5M4LIBRm7XVtjKntJKUjje3Zndlv5vN4tQYAKKKWUQsMFUIpiTsfq3E/5plDgA9DEDFcKhE/b4xBqnC/Evq1j32br19m/iKrD/70jeErN4lfSMfn9Ss3hV/MVv+N4ZdS8YdY/0oq/8WM+E/vxt5/giTgK7eIr9xy/cpt1D+vfnt/Lx0vkKq4S8K/wsKxYDyaRxXnH74O15fQPpEBPsm+XRP2mfx3ff+KP43Fn+aM/yj8p8WPx3PbzRF/koDv5qw/Gu9Owd9ZjL88+G4CvpuTP3eG+k8S4j/nrN+dIf94/GkCfvx7mJcdfLd1xL0v7CXUBtoX6PwNdYT6XQpzjko98sznmt73/rMDI9SINGI88H3iznE43xTxCwL3QuAtiPmWiGvh/Eok70Xmx3J5hCqjPckk3O/6vYnns+TvX+cAvfOk88ui8JWF/3Jkv+M8tiP1XKJ+la7HzMLP5X/gx2fneoYi/ECUn0JOfoJ6RnPih681nomfQLPwlLV/mJJ0/svaP2PRPz/m1D+z8JOdnTz9E/JTmqJ/xqJ/0vhJ26cCzDKeriT8O6rgaaSG6HXcwZrIVgtnO9SCHdojjkM6qqPCk65GbFjrU71LDW3TeGvCoar3CWwRe3/DUnv7nluH6MQhz8gbB7zLpmaYFvGDd0z9SDMNG3b7e8+pTjYs2gXvovHLukVUEcpr9v7jiqzEqqzMKkxiC6zG6qzBFlmTtZjMltgya7NdRz3ovSSWTU0DEWzYeLHZAa3PFzQPejoZbL8ziIVjV4mum33D4b5b1PDwty2qUePVrjemDoAn5zutrq6twRF0LFXjia0TwyEWDGCPOjYWqKsOPSQclRpdMhCMXMkX1MfYdBct/338mkwmvwEiQrb9eNoDAAAAAAGoDgAA",
+            "IconGUID": 5958,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Amphorae x8",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFmL2O00AQx4d82UkKQodEg8QT8AScE6MjRUTEVwsWWRxLPjtyHAgSxT7ASXc1LS9wJ5QiXbagjARKR3MFHRVNqgOF2dgm1srosnFgVxrZMzv//c2ObK9kAIACWgntGkWDzSjGVx7TeR5NZsYMYg0f5VTeOkbhysHziph3413k8/VLf9EJfGT3VfINxXxkf56p3b9SPu7/9oHa/Svl4zhVyNex/11jX/yTW7L8F/jsPdgb/+5Ylj+7t0/++6+y/LMDtfybhlo+7/+x4v4fK+6/Sn4D3//TK/mFf8ans//NT0YlvmpxfpluYkk8XUcF5+8836yvof/hemTc19FfxL643231/P5CQr/I4MvozzH3Y0o/if1t9RNBz3Lquc8k9EzQf5Lks4z6mWT/WI76Jxn6uWT9TNg/y6FnkvzzOH/X+icZ+gvJ+ufC/uc59EySn7yvu9Yv6rm/lOxfWj+V5E8FPcupn0rWzwT9Yofvn6hfSvZ/maP+qaDP4ovnyb785NyrIvdb7DfQauh/0SL7jnapbWpOj2rqns/V+Xl5dmnC7KeZzqttmZesWcLTWsO/DWU8TXWM1MB0Aug6AxKGxLRCC+73bDKE5shxe45nt71XPry23BGBDhn2DwNr0F+nmcQlIXlEXobQtj0/IJGu67tvbd8bcl59/Z+jQIu0Qku0TDWq0yqt0Tp9HFpHg2ckGDq+h5IhHD5tm2CPnB60/KOBS8YP33gkwNgfaMsfeSHP7ThrSccawxPHJVHcMJpNMAPL5gW1iBeSIO4JPiAUG/+jEfXn12q1+g07LDkleNoDAAAAAAGIEQAA",
+            "IconGUID": 55962,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Bread x2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVjtvE0EQHr/fOSdCSkEDooCCAn4BfhwyLiJHOECJLni5rHS5s87nxOm2ooWfgMQvSEllp0ZISZ8WIjr3CJmZ89p3sWOfbRky0tx4dmb2m8funQEAwshR5JBABo8iUtJakvzE2NQFGUMU8/m5awICifwi6Pfx7lCn/aMz4q7j93oIUFgX/t72BD5uUrw/D59q/xSIH14Q/2ln6foL/7L+UGD959j//trqf7G9bP3nhdvF79HZL66r/7Xl8Z/9b/wRxaVMSP+Y8NZG6/484mh/8NbbP4H6qQLwVRnqSal/U6brnRXfnYjvLhn/Rfqvin86Ed9dIX9//Pcb4if7uS59NPcU4j6Ueh45jfoFOl8iXyH/THg5+ynl+022DJ0X8VuFJrKP0hN9oHP2655nz8j4rMS9kHhZac/JuBzaH/vy3kD9jtQ/IyuoD4iU1STtM0cq16Sc0ZSE+XIWUf159749OQN4dHbT92dD+irSf9N3P2luW77+0ex+JOZjLjKPy1uaB/QD5NREZs+kHyDnz4PIm0doyXmM+ne1wDyC7tEIM4pfswT+G4vh2zaJ6Cm8YRmcTg6tKrdhlzeZ4zBVczR43tBZC0ptbjS4qVfN9xYcaUabwQ5rHVRsrXnguqnMYA57yd454D6qumnZbBi8axknumW2oN7e3+MGq9i8Ae5Dp0fZZpoMpZrd/41hERFxERUxkRBZkRQpkRYbIiNyQhF5sSm2RN3RDpuvmd3ilokILai8qqqgt2lD67BpsE7t2GQ2ro0TLVtt0yHfHW66+DWb69x8U3fXtA5QckOnYrFUghNQbU2nxMrMdJgNHdjnTgsLNDSHHzFC5WaDdWRHxvSBzi++3Arp4Tz+DAaDvwheWP142gMAAAAAARgLAAA=",
+            "IconGUID": 5960,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Bread x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFWL1y00AQ3vgntuM4itNQ0IThBUIHVexETHCRsYcEKEHBh3IziuSR5eB0V1IwA+/AC9AwKZMULtKRIg1NGEzDpElBB4zYk86WUBzLchR8M6fz7u3et/vdnnw2AEACewr7FMMOXkuKkeuy3I5xiR0ALB2B8OEt7bNzdAxCG7dLot2jW67M109d4fcvfqk0WXy2DPDxMC78d7ej4r9H7MVQ/MSI+JvB/HGR8p1h+J9LN4k/FYoPyD8cxIV/rz0W/6Wbyj8xGv83hp8M5x+5Z6W46r8a+fzx3CeJz/P/OuH8J4nvvP/LE37//1f8XpsWY0bYp5mn6+n9cUzj/N3n3voZlPclgE+SK2eF3JEu53uVfyfg34no/0HYj4u/P8D/OGL8fv/TMfLvBPI/jhj/cYz+XD6NGH8QP+gfrKe45F7d5xD3gZDnsc+gfILGX7Cfi96L2d9yvs98Ls/Py+EvGWq/Zb/dTIAHfs5+LHrzeeE/K3BPBN6smC8IvwLO3/fFPYdyUchvsEvueb2wXZVtS65o267ofHCfjtb2tOOMEgwZr2o8z3knzhreWd8eDbpnzQlbSdgXfe8hvj8LPp7OsH/LDH9PjcL7WQjvSyG82z56B4194q898q0bOobwzu/rHu9TEXnv8XQeE+98re416j2sDset74tLtPtn/Oerf95GqHdYHnSvHbXeu6Lef8ZU791r1Ht4HcZT7+HnapR693hPjlHvXVHvYbyHfQ/0MFP4aySD/yak8baURfQcfkPkcRcKOCtTE2q0QSyLyIqlwMO6Spqw0qJanepqRX9lwK6itQisk+b2mqk0th0zmWjEIo/JSwucR0XVDZO4zjVD21MNvQkbra1NqpE1k9bBeaj8sWoSRbjynJ3/PRIsyaZZiqVZhs2yLMuxGTbH8qzAJDbPimyBbVjKTuMpMZvU0BGhCWtPKjKoLb6gsdPQSLv6Wicm6vqBrhot3eK261R38KsmVan+bMPRKW3gwblG5fLKCuyBbCoqD2yV6BYxoQ1b1Gpigppi0V3CUaleJ23BSL99x/6Cb2DR3Y8/tm3/BScVPbZ42gMAAAAAAdgRAAA=",
+            "IconGUID": 5960,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Brooches x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVctOwkAUvQKlpSx048qNiT+gf1CgalgQia+tNjKWSUrb9KG4mz/Qf/ALXLrD8AHEDzBxY+LStcbgnT5sJRgoIelNbtpze86cO8wlAwBQwCxhrjBMSKIYPXlN4jwWwCeAzQFEGh5CihfUGMwMzisi7209xHz90j+6v/7KIF9/UPL1/0B/WJr/7Ubm/fPzV5blf77Y+efoH5y/kuP81bCFmf6FOf13+rP94yhHTzHiCyypxfV0H2X8vnWWrC8ivl8Nk2MJ8SjCk/udV8/fHzPoR1P8s+iHyH1I6YcZ9XG/i+qHE/pp/U+ex7JwPDcV9N2L8BqmjPhZDPMd80VMek5HJfXOv1X5vN19qfD6qaZ58py8eM0STruIt5WA0yhhRQaVOtCmNvE8omqeBrsdnbhQ96nRoabeNC8tuNIMn0CLuN19R7O7AU0lBvHIIbnwoKmblkNCXdsybnTLdLlfNbgnC6zIyqzEBCYyiVWYzKrsyNN69ilxXGqZKHFh/6Spgu7TDjSsnm2Q/sG1SRys/Zo2LN/0OLdFA0lL68MxNUhYr9XqdVAdTecNNYjpESfcs8EvAPzjbYvh7/M9Ho9/AAVanbV42gMAAAAAAcgHAAA=",
+            "IconGUID": 5605,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Sausages x2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFV81u00AQnjZNkzRNk1agInEp4gm4ccP5QSGHqhWFcgSXLK4l144cp6RSD/sGvAISx6riWOUU55QrPUQcOFWcgEdAKMza69qx3MbbuspI62R259tv5ks8XgMAzONYwDFHcYBvKf7J5rIsjnor2QFwDLN0IM6Zo+6e1xmLS2HcvWO+I5uj7iblR5Oxk/y0j5d+Uvy765P8c1P5mb2TpvFDTP4n3VD9ETbJb9sA36S70n9+av22dJf8qVj6l8pJ6f/p4U3030iMv74uzC/NmB/vvc92Uvy/N0TvP/vZjPmxfmnG9c+SH6Qk+28cfs8W+WeGx6epP+fNB/NYxPXHb/39M+ifFAG+Fl0/i36P++F64+KZ3xfA9yL4+4L8/QD+9JZ45g8F8KcR/CL4sxBetP4w/kyQvxfBPxTUb3iL+sN45o8E6x/eIv9eBF6E/wuPv2n+JyG8KH8vhB9E4MP9ICnf61s55H3hnURwLKF/jsHfcVzg+JPxcw5aLvCdreVZP934WwMbR8CWQjqwPnn/2F/Pc/wy5z3nfMt8vcBxBeo2ay/vFer3bNZ2i+iPrzZn8ar+zfhL7vMA3wW2B1Hn9xUeW+Txq4HnEtNtLZA/022Uuf6ZEVeP0TV6PAjp4eX41NeDDxAa8XQqDaLO2XF1GvH/2M8EdPqRkE5JCRXQSQrqlBLUyavrIoZO0+5Dj3MBTzMZfBtO42kji+w5vEPzqFoBV2uqCdtqi1gWqcmWDM+bCmlDpaNqTVVXGvoHAw5lrUNgk7T366bc2nfCakQjFnlJ3lvgXBqKbpjEBW8b2pFi6G3Y6ey9UjVSN9UmOBeFXaomkTmU1ey8t8/TFF2kCzRNM3SZZmmOLtEVmqcFWqQlukrX6I4lH7R2idlWDR0Z2lB/3aiB0mEbGgctjXS3PurExLnLRKtGR7dY7KaqO/xbpqqo+psdZ07uAkvODSqXKxU4gpopKyyxKtEtYkIX9lSrjQVqsqUeEsaq6k3S5Ypc2i8mP/6oNu/r/8bj8X9VH5N+eNoDAAAAAAGYEAAA",
+            "IconGUID": 5959,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Sausages x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFWb9P20AUPshvAgRQKyqVgap/QdWlGzakihgQUWnp2JrmGiwFJ3IcGiSG616pf0QXJIoqdUGZkkxZujBEHboUZWuWijWi6T37QhzXJL7YqU+6JM/3vvve+3y/7CCE0DStQVqnCK2oXwLsG65FwY/0Wk7qiGGghEx++jVi9DmsgF+A+t05NmzoP0iMTsQHg76D/KSKUNoz/t3lQf6pkfxQFkbyI4f8j8qW/G3KIH+tZtTJ6D89Mv+aMEn+gCP9X9e80v/j/XH0X/WMP7XMzS/4zA/5C/7xQxEEr8bf4/JY+gv+6l8TJjX/gs7m/8T4Q87WX9G/9Zes0f1HnNT+E3aU/4k4Kf0jo+8/3X8/eLb//Vrl3X9raz7z0/zLPufvJz8SvDx/jcFf83L+WfnDzu6/OCn9w87uv5/8MP99zv//8vdKmH1HmH+I9K/1rpvjCNP2h6/6/UeofZpA6EvCsKPUrjDbmq9TPNhVDnzFhr/KyV814c9c4sFucODPbPh58OcWPG/+Vvw5J3/Fhr/BqV/DRf5WPNhNzvwbLuKv2OB5+D8x/3HjP7XgKy7xYLc48zfj65z8FZv4W5zxtyzjxw0e7Dbn/LXytznHX8tF/lb8OSd/xYa/zalf20X+VjzYHc782y7ir9jgO5zxd0bgrfupV3Zv349R3ve9J0laZ6h9QZ2/03pJ659IP2ZziZl+Q1sczhmrnSRKXyfNfjMWHeCccfe43x5n+FnGe8H4Zln7HMPNEf2wfRP3POmfeeDYkqB29/aiN952/gH+BeOcRM/y3+p271/nmW+C+S+azlWg25IpftCtGRl+5nKqR3OIHvcsevRifNLXg1XEVZ3p9Llu957UqU5NNsZaHuj0wyOdvBLKpJNg1inAqVMvr0uPdALdr1zpxFu7w6adZTz9FuzeuzkdT1dsPP2zUI05ntzoxCsUh06CWafQGOPpio0nL3S6MPUz5no9YtF2tA6Jdu/rnI4baAQ9gtHRz8nD9rkeZ5C+bYnQfwtD9Gk4StljdAeMU3XmaGtSVlFaLmBNw0lJk9DTTBYX0XpJzmVkJbupvM2jQylXwmgLF/dTqlTY192SOIc1/Ay/0ZD+sZlV8io2wOl87iibV4pop7T3XM7hlCpnkP6RhY8NFUsMCjnr/2tOkwAJkyAJkQiZJVESIzNknsTJHEmQBbJIlsiOJh0UdrFalPMKZSii1IvNJMqWoMP8QSGHy9vvFKzSazeBbuRLiga+W7Ki82+rclZWXu7o16QyguAMJ1FcX0dHKKlKWQhsAysaVlEZ7clakSaYkzT5EAOrrGRwmSlyU77SeyysIPRzxbgf191u9y9SX56neNoDAAAAAAG4HQAA",
+            "IconGUID": 5959,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Beer x2 v2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVc1u00AQnubP+XdaCe6Il+BGfoyiHKpGhL8bOGTrruSuI9tp09s8Ao+QF+DcU6VCXwAuXDgU5YwEEkeEwqy9qV0TNY4KYqTZ9czO7Df7jb0GAMiQ5ki3kBQiyapZ+ooyDqX15hxgdg4qR0o+Fhf4ENaKjMtS3LdyaMv9cxhu0rp3PfZP/GiP2+IP7yTwV8h1fHyYBj+TEv/9xviz5v/FD/rf/Ff931rR/6UU1Kyp+DxGvqU/XkeB1u+/jPbXyH6rA5zqoV0k+0zZyfOmzZf2xYb5Fwn8ZH7yPH/LXvJeIty7ym6Qlsn+RMGfSS9J51pUc1xKsWe5Vgn6/NOAD6QxKSd4kH3+UY7WKyq/Sv6PWqhSqmq9pvJqtP4gVncdo737pDrZi1BSzwDf18yrRdbbCM77hd7/F+9W3Vd1Faur+O3YdyB53omd91LxfZOk5W9+C/7W8bE5v2n4e9Vc9b2n5W+u+Puqrb9nbnpPl5g5ui01+tvl6TYpEnqJWKoQmzVaNbgLfT5mvs8M0zfh0chiHrQn3B5xYfXEvgNHpj1hsMu8g65rjg+CMIPZzGeP2WsfgqFnCcdlYXLfsU8sR3gwmAyfcJt1XT6CYLDk0HGZqVLlmYP/cgazWMAc5lHDKhaxhGWsYwVrqGMDt3EHB755OH7GXI87ghA86D7tGWBN5IbO4dhm071jwVzyXRXacSbCl7G7XAT4ey63uHg+CHzmFGRxYVCr1W7DCRiuacnCOkz4zIUpDLnv0QFt0+dHTKJyMWJTxciV7KvLaKaF/fi1WCx+AwNLPBp42gMAAAAAAXgIAAA=",
+            "IconGUID": 5570,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Beer x2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNq9VUtv00AQnjRJnbfTCiSORfyRPIyiHKpGhMcRHLK4K7nryHba9DY/gZ/QGwd+AOJE4cYRcYEDEgc4E4kjQmHW3tSLk5JUBEb61p7Xzuzn3TUAwBYhR8ggARLJqqe0FWQcSu3sHOBpA1SOlLwWF9kQVoqMy1Lct1Ksy/lzGE/SvPl7bKp+41/Wz6ysL+VGc1P1B9dT618ii/zvbaz+m6vXb/zv+nPZVk9Dxecxsc3teh/b5L/1MJnfIP2ZCfDWjPUC6c+Vnl7vZfkvUvkvl+Sn+9mUPuetiMnZrBNKpL+n4C+ET4SvRtKzLkXtXfrKku/6DwvOCJqUUjzI7/S9lPjLKr9C9ndGDCkV5a+qvCr597S+a6RfU3qPYJI+W19MHQDTBcz+sHdkv/Vof03p/DReL7tvairWVPE72n6UPO9q6/2o8XyZrMPfh7/kb0pkrINFNon7FORsq/mDVzp/mSvyN1/v5zX4W7VP5zVz9Acz6ETk6TYoUPUi7eAysVklr8V96PERC0Nm2aENt4cOC6A15u6QC6crnnhwbLtjBvssOOz49ugwCrOYy0J2hz0OIRq6jvB8Fif3PPfU8UQA/fHgLndZx+dDiAZHDm2f2SpVrjn6r25hFrcxh3k0sIIFLGIJa1jGKppYxx3cxX5oH43uMz/gnqAKAXTudS1wxnJC72jkssnBiWA+2S4abXtjEcrYfS6i+gc+d7h40I9s9gRkc3FQs9lqwSlYvu3IxtpMhMyHCQx4GNACXTvkx0xW5WLIJoqRCxkQzumifWTE3+PnbDb7BUCdMzZ42gMAAAAAATgIAAA=",
+            "IconGUID": 5570,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Beer x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFV81O20AQHvJD/ggJqO2lF6q+QPsETcBVlAMClf7dKtNszUrGjhwHwm3foLxDX6AS4g5VOVa0PVUc20NvtFKPFUpn7DVZjGniYJSRxs7szvib+Tye2AAAKdQM6pRAhYGk5ZnW8uQnyHp/AFA9BBlDklX8vDUBQ4X80uj3q+jbdP2M8C9Sv3fRN4Rfu0n8qaH4JAcHSeE/7IXqj5DL/O8mhv/hdmz82oTxEVs8Sgp/PTa+d/8Tw397dxz+J1k/8U85TLL/JoqP9S/Ub2r+pEaafzeHn47AD2RannPSPysGa8G6msc07t9/Nbh+Du13FV/Jzkv7uHK53qvij0LxRzHj99D3kxK/L+1x4/di4u9H4MeJD/gaFz8cT3a6Gq/+42vkvx+KPxrj/ofjw/mH+zEpO3huCojrSpugi2h/yfn6AzWVH+SsSkH5TXslek5rfzV4cKapfsUQD/Sc/ikO9ksyfgbXv0pckhm5X5ZxZdxfUPKeRfuOtF+iVtDujyEAv1WFCK1cNXco76o/n/Ad7uNh1HvfrPStSP85ZZ4R3/NK3SeoP3P/n3Wj8HgyAR77WGCgEKFXs3iBR1B5nIrJY1D394R4pPtyGoPHW9JelTyGeuuSxu/VUfpwtxb1/ztqH57KPkzlk+nD6/Cn9lSkJs8fqPylx+i/U9l/w/gbNjcDzAx+0ebw6zWLbyd5RC/gRC0hm2Xc1bgDq7zNXJdpuqvD45bBOrDY5WaLW0bTemPDlm52GSyzzkbD0dsbnpvGTOayJ+y1C96haVi2w/zgVdvcMWyrA2vd9afcZA2Ht8A7GHRYcpguQ6lm7zs7JdJiWmREVuTEjMiLgiiKWVESZVERVTEn5sWaq2+2nzOnw20LETrQeNbUwOjSBe3Ntsl6K9sWc3DtPNElu2u55LvMLQ9/xeEGt16seWt6Dyg536leX1yEHdAc3aDElpjlMgd6sM7dDhZo6i7fYoTKrRbrSUbO5RvqZyS6Lf+Hz/r9/j/4TRHQeNoDAAAAAAFIEAAA",
+            "IconGUID": 5570,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Beer x8",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrNWc1v01gQnzZfbdLWBcQFLl3thcMe2L9gkzaorQSionzsbXHp22ApOJXjQLi9/wD+AG5cOYDEBXEg4YqQiDgAggNSpa1WWnazQr11lZ2xn5tXr6nfS21lnzT2+5jx781vxmM7AQCYRMmiTHAUGLaMONPcFOlxGl3vAKx1QdhQy0l63hyH2EZ6GdT7q+iP6fpZ7l+k8t1B3RB+OU38iVh86Ao5FH9SEf/lyZD/ES2EDyr4qv7/2NbGr4zX/xXELnfSiv+kUvzj8dPzf6GTpP8b+vjl8eJT/o2T/5VKmvmXic8/EYNk8O+d1vX/TDdJfH3+H3fGjF8eL/6Zynjxqf56z4BU8j8bm//9Tpr4uVj8hUTxR6u/48Tvl9PkPx/LP9Xf9PALEfhBy4tzQejn+HAumJf3kcf1738ZXr+A4+cGwDPDH0+Jcdf4r7/fsu+F7Hua9gFeYN89oj2NX2vYvwrZ90bwP2yvg/9Q6I+6/+ch+xea9q9D9rr774Xsf9e0f4K670L7f6e5f9n+Y4R9+H5Iahzct9OIWxXjeZQi8YLKn1B2Uf4oDPcst2mpT2slqhPX96rwZq8q6xVDPFCd+FocrpeE/YzA7Qm8GbE+K+xmcX1F2vccjgOqnqIYOB4EDQ72+1IfgrXYPtqN2CdE0OpHN+Jl3qu/9/E94VE36rt+TugaQv+YVK8pnsclXrdRPhcOx1SJ03ZKcQq6hmKMDJ/2kfowkG40lb5SnKgN4zShGaeA192E4kTXentInBZCcTohxudFnAw5PjrN8KmTRT3PH3Sjfj9QzXPy9wPKbwnw9+WI/MmlR6f5tSEsKvwtVGT+Mpr8Bf7uJsQfxWNHgz/x+gyX9+uEEZKBEZVb3ryaDNTzEH6K+o5SzcMdkYd7CfD4Hq/x9yE8/hDisSTGP8v11kju3A+KdCyPZ7v0jR31PajCY+D3dkI8bv/PeBzEJOTB58qQx/wIzxXy+8+EePxyxPuaEkiW/jdqHs2riPp9TfVxeF8XRqiPO6I+xvEY914cYGbx19UC/juUw6/fKUSfxjfmErI6i6tVy4E1a4u5LquargnnNmusCYstq75p2bVV+9cG3DbrLQYXWPPmsmNu3fTUqqzOXHaJ3XDBO6zW7IbDfOO1Rv1urWE3Yb21cdmqs2XH2gTvUKPDksNMYUo+e/9jTfIMz/Msz/ECn+FTfJoX+Rwv8Vlu8Hl+jB/n6655a+sqc5pWw0aEJixfWa1CrUUXbNzaqrP2xTs2c3Buf6NLjZbtku4Fy/bwLzpWzbKvrXtzZhtoc75SpbK4CHeh6pg12tgSs13mQBs2LLeJDtZN17rNCNWyN1lbMLLf6hjjs6cA3pzy4/HPYDD4Fwlda3B42gMAAAAAAagbAAA=",
+            "IconGUID": 5570,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Cheese x2 v2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVctKw0AUvbZ5NV3oSnCn+AOuXKdtpHRRLL62EsyYBtIk5KF1N//iD3RbV4F+gStXggj+hCL1Th4mltIHFHPhkjl3zr1n7syQAQCooHPoWxQdcqumXxaTGI8yNIoA9hVIc5jxBV4co0nNRcZ4VeQ97SWY1efofO5ffWbL9WFF/ZfdGX0s0jhYpD9Syu0/YvsfbUr/Y+3+lZL14/Mvs3+lXP3o3/UzE9KvmPJ5mseyeHEdAs4fXuf1RcSP24kzLCGepHi231Xz2Xi8Rv5kjv54Tf3xkvzZ/dgUzs6thrrHKd5BlxE/i4m/o7+K+ZqLViuM2VydnffRlwpvn2qRJ6/Iy2pyeNtEfC14vA0SRmRQTQ96pkuCgKhaoMGJbhAfmqFp6aZtdOxbB+40KyTQJX6/7WluP6apxCIBOSM3AXQM2/FIktdzrAfDsX2mV4/fqQqtUoFylKcilWiNyrROzwNt4F4RzzcdG1N8aF92VDBCU4eWM3AtMjy9t4mHsV/RlhPaAeN2zTilqw3hwrRIEm80mk1QPc1gC2oROyBe0rPO/gJ48UdCsj/f0+n0B38vlw542gMAAAAAAUgHAAA=",
+            "IconGUID": 6586,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Cheese x2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVctOwlAQHaGlpSx0ZeJO4w+4dmOBGsKCSHxtTSPX0qTckj4Ud/cT/AQTP0C3ygL4BFfuTFy4d60xOLe3SCWEhyFhkkk703Pm3FOGFAAghSlhrjBMGEY6vvKeynGMV7c6gN6FmMNDTuCiHhMzJwXHpRH3tCFqPl9i47F/9aGD+vo0fZhR/2V9RB+H5Lcm6Uf+9eX5v8F3z7qL8v8+t3/YW65+5L+zZP9L1H/oLnL/ZtEfRCa+KjFeZsPeoJ88Rwafb58N5ytY362K5LWKdS+uR/3Oyuf37Tn4vTH693PwH2P8f/m9Mfz2nP7bU/ijv8ei6sHeZFF3N67XMDWsnxWRb5ivyvDMycgm7vmzHN+3zS8DPj6NJE6bETeYKeG2K/i1knEbVexoYNgeVO0mCQJimIEJ+zWL+FAIbadmU6tML1y4NJ2QQIX49ZJnNusRzCAOCcghOQ+gbFHXI4JXdZ1ry6U+18tF38kUS7MMk5jMFKayLNNYjh0FZqN5SjzfdilSfCidlA2wQrsGRbfRdEjr4IoSD3u/okU3pAHHVuyIUjFbcGw7RPTz+UIBDM+0+IGKhAbEE54dzC7+8XYU8X6++/3+D3ZKpEZ42gMAAAAAAcgHAAA=",
+            "IconGUID": 6586,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Cheese x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVs1O20AQHsiP8yelp4qKS1BvfQo7cYVyQEWl5YpWzWJWMnZkb4De9g3KO3Dk0luVXjCnHGlPvcIBiXdAKJ3N2rVxaRNDgkcarWc833zj8exqAQCWUYuoSwIVYimEq/RVZJyQlh4ABGcQYqSUEnETn1A5/ycyroBxv14qW+YvCpXEWLsfm+LXF8m/NJV/5Rzgqz4v/u+vUt//gNznPw7y5ZcynR9m5P+yGtulxPxl6Ieebz9WjHz5W3Ieg3nxX2fej5dBvvzyPPoRzGserx91Hi2Of/p5dKkvsv/T+VtGzvw4/3CW7/znyq8vkn+2//+8/JGUw1UL48si9kX+ZB0avn+9E+evoD1sApw0lV0N7W/Nv7/3X/iTMD7Cn2bEn6bwwyfipX2eAT9M4UcZ+Ucp/MUT8aMH6k//z3nZ0dzVkPdNaL9AraP9U1N6g3qlxTUnpZp4lu8acj8c35rQQk1Ibca4KGcRd4uGt+8STnMFPTUwmQebrE85pybhBN72LOpDe8DsHnOsrrPrwgGxBxQ2qL+37pH+3iTMpDbl9D39xKFrOa5HFW7TtT9bruNLvsbk3r8sCkITRVEWJVERVVETddEQW5zs97ep5zPXQZAP6x+7JlgD1oOOu9+36dG7Q4d66PtD23EHDodt4jHCQ9QGUws5gg/MpirCMNptMD1iyeI61OHUi3swlO2pq+Jkv+7G4/FvLCjfknjaAwAAAAABqAwAAA==",
+            "IconGUID": 5847,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Clan Shields x3 v2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVr2O00AQnlx+nDi/F0SFKBAtBTwB+TGKUpzuRPjpQD6y+Fby2ZHt3OUkinkC4BHyBldQUZxIHoGK5igQBW0KOoTMrL1JfFGOOBC4TxqPZ3dmv50Zr20AgC2SFEkCSWCOpNRiLCv8UFg4AhiOQMYIpCN+wRjCSgi/JPlN1NAW66cwXKR+66LvRX6BzfHffLXAvwQL+df+Zf6JlfkH3B82xf/s+rr5D2tXyx/g/qb47w3Wzn8ka3BFz5/AaGP8b278Sf//b/5TZKRWpH8a52PT8eg+MjR/+/l8fYXsd2WA03JoZ8k+k/ZivnHjhf1+jfizJfzrxJ9K/7/hj8aPl8Qv1nNT9rTvOeK9Ju0KiUr2JyWULySflfmeo8hF7sVcXjwv+EODGkkE6kIdxHP2XZ3P52V8gcY/KqEIFOR8UcYVaf5OZN8lsqvSfktSJtsXKEd1WMzLNcTUflw/P6ovg8i3Epyvu2O6Gy/73pakb1n6b0fOo+hTNVKvc5Kvyu/Pa5z6n2+4/rC6BZN4ehLPfyJ5JzP+FfUPqjle9r2PU/9pvb7FqP+qczLlTNEfoEJ/e2l6m2aJPUcnKE/dKNKsxh3Y4z3meUzTPR0edA3mQqPPzS63jLb10oYj3ewz2GHuQcvReweBm8ZM5rGH7IUHwaVtWLbDwuA92zwxbMuFTn//ETdZy+FdCC6GuDQdpstQCPudwC1MYgZTmEYFC5jFHKpYwjwWsYwV3MYqdjz9sPeEOS63LWJwofW4rYHRFwvahz2TDXaPLebQ2GyjTbtvecJ3h1sB/67DDW497QRj+gDE5kKner3RgBPQHN0QG2syy2MODGCfey4laOoeP2KClVtdNpAVmeG1fCkN1bAfP33f/wX4qDnGeNoDAAAAAAF4CwAA",
+            "IconGUID": 31773,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Clan Shields x3",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVs1u00AQnjRJnTi/rYSEhDgguCBxgCdokxhFOVSNCH8nqEsWdyXXjhynpBKHfQJ4iL4AUk4ckNoTJyR6pocekLjmwA2hMGOvG8dK66QEOtLsZHZn9pv9duwYAGAJNYWaEKgwlqS0NJehOEHe8BAHUi+HJB2K8+YExArFJTFuqPo+7Z8S/iaVW5Oxk/hf13FY/1f4iVh8Ov/WwvBfXIucf4pM4m9dMf7h2iLxH/Tnxaf7P10Y/vsb8+J7/V9ZFP7Nt5e5/6vEp/v/v/iBLEuryPi0GM8F8+E6lnH99svx/gr6ByWAjyXfz6A/kH70vOflDyL5n/4yn/wvc+QfyPjL5g8i+Z+n5Ef5XJQf3HsWce9Kv4yqon+MwSeo31F/KOOaw5IN/aa1HPVL85cGAjUkaoQH6rOf6ng9J/PzEvdY4uXlekHmFXD9XqjuovBzSZ6jltAfkZTmtN4OcXa6UN1l7zm5fgRw/2ja/2ZRxpZk/ErouSK+V0PnPpF6kczC47cYHu9EeAxari95HPr0zGxHM9qABxieY2N5hrUwz4k5eQ54ob4+VeLfixf1dYCZwi82Bb/O0vj2yyB6Fjs+h6wXcFXjDjR5h7ku03RXh4dtg3Wh2uNmm1tGw3ptw55u9hhssO5O3dE7O16YxkzmskfslQve0DAs22F+ctM29w3b6kKrt/2Ym6zu8DZ4g0FDzWG6TKUze9+RSyIplkVKpIUi8iIjskIVRZETBVESZbEiVkXL1Xc7T5nT5baFCF2oP2loYPRoQ3u3Y7L+5huLOTh3VmjN7lkuxW5wy8PfdLjBrWctb07vAxXnB1Uq1Srsg+boBhVWY5bLHOy1be528YCm7vI9RqjcarO+ZORM3qF+wJdNU/Xv4/doNPoDPdI7yXjaAwAAAAABKAsAAA==",
+            "IconGUID": 31773,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Drinking Horns x4 (Land)",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVE1Og0AUfloolC5078bEA3gF2mKaLhobrW4NsSMloUBg0LqbG3gAlx5AXXXRhT2Cbo3xDK5NTH3DgGBT05809iVfZr7H982bB8MAAGwiJMQGQ0AWhWTkOZXrGGf6SEB4eMg5XZxjMDO4roC621fB+frSH77f9dM9rKu+rq+3/ugJYFdfVf2bnaX61/+z/zSKyagkeplluTSf30cRn++dZesryO+2BDhXkQ8SPtnvvH4+Hy7gH0ypf7+A/zHRL+sfTPEPF+x/OMM/+T1WxdNzU8K6+wnfRmjIXxSBN8S7ku05H6XcnD8r8/P2/GnAByIX2py6dE0Jb1AFb0sZT6OKGQ0MO4CW7RNKiWFSEw46FgmhGtlOx3athnvhwaXpRASaJOzWA9PvxjKDOISSI3JOoWG5XkCEr+U515bnhrxeOb6nN1mBFZnEZKYwlZWYxsrsmJo9/5QEoe25aAmhftIwwIrsDtS8nu+Q/uGVSwLM/RSteZFLubZpx5am2Ye27RCRr1SqVTAC0+IbqhGXkkD03Oa3AP70D7J4P1/j8fgbabSUJ3jaAwAAAAABSAYAAA==",
+            "IconGUID": 55963,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Drinking Horns x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFl81Kw0AQx8d+pR9CPXnxUvEFvHpL2kjpoVj8ukqwaxpIk5KkWm/7Bnr3IvgAnqWKkT6AeBI8iSD4DiJ1NkltLJUmtSUD03Qm89/fTjbZpgAAMfQE+gJFh6HFvSPLpVkdZRFv48cDeBpmSV+dk6Mw0VhdHOsuXtyYjZ/4Q/eb71iEfJ6Plm/fAxTsWfHPVqbq347w+iP7kp/EjwXkPy+P8HEQYXVS//PjL0zkF/DeozPjv4fu/9WOmM/Pkx/g+gsR83H9l4Ro1z9SPj9PfrD1j5LP9r+CMKv9932q/W9+/HH9DyzlHTmvPkmHuUHeP48Unl87GI7PYXydB7jKu3Ea454Xj/YbVM/ibgh9bwz/OoT+zqufVt8bo++G7L/r09+E1N+M6Hv/1LP4MT/+fuFmHA/u2wxyN7x4CT3Lfsex+An9Df2DG87Zbxnfd3Yux56T80/RcZ9lA9YNxkzgbsPh23oSn4Y0ZrIgKgbUlBaxLCJKlgSbdZmYUGwral3R5Ip2pMOxpLYJVInZKBtSq+GUiUQlFtkmhxZUZE03iKur6eqprGsm4+Wc/wkxGqcpmqBJytE0zdAszdEdS2q29olhKrqGEhPKexUR5LZSh5LebKmks3WiEQNzP9CS3tYsVltVHElV6sCuohI3LwjFIoiGJLMJlYhmEcPt+Za9gOJE1hfd6/PV7/e/AcYq2wd42gMAAAAAAcgMAAA=",
+            "IconGUID": 55963,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Aurochs x1",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVLlOw0AQHRInPlKEijqIDyGHUUgRgbhasMjgrOSsLR8Quv0E/oFvoKDCv0BFAUg09NRIKMz6wI6ERJAi5Ukj+82+mbeXFgCgQqFQrAkKKFDNvjKnSZ2QLN4GaLUhq5GolXRJTsCfkLoq6Z42Ui77KyJt0tmc1877t2KAm3hZ/u//92+v2J+844fVrn+V/mfxIvevskT/HPXsq2b6mihyeb48jzqNb50W/VXit02A+2bKNeJ3Gf8N6pJ5vm6dfPWMr1MYxB9J/ELxTPGqFnMuQy/9y7GG3K/404Q3ihKMBXV5T4VOS6XXpka7qVHGAJP5sM88DEM0rdCCnZGNAXQj5owYtwf8woVLy4kQhhiM+77ljROZiQ6GeIDnIQxs7vqY1u27zrXt8kD6NZJ3riKqoi4UUROq0IQuDNEQh6E18U7QD5jLqSSA/vHABDtiI+i5E8/B6d4VR59yP6Y9N+Kh1A5ZUjK0pnDEHEzznU63C6Zv2XJCPeQh+umad+UVpYP4UNL9+ZrNZt+hkYIAeNoDAAAAAAGIBQAA",
+            "IconGUID": 5847,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Aurochs x2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVjtPwlAUPjxKSxlwcsb4R1qoIQxE4ms1jVxLk9KSPhS3Ozr6E0ycDaMrhh+gLro4sJg4OmsMnktbqaihELEnOWnPud93v3PuI7kAAGn0LHqKosPEMsGX5QSGoyw67wNIfQg4zLgIbpyjMNMYLoO4h1U/ZvNnqT+JvPYVO6UvLVM/NVO/dB1HPx1T/2nu/pklqV+Sl6kfb/1BSq7/YT9ZfSlhff8AJrf/kpSs/jBhfXb//lc/tFzw5QM8Rye5MB+tI4fj6/uT+XmMe0WAy6IfC0F8Vfze72/8wRR/MCf/IsAvqt+b4g8WqD/Kv/mBP72efxWH+55H3VIQr6CLGN8h+B79Gf2Rn9QctXzkn40V2Hk8e1Pg9lWJ4sSYuHDOLJ5WHl8bHJ4mATMiKLoNDb1DXJcoqqvCRlMjDpQ93WjqplYzDy04Ug2PQJ04raqtdlpjmEIM4pItcuBCTTMtm/i8hmWcaJbpML3C+J2Tphmao1nKUZ4KNE9FWqDbrtru7BHb0S0TKQ5Ud2sKaJ7ehIrV7hiku3lsEhtzn6IVyzNdhq3rY0pd7cKObhA/L8vlMii2qrGCKsR0ie33fMquKC7Mi+Cvz/toNPoAmA2xFnjaAwAAAAABiAkAAA==",
+            "IconGUID": 5847,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Aurochs x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFV81u00AQnthJnKQRyYkLJ4SQeIvaiVGVQ0XFT690RRZ3Jde27A2U274BfQQkngH1SHzm0p54ApA4IHFHKMzGTu2GgreQxSONnG88s9/OzGo2BgAwUJuoDYEKhZj5U9o60k9IZM8RpZDHSGmV/JY2ka35J5F+Jvp9vJlhuX5TZIs4ty/7rvHbOvkblfxL2a7iB0X+17cK3CrV/6IeV8jl/Qjsx5m9qf2s18OorIewdfKb1f3As3Av3RT/p2ufR3B08jeU8v82rzd/ffxq+Z/UnP9JjfnLeXxQY/5yHh/U3P/5+3r7r4+/On85/6vvI+Mv+dXmvz5+tfk/39ZVf0Ot/9r4q/Mfpir3r77+Dx2d/Ir3v1Nf/+X8rZXf1slvqv3/+a/8K2nnTyv3b4vCtrKX92Hh+ztPi/U7iE8HAG8HGe7m+N3g13x/Fy9j07X49Brxp2vxH/4xXuLzwdX1sjaMV33rIe/dHA9RtxCfW5l+Rv1iFXsuS7f0W77ry3MSfXfhDWpJeop+qzWbOG0s/Hpt4WnooKUHLothj0WUc+oSTuD+1KMJjGbMn7LAmwTPQ3hB/BmFXZoc7sQkOly6udSnnD6kzzhMvCCMaRa3F/qvvDBIJF9/+d1sCFNYoinaoiU6oit6Ykv0xSNOjqJ9GicsDDAogZ0nExe8GZvCODyKfHr84GVAY7Rd0I7DWcBhn8SM8Dxql2UPcgyPmU8zD8cZjcCNiSc3N6YBp3FRg6+oZzdwMuTn4sdisfgJC3r0z3jaAwAAAAAB6A8AAA==",
+            "IconGUID": 5847,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Torcs x6",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVs1OwkAQHvlrgQNePHkx8Ql8AgvUEA5E4t/VNLKWJqVt2qJ4mzfQRyDhTDhyIoFH8AmMF1/CGJztj1SCgQKRSSbbb3a+/Xamu2kBABLkKfI9JIeZJYORx0SehxzhGOBlDAGHWzqS58UQlhrPS1LeScfHfP3UH7zf+ty6W9P/OIirj9Ju9SUpusam+s+Hseun2vF0h/0n/a60O33v/Ek7Pn//qh9aJhiFID+Ns1gYj+4jQ/PHt7P1BcK9gu8ci4RHAZ6vd1U+fx7E4I8W6E9i8PsF30P+IMDr8vsx9z9YoD+M2b/BBvrz/N4a/ZvXH8bkDzesf7Lk/c+f523h8N5lSbca4H3yHOFXwfc38ndhtueoZSPPfC7v3ddPGY7II5ZbMS9cM0V/AAJ97dN0m0WK5EDWbKhrFnNdJiuuAmcNlTlQamt6QzPUqnFvwoOitxnUmNOs2IrV9NJkpjOXXbA7F6qqYdrM59VN/Uk1DYfr5b3/jAQmMYMpTKOAImYxh3m8dJWWdcNsRzMNojhQua7KoLa1BpTNlqWzzvmjwWyK/YiWzbbh8tya5lFqSgeuNJ358WKxVALZVlS+oTIzXGb7NWPQGEv0+/M1nU6/AW75t3h42gMAAAAAAQgJAAA=",
+            "IconGUID": 5606,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Trousers x3",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVj1vE0EQnTh2zp85JxKioECIP0GH7VxkXESJCAE6uODlstLlzjqfg9NtQQ8Vf4A6PShFnIIOibigo0ChSZmCDiEzc7dnbw4ntsHgkWa9sztv3+zM7nkBABKoSdQ5gQoDmZe/NJYmP0FWp4TNEUgMSUrxC8YEjBTym0e/82xo0/pJES5SvnXR9yL/SQegVJoW/9m1GP8Qie3/aJr8W9cv8s+N3D/l/2npX+U/MZKf5Hxq/K9uTJp/qj+UZ1f/k9Js+TtH6hp/zX9z4vN3d/b8U7z/Y/BHsiB/NemfEoOxaFyNYwHnbz8ZrK+hfagDvNdDOy3tT/rv+70Mf4C+xwr+YEL8W+n/p/iDGH7S+A9j+A9D8PF8TsuO6p6huKRdRM2i3UXnL6jfUM+0QcyqZJQ+zeXonJV+GPAaVZFsLA90zr5nB/M5ic9L3s+SLy/nCxJXwHlDiXtRhFiSl6g62j2FtydFn6ivR1haUen3v/Vj9C8X2mcxuI/FY8R0hv3PL0pfXfovKfeX6rOs5OkU9at2Nee4ee9ekfd7sbwvSftjlPdIYLw+qP0JMvs/+6Prd+d42Dth3Pp15f061cY7N5fdr4gziS9XDV+pKfwKp5E9gzcvh9Us4KzBPdjgDeb7zDB9E1brFmtCpcXtOnesmvPchT3TbjFYY82dqmc2dgI3g9nMZ/fZMx+CpmY5rsdC8IZr71uu04TN1vYDbrOqx+sQNBY1Kx4zJZT2HLynE2JeLIikSAlN5EVaZERWLIqcKAhdFMWSWBabvrnbeMi8JncdZGhCdatmgNWiBd3dhs3a6y8c5uFYP9AVt+X45LvGnYB/3eMWdx5tBmNmGyi40KlcrlRgHwzPtCiwFeb4zIM2bHO/iRu0TZ/vMWLlTp21ZUb68gb1Hd6fx7mwHj97vd4vHj9NbnjaAwAAAAABMAwAAA==",
+            "IconGUID": 5608,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Trousers x6",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFWD9v00AUf22S5l9Tp5UQAwNCfAFGBqQmrVHVoWpFKbBRlxzuScaOHKek230D+h2YkVg7xZ06QhcmInWsxNAObIDCu/MFuyat7eLgJz2/3t1793vv5+dLbQCAadQ86hRDBV9y0vK5EvdjfOS6APUjkDFcCgE/MccgUrhfDv0uKt6Y759n3ibNe5d9Q/iNSeJPReJ/xvoP3LTwz26F6h8jIfxGtvhuH2A7Nfyt25fxpyP5FwCLaeG/u5OYf6zdXcz2/meK73o5ZNZ/WPvHxqT6Lxf9/Dcyrh/5f9Cc1PmXj3X+Tg6/EI3f93owJf7vJj1/eP9ljb+dJX4/zecvjJ+LhV9qZoi/+L/xRzIjbVH6F5g/N5oP5jGD6/df+vsXcXyoAHxQvHFJjrmG670q/jgUf5ww/r30vyn+4Zj4TwnzD8YPblD/Yaj+MH74fqQ1HvVNGXEfynEdtYLjE3T+gnqOelb0cw5KOfA3X6uKPv2pgvtDDfpVQjzwPv1e8derMn5W4p5IvFm5XpNxNVx/FMh7jnmxXF6gKjgeeqIErAIXV1gQ/hDHXiU877qou43vEBtH49475qSvIv3nA88z53shUPcp6tfi9c96HB5PU+dRzP1lJUfCXsS01/PIxedxKiGPo7rPU+KR7zVIwOMox7bPIyTpsxjW53xMX8frU9Yf9/9Z3D4dyD79llKf/gu/Sfouro3q9+j+9fkt3KB/B7J/o/iNOndHmHn8IlPEry8F/HUvIXoZT+Qqsl3DVZXasEHbxHGIqjkaPG7ppANLXWq0qKmvmq8t2NOMLoE10tldsbX2rnBTiUEc8oS8ckBcVnXTsokXvGEZ+7pldmCzu/OUGmTFpi0QF51flm2iyVBes/hONM1ybIblWYEV2SwrsTKrsDlWZTWmsDqbZwts09HetJ8Ru0MtExE6sLK1qoLe5Rtab9oG6a2/NYmNc38SXba6psN916gp8NdtqlPz+aaY03rAk/Ocms2lJdgH1dZ0ntgyMR1iQw92qNPBAg3NoXuEo1KzRXqSkUuNfjCPbzEL3v34NRwOfwPOHvxreNoDAAAAAAEIEwAA",
+            "IconGUID": 5608,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Chariots x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFlc1OwkAQx0doaYGDXDx5MfEFTHyBAjWEA0r8umoja2lStk27VbztG+g7+Bwk+AZ64ugD6MG7MTjbD9sQDTQhdpJJ9z+d2d/O7iYLAFBCl9A3ODqkVo6/IqaKPC6UNgVoPEFcI0zO5IUxDktN5JUx72Mr0mJ+6Y+6Bb5WMB/7h2mx/RfKR/aDti7+/XZe/qW2Tv7+OC+fY/87zWX80or8t9z7L6xIPtf+m59YJf4qcb7M01gSz66jgv93L9L5FdSPm5ELraKexHqx31XrxXiWo37yC3+Wkz9bUr+4H+vSyblVkXsY6wZ6DfWLEvkr+ruSrjlr1cxY/KuH5/2pwzN6xmor5iVzSnjbFHytZLwNKkZqoFse9C2XMEZ0gxlwMDCJD63AsgcWNbv02oEbww4I9Ig/7HiGOwzTdGITRo7JFYOuSR2PRHV9x74zHeoLXj18J0u8zCtc4jJXuMqrvMbr/IQZI/eceL7lUCzxoXPW1cEMrAG0nZFrk/HRLSUexn6gbSegTOT2rLCkZ4zh1LJJFG82Wy3QPcMUC2oTyogX9WyLBwAv/p4S7c/XfD7/BmNbmIN42gMAAAAAAcgHAAA=",
+            "IconGUID": 5616,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Cloaks x2",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrNVs1u00AQnvzV+a3TSAgkDoDgAeAJiJOgKIeqFaVwQsgli7uSa0eOU9LbvgF9ByTOXHLigKseOBeJCxISggsSEsqBG0Jh1l4njsmP0waFkcaT2Z3Zb/bbHccAAHHUJGqMocJIEsLysTSPY9x77eCDq5vDJRWIc8cYzBUel8C4ftbz+fpJ5i2i3BiPDeGX/yV+bD4+xy4vC//xpdD+J8g4vvMW4Hgufjwi/o+F8cvlKPhR9797eRw/Hol/Z4X8870XlWXhv7h6nvO/oqzu/Dn/15XV8c/vn3N3Wfjfri16/5z/AH95/RcF35c1YSURn2KjMX88WMcazt98MlpfQv+lDPBG9vy08D/If+93Wv5pKP90wfwexr4L5PcWzPfrPW9+L5Q/qf4wn8vy/XPPIO4d4RdRs+ifYfAn1C+o36VRzUHJBH7zuRy/Z7d/1cBBDUg2xAO/Zz+zo/mcyM8L3DOBlxfzBZFXwPlbgbrX0fep6qLKAX+AIl/AytCfaGGqnSx8X0W3/9InANsnk75r1kWsLOI3Av3Kz6MU4OUj6mdpdi9H4fn9HJ7LIZ5Lwj8WPA+E+FxfyCK5U+yQlyh2Nv99J8h/bEH+fb54P3yV5r9PZ/WDj5nEf2UJv6pT+NZMI3oGOyWHp1HA2Rq1YJu2iG2TmmqrcK+pkTZUOlRvUkNrGM9MOFT1DoFN0t6vW2pr3w2rEZ3Y5D55aoP7aGiGaREvedvUjzTTaMNOZ+8B1Undok1wHxp/VC2iilTwzjvG4izB1liSpZjE8izNMizL1lmOFZjMimyDldiOrR60HhKrTU0DEdpQ323UQOvwBc2Dlk66W88NYuHYsNCq2TFsHrtJDRd/y6IaNR7tuGNqF3hxXpCiVCpwBDVL1XhhVWLYxMJe36N2GzeoqzY9JByVGk3SFYwM5RXqPl76dN47j9+DweAPezlMg3jaAwAAAAAB4AwAAA==",
+            "IconGUID": 5614,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Fur Hats x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFlr9P21AQx4/8cuIM6VzYWBhBLGzFias0QwTiR9WNWM2rseTYke20rsTw/oP+Ee1e8gegkIEZmDrwF7Aglk4tSu9ip3GtVMlrrPqkk33n+77Pvff8LAMAZNBz6CscHaaWDa+UK1Idp2hnCOAPIdSQ5SN14xyHuUZ1WaxbOwtiGj/3F92f/MfLdPmthfiZBfnPhfmXL7CHxOb/aVWUv6kkyd/2Rfk3uwBvEuNvCfPp/X+V4v7T+58mv5UyH4bBGUhm/yvifCVlPtqG8j/5EyuEVymsz/NpbpKP9lHA5+sn0/EljD9XAqe4iPFdGMfnu6ie7vsC+rsZ/L4gvx/RD5bUU3wvoB/E9KL9D2b0fyW4fnG+SP9fQ96/8gcx/fWSeoq/Ce7f/Zz5x89DUvHk3JaQexHGz9BljG+lwB/Qv0vTnqNWitzTszKd98cfKrR+qtE6ecG6yZg5/NpL+LeYx69BETMyqIYD+0aXeR5TNU+Dl22duVDtGWbbsPSG9c6G95rZY9Bk7mnd0bqn4zKVmcxjB+ytBw3dsh0W6PZt86NuWy7xyuP/1AzP8gLP8TyXeJGXuMzL/NDTOt3XzHEN20KJC/Xjhgp6z2hDze50TebvfbCYg7nf0JrdszyqbRpjSVPz4cgwWZBXlGoVVEfTqaEaszzmBHP+gr6Li3QuB+vzNBqNfgH4OtZEeNoDAAAAAAFICwAA",
+            "IconGUID": 31770,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Roast Beef x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVctOg0AUvbZQKF3ozoUbE7/AL5C2mKaLxsbX1hA7UhIKhIfWxMX8gX6CiWtDunRnP8EPMNHf0Jh6h4cQUtNSG3uTC5zLOXMuMwwAAJQwOcw1iglplOMzq4mMRxmiz3hgGWpY8BleWKMwMxivjLzbrQiz8blfdDn/PQB5af6bN0X97+XV+t+htyzP8i/N6b87XGj+5RXP/7/6J1GJz0LM52laS+rZPip4f+csHV9A/LAeJcMi4nGM8887r55dPxXQj6f4PxbQj2L+svQMBwX7z/sHBf2DP+jHU/RF5p9pRxl9UFCfrPei+iCnn9Z//n1eFk72XRV92zHewJQQvwhRvmO+CmnP2ahmrtm9Gtuv258KvH0oWZ40Jy8Zk8OvpYB/Ox53s4gVCRTdga5uE88jiuqpsN/TiAsNXzd6uqm1zQsLLlXDJ9Ahbr/lqHY/pCnEIB45JOcetDXTckik61rGtWaZLvOrhf/ZEi3TCuUoTwUq0iqVaI0eeerAPiWOq1smSlxonbQV0Hy9B01rYBtkeHBlEgdrP6ZNyzc9xu3ooaSjDuFYN0hUr9cbDVAcVWMNNYnpESd6ZjteHFuI5udrMpl8AxNmrql42gMAAAAAAQgIAAA=",
+            "IconGUID": 31767,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Wine x2 (Aldermen)",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrVWEtv00AQnuadpmnSwg0OIITEvyBug0oPVSvK41KJumRxLbl25Dglve2BO/yEShz5EU2PHCo1QkhIFAmpFyhSgQMHJFCYtde1a7l+gN3HSuN4dmf32/lm1rsbAIAMSg5lhKKAU7L8l9WVmB1l2qc+QH8LeB9W8i47s45aYwYVZpdFuzdLls7Gz1F/Ww9+42zx6TY+bieF/9qLj4MI14PwG6nij4TiQz9N/Ew4fiNN/Gw4/0Ka+LlQfJoqfj4cH/Nvt5EWfiE8/vwbEIwPEfFfXIm9/oU0/S+G+r+L6++WkJT/X6/F9Z/5frr4dinw3yK3z1Onzq53z6OA7TceO+MXUX9VAxjULL2E+heue/09qf8W2n5w9Wf6xxj9dzz9d3z6e/1JSrd5LyPuTa7XUUZRH6DxZ5SfKN+Kzpzdpex6Z20VFq/l303YRHGVUQ8PLM5bS057hfcf47gDjjfG26u8XxXb77rmPY76JNffo9RQH9oFvO8O3kV8P6kw3urmOnmJ3+HNbb9zwzi3rXH7Cde6YvGedPG+zyWoRInjOxzjbUAcr3riWOd6w4ljLZ5YfNkSztfyNuPM75wThS/bv72E+No7Zb7gu0dC+WLnfIevTEy+bP+Syq/9c59f1pr0O0dG4cv27yAhvg7Of3413HzlYvJl+/cjwfxKYx+6wFtQ4HZ0PO+dfSj/D3k/4OeOJOLIxjqMEccK158fxTENIk86owTmTIT9vy743Zui7v+HnPNfCa2f/+E9jdxNh3eTRcHvvhY13w95vofxHnbOtjFzeNss4r91ebwNlRC9jCfwCkahiq1NWYcFuU0MgzRFQ4Q7LYl0YKorKy1ZlWbVpxqsi0qXwBzprM7oYnvVNGsShRjkHnligPmYlVRNJ1bnBU3ZkDS1A4vdlfuyQmZ0uQXmQ2KPaZ2IvCtY38kRmqFZWqA5mqdFOkZLtExH6Tit0Cqt0TqdoJN00RDX2g+J3pE1FRE6MPNgtglSlw2orbUV0pt/phId644mOq11VYPZzsmqiT+vy5KsPlo068QesMlZRoIwNQUb0NRFiU1smqgG0aEHK7LRQQcV0ZDXCUOV1RbpcUaOLYD+JQzBZSsef4bD4V+4bb90eNoDAAAAAAE4FQAA",
+            "IconGUID": 23753,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Bird Tongues in Aspic x3",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFmL9v00AUxx/NDydppAJSoRJCKuIf4Mc/ECeuqgwVFT+yUqs5HEuuHTkOhO2G7nRkrNSVAQmYE+QhKxFiYuhQJCQmYKYK78U2NlYUcomFTzo57/K+93nvnX2XGABgBXsW+wWOHcKW8a80ViA/TtZeBeDVe/A11HIRv8kY9+ac1cgvg353e55N82f5dN+/+TAAePlPPszJb1yN8XES+cYsPuV/mFj+X9ZF89/D/Fsp8gHzryRWfybMP06ZT/XfSLn+kHL9U+Vj/V8PkuLvry+y/6TJp/2nkhj/xTVR/oQ9SOr+vy2+/1MMlaT4d3qhnYucf/PHs4nPwoac1Hp8viLMl9PlUztMkU/P4tvE9uNvm8K/B1LmD/rp8mk/Pk7sPFiMf/Rf+UHL+1fJ98/zcCwYj8Yh4fc3H4fzF9B+twZwsubZRbRd347nO6+e7E8CejemHwny3Snxi/BHU/gi+hPff9H843qycxfF6h/V9wX5/ZjeXVJP9qng+kX1Q0H+MKYfLakfCsY/iunPBPlnU/Qi6x/UO7p+ovU/XSJ/dwr/q4D+je+/qN6N6T8uqSf7h+DzS+s1a/3i+3FSdnBulJD73bcJvUr3peT1n9gzhTDmaCtGPtN3ZTpvbv1SoHKuRP1Kc/oFc2bxtJfw7U0OT6MCjpRA0W3Y1dvMcZiiOipsNTXWgWpXN5q6qdXNJxY8VY0ugx3WaW3bars1cVOYwRx2n+07UNdMy2aebtcynmuW2SFeefLeaIVnuMSzPM9zvMCLvMRXeZk/cNSDdoPZHd0yUdSB7Ud1BbSu3oSaddA2WO/eM5PZOPYHW7O6pgMN1dZVx1ft6N5F7cFD3WCehyxXq6DYqkbB1ZjpMDuswXW8YT5cwn8Jl716nY/H49+fwULneNoDAAAAAAHoEgAA",
+            "IconGUID": 5604,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Handmirrors x4",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFVctOwkAUvQKlpSx048qNiT+gf1CgSlgQia+tNjKWSUrb9KG4mz/Qf/ALXLrD8AHEDzBx6U7XGoN3+rCVYKCGpDe5ac/tOXPucIcMAEABs4S5wjAhiWL05DWJ81gAHwE2hxBpeAgpXlBjMDc4r4i8t/UQ8/VLf+h++yvDfP1BWab/WWb/d/SHpfnfbGTeP5+/kvP8lZznr+Q3f6hhC3P9Cwv67wzm+8dRjp5ixBdYUovr6T7K+H3rNFlfRHy3GibHEuJxhKf3u6ievz9k0I9n+GfRj5B7n9KPMurjfv+rH03pZ/U/PY9l4fjcVNB3L8JrmDLiJzHMV8xnMek5HZXUO/9W5eft9lOFlw81zZMX5MVrlvC0i3hbCXgaJazIoFIHOtQmnkdUzdNgt6sTF+o+NbrU1FvmhQWXmuETaBO313Q0uxfQVGIQjxyQcw9aumk5JNR1LONat0yX+1WDe7LAiqzMSkxgIpNYhcmsyg49rW+fEMellokSF5rHLRV0n3ahYfVtgwz2r0ziYO3HtGH5pse5bRpI2toAjqhBwnqtVq+D6mg6b6hBTI844Z4NfgHgH29bDH+fr8lk8g20Gp3deNoDAAAAAAHIBwAA",
+            "IconGUID": 5615,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Wigs x3",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrFWb1v00AUv+azbZqm7QBCCCSEkDqCWBgY4jao7VC1onx0oy45UkupEzlOSSWGG9jpwIDogsQ/UImpqqqkA2KKIgYGxEAYkRjSoRJCoPDOPjeulcZ3qV0/6SV+d/fu997vnX0nGyGEQqAR0AECijoSZv+0bZCOI1bPywPEfKhEbeOMNoJchY4Lw7hXl02bzh85xe8kfquG0KJn+OMvhPHTweJTuemKH+LEv10Rxgf+azWv8r8ljg/873iGf0mY/yZgk5pX/L+968CHSaRrrvxXg8uf8h8kfhPwSdUv/ge4+E+nvcK/0Bf/QeIb6z/tF/8hV/5p/Zu+4Ye56o+kYOsfJP4s7D13JK/u/6WLJ/EjrvzPSn7iR93rD7LiGf9O/Jgr/jLwv+XZ/rctvP9MBoxP7/13nu2/28LP/0nJz/zd8ZeDxqdnz2qw6y9QfMlPfL76B4nfrNnn8Pr+Q1zrbyXtV/4hrvUXJH7T0/PftvD5h65///IPc63/QPEPzHcAQa6/QPElP/H56h8kftPT8z8P/5bE2H+cjY+STpvVbo8jBv3Xn3Tmj4P9PmUqtQfB3me2M9/T/Pcd/tUz+lN7V8C/6vCvC+JXu8Qvgl93+DcE8etd4t8T8G84/H8K4je6xL8nWL/dM/Dn9Kf2dwH/TyzefvmrO/wbffDv9BeJ/wMb32/++138fwjGb/f/Kojv9G8I4lvx9vJ3Ps+8sq3n7hDgbjF7DHQY7M9xU49AD+OdmO0yZLumfQm6H6z8zaAdUJsMO3igz3m51OlPMP8RhvuF4Y2w/iTzSxIzPivuUbBvMPs1aArsVhuhNo+mzk97Cc17zNhHtw7od6Ru731G2dgUGz9u288pHxM23qj+iffG5KnD4RnrYOTOUYfWOSpfHei7rE4dooJ1sHg78qgO32COVo86ZBx1sO61inU/GOvPzL5tkn7iOsV53WqbgjrX5sruNLOOFCfP6ICenbu95+Ph2eLlFwfPbs8nCzMCp9Q4fOWNwilyENCHgM0EsJ6E3oyioUWliHUdZ2RdRveyOVxCU2Uln1XU3Jz6rIA25HwZo3lcWpvR5OKaMSyD81jH9/FTHRk/czm1oGHTebGQ38wV1BJaKq8+UPJ4RlOyyPjJ0Z9pDcvMleZsfI8OkTCJkQiJkjgZIYNkiAyTUZIgSZIiY2ScTJAlXV4vPsJaSSmogFBCMw/nMihXphMW1ot5XFl4rmIN2o4DnS6UVZ2OnVdUA39BU3KK+njJaJMriAZnDpKkqSm0iTKanKOBTWNVxxqstVVFL0GCeVlXNjBFVdQsrjBGjuUj1Pj3FYTeXDXr8a/dbv8Hi5aDGXjaAwAAAAABcB8AAA==",
+            "IconGUID": 31769,
+            "CreationTime": 1794018293
+        },
+        {
+            "Name": "Wine x2 (Nobles)",
+            "FolderName": "Albion",
+            "RegionGUID": 6626,
+            "PipetteData": "eNrVWEtv00AQnuadpmnSwg0OIITEvyBug0oPVSvK41KJumRxLbl25Dglve2BO/yEShz5EU2PHCo1QkhIFAmpFyhSgQMHJFCYtde1a7l+gN3HSuN4dmf32/lm1rsbAIAMSg5lhKKAU7L8l9WVmB1l2qc+QH8LeB9W8i47s45aYwYVZpdFuzdLls7Gz1F/Ww9+42zx6TY+bieF/9qLj4MI14PwG6nij4TiQz9N/Ew4fiNN/Gw4/0Ka+LlQfJoqfj4cH/Nvt5EWfiE8/vwbEIwPEfFfXIm9/oU0/S+G+r+L6++WkJT/X6/F9Z/5frr4dinw3yK3z1Onzq53z6OA7TceO+MXUX9VAxjULL2E+heue/09qf8W2n5w9Wf6xxj9dzz9d3z6e/1JSrd5LyPuTa7XUUZRH6DxZ5SfKN+Kzpzdpex6Z20VFq/l303YRHGVUQ8PLM5bS057hfcf47gDjjfG26u8XxXb77rmPY76JNffo9RQH9oFvO8O3kV8P6kw3urmOnmJ3+HNbb9zwzi3rXH7Cde6YvGedPG+zyWoRInjOxzjbUAcr3riWOd6w4ljLZ5YfNkSztfyNuPM75wThS/bv72E+No7Zb7gu0dC+WLnfIevTEy+bP+Syq/9c59f1pr0O0dG4cv27yAhvg7Of3413HzlYvJl+/cjwfxKYx+6wFtQ4HZ0PO+dfSj/D3k/4OeOJOLIxjqMEccK158fxTENIk86owTmTIT9vy743Zui7v+HnPNfCa2f/+E9jdxNh3eTRcHvvhY13w95vofxHnbOtjFzeNss4r91ebwNlRC9jCfwCkahiq1NWYcFuU0MgzRFQ4Q7LYl0YKorKy1ZlWbVpxqsi0qXwBzprM7oYnvVNGsShRjkHnligPmYlVRNJ1bnBU3ZkDS1A4vdlfuyQmZ0uQXmQ2KPaZ2IvCtY38kRmqFZWqA5mqdFOkZLtExH6Tit0Cqt0TqdoJN00RDX2g+J3pE1FRE6MPNgtglSlw2orbUV0pt/phId644mOq11VYPZzsmqiT+vy5KsPlo068QesMlZRoIwNQUb0NRFiU1smqgG0aEHK7LRQQcV0ZDXCUOV1RbpcUaOLYD+JQzBZSsef4bD4V+4bb90eNoDAAAAAAE4FQAA",
+            "IconGUID": 23753,
+            "CreationTime": 1794018293
+        }
+    ]
+}

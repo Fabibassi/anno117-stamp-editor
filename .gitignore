@@ -1,0 +1,25 @@
+﻿# Build
+stamp_editor/target/
+**/*.pdb
+
+# Local editor state
+stamp_editor_config.json
+
+# Proprietary / derived game data — regenerate locally, never push
+_gamedata/
+*.png
+*.dds
+*.bin
+*.rda
+*.ifo
+
+# Scratch / one-off scripts at repo root
+_tmp_*.py
+**/__pycache__/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Stamps": [
+        {
+            "Name": "Lumber x4",
+            "FolderName": "",
+            "RegionGUID": 3225,
+            "PipetteData": "",
+            "IconGUID": 3089,
+            "CreationTime": 1793889783
+        },
+        {
+            "Name": "Sawmill",
+            "FolderName": "Lumber x4",
+            "RegionGUID": 3225,
+            "PipetteData": "eNrFVs1Kw0AQHk3TpKkHxZMHQU9SPPkCattI6aFY/LsJDXaNgZiUJNWKl716EzyL4EWKF9+gCj6Dj+EbSJ3Ndm3Uqo1GXZim3+T79tuZ3aQFABjFSGGMUAzoD6l3ZTmV8ShDtVseXMOGHOGFuTfzDBqMJyFvYoxjNn+KDua+9qdL+HH3lb80pP9iNq7/6TLGbVL+8etntYc9+NRfSbj+pPb7MXa9rNes5//V79oyj8/95d/b7zwadP56vyPPW4evIZn6h/EXI927Kj2+TPs5kY+uI433t2f78yuIJzWAM4VjFfEc4ivlfb0f6aeRfxLRLyA+j6EXfkKfi+mfG6Bv/9C//QN/Vv9FDL3o13f1Yr1CP4/4+oPDriSMxbnNsHPQw+MYGuIMHvh7fOlM4fVB6q85OjKR7+xelp33mUsdwNejPG1Inpgzhb/YCr7xZHwaVMxooFseVK0GCQKiG4EBK3WT+FBoWnbdcsyys+vCgWE3CVSIv1fyjMZeSNOJTQKyRnYCKJuO6xGuq7r2kek6PvPLhv8LRqlE0zRFZapQlWaoRrN0PTD2G1vE8y3XQYkPpc2yDmbTqkPR3W/YpLV66BAPcy+mRbfpBIxbsUJJxWjBhmUTns/nCwXQPcNkCyoSJyAer/kY4wY3Z0bl/XnqdrvPywmYUXjaAwAAAAABuAgAAA==",
+            "IconGUID": 3089,
+            "CreationTime": 1793889768
+        }
+    ]
+}
