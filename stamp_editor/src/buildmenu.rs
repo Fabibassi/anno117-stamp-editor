@@ -197,6 +197,11 @@ impl ConstructionMenu {
             if let Some(dir) = exe.parent() {
                 candidates.push(dir.join("_gamedata").join("construction_menu.json"));
                 candidates.push(dir.join("construction_menu.json"));
+                candidates.push(
+                    dir.join("../../..")
+                        .join("_gamedata")
+                        .join("construction_menu.json"),
+                );
             }
         }
         candidates.push(
@@ -207,6 +212,11 @@ impl ConstructionMenu {
         if let Ok(cwd) = env::current_dir() {
             candidates.push(cwd.join("_gamedata").join("construction_menu.json"));
             candidates.push(cwd.join("..").join("_gamedata").join("construction_menu.json"));
+            candidates.push(
+                cwd.join("../..")
+                    .join("_gamedata")
+                    .join("construction_menu.json"),
+            );
         }
         candidates
             .into_iter()

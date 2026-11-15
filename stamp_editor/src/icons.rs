@@ -22,12 +22,14 @@ fn resolve_ui_png_root() -> PathBuf {
         if let Some(dir) = exe.parent() {
             candidates.push(dir.join("_gamedata").join("ui_png"));
             candidates.push(dir.join("ui_png"));
+            candidates.push(dir.join("../../..").join("_gamedata").join("ui_png"));
         }
     }
     candidates.push(EditorConfig::config_dir().join("_gamedata").join("ui_png"));
     if let Ok(cwd) = env::current_dir() {
         candidates.push(cwd.join("_gamedata").join("ui_png"));
         candidates.push(cwd.join("..").join("_gamedata").join("ui_png"));
+        candidates.push(cwd.join("../..").join("_gamedata").join("ui_png"));
     }
     candidates
         .into_iter()

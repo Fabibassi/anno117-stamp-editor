@@ -27,12 +27,30 @@ Library on the left (packs/stamps), stamp canvas in the center, build menu / ana
 | First-time setup… | Set paths again (game, stamps, library) |
 | Link Anno game folder… | Install folder for icons |
 | Library folder… | Choose the safe editor library |
-| Import from game / Export to game… | Sync between library and Documents stamps |
-| Also save into game folder | Mirror saves into the game stamps folder |
+| Also save into game folder | On each save: copy **that pack** into Documents stamps (default on) |
+| Export to game… | One-shot: copy **all** library packs into Documents stamps |
+| Import from game | One-shot: copy packs **from** Documents stamps **into** the library |
 | Open pack file… / Save | Load / save a pack |
 | Reload catalog | Re-read `editor_catalog.json` |
 
 ![File menu](docs/screenshots/03-menu-file.png)
+
+### Why two stamp folders?
+
+Anno keeps live blueprints under something like:
+
+`Documents\Anno 117 - Pax Romana\stamps\`
+
+The game can **wipe or resync** that folder. So the editor uses a **separate library** (your durable copy) and treats Documents as the **in-game drop folder**.
+
+| | Library (editor) | Documents stamps (game) |
+|--|------------------|-------------------------|
+| Role | Safe working copy | What the game loads |
+| Risk | You control it | May be overwritten by the game |
+| Auto sync | — | If **Also save into game folder** is on: each save mirrors **the open pack** library → Documents |
+| Manual | **Import from game** = Documents → library | **Export to game…** = whole library → Documents |
+
+Nothing watches the folders in the background. Import/Export are for bulk catch-up; day-to-day editing only needs the checkbox + normal Save.
 
 ---
 
@@ -42,7 +60,7 @@ Library on the left (packs/stamps), stamp canvas in the center, build menu / ana
 - Place, move, rotate, and copy buildings
 - Paint roads and aqueducts (including elevated spans over roads)
 - Farms / fields (SubTileGrid), coverage, production chains
-- Library outside the game sync folder + optional mirror into the game
+- Safe library + optional per-save mirror into Documents stamps (plus manual import/export)
 - Residence tiers **T1–T4** visible in the editor (note: in-game blueprints often store only the base GUID)
 
 ---
@@ -59,6 +77,16 @@ Library on the left (packs/stamps), stamp canvas in the center, build menu / ana
 
 Optional for a full build menu: place `editor_catalog.json` next to the EXE (or under `_gamedata\`). The editor still starts without a catalog.
 
+### Missing icons (base game / no DLC)
+
+Icons are **not** shipped with the editor. They are read from your Anno install (`maindata\ui.rda` and patch RDAs). DLC buildings often only have icons if that DLC is installed.
+
+If an icon is missing you may see a **text fallback** on the canvas (name / `GUID …`) instead of a picture. That is **expected**, not a broken install — editing and saving still work. The build menu also hides unresolved DLC stub entries.
+
+Without a linked game folder at all, icons stay sparse (only whatever is already in a local cache).
+
+Whether a stamp **works in-game** without the matching DLC is up to Anno; the editor does not check that.
+
 ### Windows SmartScreen (“Windows protected your PC”)
 
 The release EXE is currently **not code-signed**. SmartScreen often warns on new/unsigned community tools.
@@ -68,7 +96,7 @@ The release EXE is currently **not code-signed**. SmartScreen often warns on new
 1. Click **More info**
 2. Then **Run anyway**
 
-That is normal for unsigned open-source downloads and is **not** proof of malware. Source is public on GitHub; you can also build with `cargo build --release`. A paid code-signing certificate (OV) can soften the warning over time — optional for this hobby project.
+That is normal for unsigned open-source downloads and is **not** proof of malware. The source is public on GitHub, and you can build it yourself with `cargo build --release`.
 
 **VirusTotal:** Release builds were checked before promotion (0 detections). Current SHA256 is in the [release notes](https://github.com/Fabibassi/anno117-stamp-editor/releases).
 
@@ -101,11 +129,14 @@ Fix legacy cistern positions in packs:
 cargo run --release -- --fix-cisterns "C:\path\to\stamps"
 ```
 
-Clean release ZIP (strips local home paths from the binary):
+For a public release build, set `RUSTFLAGS` with `--remap-path-prefix` for the crate dir, repo root, and Cargo home (so panic paths don’t embed your username), then:
 
-```powershell
-.\scripts\build-release.ps1
+```text
+cd stamp_editor
+cargo build --release
 ```
+
+Ship `stamp_editor\target\release\stamp_editor.exe` with `README.md`, `LICENSE`, and `CHANGELOG.md`.
 
 ### Catalog & icons (local)
 

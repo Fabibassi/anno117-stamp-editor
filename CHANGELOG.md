@@ -2,6 +2,19 @@
 
 All notable changes to the Anno 117 Stamp Editor are documented here.
 
+## [0.2.3] — 2026-11-15
+
+### Changed
+
+- README: clearer library vs Documents stamps sync (auto mirror vs Import/Export)
+- README: missing icons without DLC / without game folder are expected (text/`GUID` fallback)
+- README: SmartScreen note without internal OV/hobby aside
+- Removed `scripts/build-release.ps1` (release steps documented in README)
+
+### Fixed
+
+- `_gamedata` lookup also checks repo root from `target/release` (catalog / construction menu / icons)
+
 ## [0.2.2] — 2026-11-15
 
 ### Changed

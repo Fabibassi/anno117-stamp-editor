@@ -18,6 +18,12 @@ fn resolve_catalog_path() -> PathBuf {
         if let Some(dir) = exe.parent() {
             candidates.push(dir.join("_gamedata").join("editor_catalog.json"));
             candidates.push(dir.join("editor_catalog.json"));
+            // cargo run --release → target/release/../../../_gamedata
+            candidates.push(
+                dir.join("../../..")
+                    .join("_gamedata")
+                    .join("editor_catalog.json"),
+            );
         }
     }
     candidates.push(
@@ -28,6 +34,11 @@ fn resolve_catalog_path() -> PathBuf {
     if let Ok(cwd) = env::current_dir() {
         candidates.push(cwd.join("_gamedata").join("editor_catalog.json"));
         candidates.push(cwd.join("..").join("_gamedata").join("editor_catalog.json"));
+        candidates.push(
+            cwd.join("../..")
+                .join("_gamedata")
+                .join("editor_catalog.json"),
+        );
     }
     candidates
         .into_iter()
