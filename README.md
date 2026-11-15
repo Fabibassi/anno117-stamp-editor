@@ -20,11 +20,14 @@ Kein offizielles Ubisoft-Produkt. Du brauchst ein legales Anno-117-Spiel, um Sta
 ## Schnellstart (Release-Binary)
 
 1. Unter [Releases](https://github.com/Fabibassi/anno117-stamp-editor/releases) die Windows-ZIP laden
-2. `stamp_editor.exe` starten
-3. Beim ersten Start: **Datei → Sichere Bibliothek** (oder eigenen Ordner wählen) — nicht dauerhaft in `Documents\…\stamps` arbeiten, das Spiel leert diesen Ordner
-4. Katalog/Icons: lokal aus den Spieldaten erzeugen (siehe unten) — **nicht** im Repo enthalten
+2. `stamp_editor.exe` starten — **kein Python, keine Extra-Runtime** (standalone)
+3. Beim **ersten Start** öffnet sich die Einrichtung:
+   - Anno-Spielordner (Installation mit `maindata\ui.rda`) — für Icons
+   - Spiel-Stamps — oft schon `Documents\Anno 117 - Pax Romana\stamps` (wird erkannt, wenn vorhanden)
+   - Editor-Bibliothek — sicherer Ordner **außerhalb** des Sync-Ordners
+4. Später erneut: **Datei → Erste Einrichtung…**
 
-Ohne Katalog startet der Editor trotzdem, aber ohne sinnvolle Baulette/Labels.
+Optional für volle Baulette: `editor_catalog.json` neben die EXE legen (oder unter `_gamedata\`). Ohne Katalog startet der Editor trotzdem.
 
 ---
 

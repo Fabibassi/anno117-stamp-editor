@@ -198,6 +198,17 @@ pub struct StampEditorApp {
     /// Rename stamp: `(pack_path, old_name, draft)`.
     rename_stamp_dialog: Option<(PathBuf, String, String)>,
     rename_stamp_dialog_focus: bool,
+    /// First-run / path setup wizard.
+    setup_wizard: Option<SetupWizardDraft>,
+    setup_complete: bool,
+}
+
+#[derive(Debug, Clone)]
+struct SetupWizardDraft {
+    game_install: String,
+    game_stamps: String,
+    library: String,
+    error: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -563,16 +574,38 @@ impl StampEditorApp {
             new_stamp_dialog_focus: false,
             rename_stamp_dialog: None,
             rename_stamp_dialog_focus: false,
+            setup_complete: cfg.setup_complete,
+            setup_wizard: None,
         };
-        if let Some(g) = app.game_install.clone() {
+        if cfg.needs_first_run() {
+            // Prefill wizard (detect install), but don't load icons/library until confirmed.
+            app.setup_wizard = Some(SetupWizardDraft {
+                game_install: EditorConfig::guess_game_install()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_default(),
+                game_stamps: if EditorConfig::documents_stamps_available() {
+                    EditorConfig::default_game_stamps_root()
+                        .display()
+                        .to_string()
+                } else {
+                    String::new()
+                },
+                library: EditorConfig::default_root().display().to_string(),
+                error: None,
+            });
+            app.library_packs.clear();
+            app.game_install = None;
+        } else if let Some(g) = app.game_install.clone() {
             app.ui_icons.attach_game_install(&g);
         }
         // Empty canvas is a blank editable stamp (not a dead "open file" screen).
         // Must live under Region Roman/Celtic/Egyptian — Anno wipe-syncs other folders.
-        library::ensure_region_library_layout(&app.library_root);
-        let boot_dir = app.region_stamp_dir();
-        let _ = std::fs::create_dir_all(&boot_dir);
-        app.start_new_stamp_in(&boot_dir, false);
+        if app.setup_complete {
+            library::ensure_region_library_layout(&app.library_root);
+            let boot_dir = app.region_stamp_dir();
+            let _ = std::fs::create_dir_all(&boot_dir);
+            app.start_new_stamp_in(&boot_dir, false);
+        }
         if !catalog_ok {
             app.status = format!(
                 "Katalog fehlt/kaputt: {} — Footprints/Labels unzuverlässig. {game_note}",
@@ -580,6 +613,298 @@ impl StampEditorApp {
             );
         }
         app
+    }
+
+    fn open_setup_wizard(&mut self) {
+        self.setup_wizard = Some(SetupWizardDraft {
+            game_install: self
+                .game_install
+                .as_ref()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|| {
+                    EditorConfig::guess_game_install()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_default()
+                }),
+            game_stamps: if self.game_stamps_root.is_dir() {
+                self.game_stamps_root.display().to_string()
+            } else if EditorConfig::documents_stamps_available() {
+                EditorConfig::default_game_stamps_root()
+                    .display()
+                    .to_string()
+            } else {
+                String::new()
+            },
+            library: self.library_root.display().to_string(),
+            error: None,
+        });
+    }
+
+    fn apply_setup_wizard(&mut self) {
+        let Some(draft) = self.setup_wizard.clone() else {
+            return;
+        };
+        let game_path = draft.game_install.trim();
+        let stamps_path = draft.game_stamps.trim();
+        let lib_path = draft.library.trim();
+        let err_game = self.t("setup.err_game").to_string();
+        let err_stamps = self.t("setup.err_stamps").to_string();
+        let err_lib_sync = self.t("setup.err_library_sync").to_string();
+        let err_lib_create = self.t("setup.err_library_create").to_string();
+
+        let game_install = if game_path.is_empty() {
+            None
+        } else {
+            let p = PathBuf::from(game_path);
+            if !EditorConfig::looks_like_anno_install(&p) {
+                if let Some(w) = self.setup_wizard.as_mut() {
+                    w.error = Some(err_game);
+                }
+                return;
+            }
+            Some(p)
+        };
+
+        let game_stamps = if stamps_path.is_empty() {
+            let fallback = EditorConfig::default_game_stamps_root();
+            if fallback.is_dir() {
+                fallback
+            } else {
+                if let Some(w) = self.setup_wizard.as_mut() {
+                    w.error = Some(err_stamps);
+                }
+                return;
+            }
+        } else {
+            let p = PathBuf::from(stamps_path);
+            if !p.is_dir() {
+                if let Some(w) = self.setup_wizard.as_mut() {
+                    w.error = Some(err_stamps);
+                }
+                return;
+            }
+            p
+        };
+
+        let library = if lib_path.is_empty() {
+            EditorConfig::default_root()
+        } else {
+            PathBuf::from(lib_path)
+        };
+        if EditorConfig::is_game_stamps_path(&library, &game_stamps) {
+            if let Some(w) = self.setup_wizard.as_mut() {
+                w.error = Some(err_lib_sync);
+            }
+            return;
+        }
+        if let Err(e) = std::fs::create_dir_all(&library) {
+            if let Some(w) = self.setup_wizard.as_mut() {
+                w.error = Some(format!("{err_lib_create}: {e}"));
+            }
+            return;
+        }
+
+        self.game_install = game_install.clone();
+        self.game_stamps_root = game_stamps.clone();
+        self.library_root = library.clone();
+        self.setup_complete = true;
+        self.setup_wizard = None;
+        self.save_config();
+        library::ensure_region_library_layout(&self.library_root);
+        let seeded = library::seed_library_from_game(&self.library_root, &self.game_stamps_root)
+            .unwrap_or(0);
+        self.refresh_library();
+        if let Some(g) = game_install {
+            self.ui_icons.attach_game_install(&g);
+        }
+        let boot_dir = self.region_stamp_dir();
+        let _ = std::fs::create_dir_all(&boot_dir);
+        self.start_new_stamp_in(&boot_dir, false);
+        self.status = self.tf(
+            "setup.done",
+            &[
+                ("lib", &self.library_root.display().to_string()),
+                ("n", &seeded.to_string()),
+            ],
+        );
+    }
+
+    fn show_setup_wizard(&mut self, ctx: &egui::Context) {
+        let Some(mut draft) = self.setup_wizard.clone() else {
+            return;
+        };
+        let mut finish = false;
+        let mut cancel = false;
+        let mut pick_game = false;
+        let mut pick_stamps = false;
+        let mut pick_lib = false;
+        let mut detect_game = false;
+        let stamps_hint = if EditorConfig::documents_stamps_available() {
+            self.t("setup.stamps_default_ok")
+        } else {
+            self.t("setup.stamps_default_missing")
+        };
+
+        // Dim the whole UI so the wizard can't be missed.
+        let screen = ctx.screen_rect();
+        egui::Area::new(egui::Id::new("setup_wizard_dim"))
+            .order(egui::Order::Foreground)
+            .fixed_pos(screen.min)
+            .show(ctx, |ui| {
+                ui.painter().rect_filled(
+                    screen,
+                    0.0,
+                    Color32::from_rgba_unmultiplied(8, 10, 14, 200),
+                );
+                ui.allocate_rect(screen, egui::Sense::click());
+            });
+
+        egui::Window::new(self.t("setup.title"))
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .order(egui::Order::Foreground)
+            .show(ctx, |ui| {
+                ui.set_min_width(520.0);
+                ui.label(self.t("setup.intro"));
+                ui.add_space(8.0);
+
+                ui.label(RichText::new(self.t("setup.game_label")).strong());
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut draft.game_install)
+                            .desired_width(360.0)
+                            .hint_text(self.t("setup.game_hint")),
+                    );
+                    if ui.button(self.t("setup.browse")).clicked() {
+                        pick_game = true;
+                    }
+                    if ui.button(self.t("setup.detect")).clicked() {
+                        detect_game = true;
+                    }
+                });
+                ui.label(
+                    RichText::new(self.t("setup.game_note"))
+                        .small()
+                        .weak(),
+                );
+                ui.add_space(10.0);
+
+                ui.label(RichText::new(self.t("setup.stamps_label")).strong());
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut draft.game_stamps)
+                            .desired_width(360.0)
+                            .hint_text(self.t("setup.stamps_hint")),
+                    );
+                    if ui.button(self.t("setup.browse")).clicked() {
+                        pick_stamps = true;
+                    }
+                });
+                ui.label(RichText::new(stamps_hint).small().weak());
+                ui.add_space(10.0);
+
+                ui.label(RichText::new(self.t("setup.library_label")).strong());
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut draft.library)
+                            .desired_width(360.0)
+                            .hint_text(self.t("setup.library_hint")),
+                    );
+                    if ui.button(self.t("setup.browse")).clicked() {
+                        pick_lib = true;
+                    }
+                });
+                ui.label(
+                    RichText::new(self.t("setup.library_note"))
+                        .small()
+                        .weak(),
+                );
+
+                if let Some(err) = &draft.error {
+                    ui.add_space(8.0);
+                    ui.colored_label(Color32::from_rgb(230, 120, 90), err);
+                }
+
+                ui.add_space(12.0);
+                ui.horizontal(|ui| {
+                    if ui.button(self.t("setup.finish")).clicked() {
+                        finish = true;
+                    }
+                    if self.setup_complete && ui.button(self.t("setup.cancel")).clicked() {
+                        cancel = true;
+                    }
+                });
+                ui.label(
+                    RichText::new(self.t("setup.standalone_note"))
+                        .small()
+                        .weak(),
+                );
+            });
+
+        if detect_game {
+            if let Some(p) = EditorConfig::guess_game_install() {
+                draft.game_install = p.display().to_string();
+                draft.error = None;
+            } else {
+                draft.error = Some(self.t("setup.err_detect").into());
+            }
+        }
+        if pick_game {
+            let start = PathBuf::from(draft.game_install.trim()).parent().map(|p| p.to_path_buf())
+                .or_else(|| EditorConfig::guess_game_install())
+                .unwrap_or_else(|| PathBuf::from(r"C:\"));
+            if let Some(path) = rfd::FileDialog::new()
+                .set_title(self.t("dialog.link_game_title"))
+                .set_directory(start)
+                .pick_folder()
+            {
+                draft.game_install = path.display().to_string();
+                draft.error = None;
+            }
+        }
+        if pick_stamps {
+            let start = if PathBuf::from(draft.game_stamps.trim()).is_dir() {
+                PathBuf::from(draft.game_stamps.trim())
+            } else {
+                EditorConfig::default_game_stamps_root()
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_else(|| PathBuf::from(r"C:\"))
+            };
+            if let Some(path) = rfd::FileDialog::new()
+                .set_title(self.t("setup.stamps_pick"))
+                .set_directory(start)
+                .pick_folder()
+            {
+                draft.game_stamps = path.display().to_string();
+                draft.error = None;
+            }
+        }
+        if pick_lib {
+            let start = if PathBuf::from(draft.library.trim()).is_dir() {
+                PathBuf::from(draft.library.trim())
+            } else {
+                EditorConfig::config_dir()
+            };
+            if let Some(path) = rfd::FileDialog::new()
+                .set_title(self.t("setup.library_pick"))
+                .set_directory(start)
+                .pick_folder()
+            {
+                draft.library = path.display().to_string();
+                draft.error = None;
+            }
+        }
+
+        if cancel {
+            self.setup_wizard = None;
+            return;
+        }
+        self.setup_wizard = Some(draft);
+        if finish {
+            self.apply_setup_wizard();
+        }
     }
 
     fn default_stamp_name(&self) -> &'static str {
@@ -623,7 +948,8 @@ impl StampEditorApp {
             return;
         }
         self.library_watch_at = now + Duration::from_secs(1);
-        if !self.library_is_game_stamps() {
+        // Never auto-import game stamps before first-run setup is confirmed.
+        if self.setup_complete && !self.library_is_game_stamps() {
             if let Ok(n) = library::seed_library_from_game(
                 &self.library_root,
                 &self.game_stamps_root,
@@ -1389,6 +1715,7 @@ impl StampEditorApp {
             game_stamps_root: self.game_stamps_root.clone(),
             mirror_to_game: self.mirror_to_game,
             language: self.language.as_config().to_string(),
+            setup_complete: self.setup_complete,
         }
         .save();
     }
@@ -4954,11 +5281,12 @@ impl eframe::App for StampEditorApp {
         }
         // BEFORE panels: otherwise library/palette TextEdit steals Ctrl+C/V.
         self.handle_edit_shortcuts(ctx);
-        if self.open.is_none() {
+        if self.setup_complete && self.open.is_none() {
             let dir = self.region_stamp_dir();
             let _ = std::fs::create_dir_all(&dir);
             self.start_new_stamp_in(&dir, false);
         }
+        self.show_setup_wizard(ctx);
         self.show_new_stamp_dialog(ctx);
         self.show_rename_stamp_dialog(ctx);
 
@@ -5004,15 +5332,15 @@ impl eframe::App for StampEditorApp {
                 egui::menu::bar(ui, |ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.menu_button(self.t("menu.file"), |ui| {
+                    if ui.button(self.t("file.setup_wizard")).clicked() {
+                        self.open_setup_wizard();
+                        ui.close_menu();
+                    }
                     if ui.button(self.t("file.link_game")).clicked() {
                         let start = self
                             .game_install
                             .clone()
-                            .or_else(|| {
-                                Some(PathBuf::from(
-                                    r"G:\Program Files (x86)\Steam\steamapps\common",
-                                ))
-                            })
+                            .or_else(EditorConfig::guess_game_install)
                             .unwrap_or_else(|| PathBuf::from(r"C:\"));
                         if let Some(path) = rfd::FileDialog::new()
                             .set_title(self.t("dialog.link_game_title"))

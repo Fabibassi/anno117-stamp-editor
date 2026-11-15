@@ -34,6 +34,10 @@ pub struct EditorConfig {
     /// UI language: `"de"` | `"en"`.
     #[serde(default = "default_language")]
     pub language: String,
+    /// First-run wizard completed (paths chosen / confirmed).
+    /// Missing field in old configs → `true` (no forced re-wizard). Fresh install → `false`.
+    #[serde(default = "default_true")]
+    pub setup_complete: bool,
 }
 
 fn default_true() -> bool {
@@ -45,17 +49,78 @@ fn default_language() -> String {
 }
 
 impl EditorConfig {
-    pub fn default_root() -> PathBuf {
-        // Outside Ubisoft stamps sync — game may wipe Documents\...\stamps on start.
-        PathBuf::from(r"C:\Users\fabi_\Projects\anno117-stamp-editor\library")
-    }
-
-    pub fn default_game_stamps_root() -> PathBuf {
-        PathBuf::from(r"C:\Users\fabi_\Documents\Anno 117 - Pax Romana\stamps")
+    /// Writable data folder: next to the EXE when possible, else `%LOCALAPPDATA%\Anno117StampEditor`.
+    pub fn config_dir() -> PathBuf {
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                let existing = dir.join("stamp_editor_config.json");
+                if existing.is_file() {
+                    return dir.to_path_buf();
+                }
+                let probe = dir.join(".stamp_editor_write_test");
+                if fs::write(&probe, b"ok").is_ok() {
+                    let _ = fs::remove_file(&probe);
+                    return dir.to_path_buf();
+                }
+            }
+        }
+        let base = std::env::var_os("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("."));
+        let dir = base.join("Anno117StampEditor");
+        let _ = fs::create_dir_all(&dir);
+        dir
     }
 
     pub fn config_path() -> PathBuf {
-        PathBuf::from(r"C:\Users\fabi_\Projects\anno117-stamp-editor\stamp_editor_config.json")
+        Self::config_dir().join("stamp_editor_config.json")
+    }
+
+    /// Safe stamp library (outside Ubisoft wipe-sync).
+    pub fn default_root() -> PathBuf {
+        Self::config_dir().join("library")
+    }
+
+    /// Standard Anno Documents stamps folder — exists for most players after first launch.
+    pub fn default_game_stamps_root() -> PathBuf {
+        let docs = std::env::var_os("USERPROFILE")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(r"C:\Users\Public"));
+        docs.join(r"Documents\Anno 117 - Pax Romana\stamps")
+    }
+
+    pub fn documents_stamps_available() -> bool {
+        Self::default_game_stamps_root().is_dir()
+    }
+
+    /// Best-effort guess of the Anno 117 install (Steam / common drives).
+    pub fn guess_game_install() -> Option<PathBuf> {
+        let mut candidates: Vec<PathBuf> = Vec::new();
+        for drive in ["C", "D", "E", "F", "G", "H"] {
+            candidates.push(PathBuf::from(format!(
+                r"{drive}:\Program Files (x86)\Steam\steamapps\common\Anno 117 - Pax Romana"
+            )));
+            candidates.push(PathBuf::from(format!(
+                r"{drive}:\SteamLibrary\steamapps\common\Anno 117 - Pax Romana"
+            )));
+            candidates.push(PathBuf::from(format!(
+                r"{drive}:\Program Files\Epic Games\Anno117PaxRomana"
+            )));
+            candidates.push(PathBuf::from(format!(
+                r"{drive}:\Ubisoft Game Launcher\games\Anno 117 - Pax Romana"
+            )));
+        }
+        candidates
+            .into_iter()
+            .find(|p| Self::looks_like_anno_install(p))
+    }
+
+    /// True when the first-run wizard should open.
+    pub fn needs_first_run(&self) -> bool {
+        if self.setup_complete {
+            return false;
+        }
+        true
     }
 
     pub fn load() -> Self {
@@ -87,16 +152,23 @@ impl EditorConfig {
                 return cfg;
             }
         }
+        let stamps = Self::default_game_stamps_root();
         Self {
             library_root: Self::default_root(),
+            // Don't auto-link install until the user confirms in the wizard.
             game_install: None,
-            game_stamps_root: Self::default_game_stamps_root(),
+            game_stamps_root: stamps,
             mirror_to_game: true,
             language: default_language(),
+            // Only brand-new installs (no config file) open the wizard.
+            setup_complete: false,
         }
     }
 
     pub fn save(&self) -> std::io::Result<()> {
+        if let Some(parent) = Self::config_path().parent() {
+            let _ = fs::create_dir_all(parent);
+        }
         let text = serde_json::to_string_pretty(self)?;
         fs::write(Self::config_path(), text + "\n")
     }

@@ -2,6 +2,20 @@
 
 All notable changes to the Anno 117 Stamp Editor are documented here.
 
+## [0.2.1] — 2026-11-15
+
+### Added
+
+- **First-run setup wizard**: choose game install (icons), game stamps folder, and editor library before anything else runs
+- Portable config next to the EXE (or `%LOCALAPPDATA%\Anno117StampEditor`) so a standalone ZIP works without Python
+- Menu entry **Datei → Erste Einrichtung…** to re-open the wizard
+
+### Fixed
+
+- No auto-import of Documents stamps / library seed **before** setup is confirmed (empty library until „Fertig“)
+- Dimmed modal overlay so the wizard cannot be missed on first launch
+- Catalog path resolution for release EXE vs. local `_gamedata` without hardcoding one PC
+
 ## [0.2.0] — 2026-11-15
 
 ### Added

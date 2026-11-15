@@ -5,15 +5,46 @@ mod app;
 
 use app::StampEditorApp;
 use eframe::egui;
+use stamp_editor::library::EditorConfig;
 use stamp_editor::pack::fix_cistern_pivots_path;
 use std::env;
 use std::path::PathBuf;
 use std::process;
 
-fn main() -> eframe::Result<()> {
-    let catalog = PathBuf::from(
-        r"C:\Users\fabi_\Projects\anno117-stamp-editor\_gamedata\editor_catalog.json",
+/// Resolve `editor_catalog.json` for release EXE + local dev without hardcoding one PC.
+fn resolve_catalog_path() -> PathBuf {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Ok(exe) = env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.join("_gamedata").join("editor_catalog.json"));
+            candidates.push(dir.join("editor_catalog.json"));
+        }
+    }
+    candidates.push(
+        EditorConfig::config_dir()
+            .join("_gamedata")
+            .join("editor_catalog.json"),
     );
+    if let Ok(cwd) = env::current_dir() {
+        candidates.push(cwd.join("_gamedata").join("editor_catalog.json"));
+        candidates.push(cwd.join("..").join("_gamedata").join("editor_catalog.json"));
+    }
+    // Dev machine fallback (optional).
+    candidates.push(PathBuf::from(
+        r"C:\Users\fabi_\Projects\anno117-stamp-editor\_gamedata\editor_catalog.json",
+    ));
+    candidates
+        .into_iter()
+        .find(|p| p.is_file())
+        .unwrap_or_else(|| {
+            EditorConfig::config_dir()
+                .join("_gamedata")
+                .join("editor_catalog.json")
+        })
+}
+
+fn main() -> eframe::Result<()> {
+    let catalog = resolve_catalog_path();
     let mut open_path: Option<PathBuf> = None;
     let mut open_stamp: Option<String> = None;
     let mut fix_cisterns: Option<PathBuf> = None;
