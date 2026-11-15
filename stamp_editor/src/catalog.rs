@@ -72,23 +72,42 @@ pub struct BuildingDef {
 }
 
 /// Latium (19753) / Celtic (29526) Aqueduct Cistern — `AqueductDistributor`.
-/// IFO BuildBlocker is ~`[-0.5, 2.5] × [-h/2, h/2]`: pivot sits 1 tile left of the
-/// geometric footprint center. Treating Pos as center then writing TL+w/2 shifts the
-/// building +1 tile right in-game while the editor still looks flush.
+///
+/// In-game footprint is always **3×3**. Pipette `Pos` is the mesh pivot, which sits
+/// **1 tile left of the geometric center** (BuildBlocker ≈ `[-0.5, 2.5] × [-1.5, 1.5]`).
+/// Writing centered `Pos = TL + 1.5` therefore lands the game footprint at `TL+1`
+/// (one grass tile gap to a road at `TL-1`), while a size-from-AABB catalog of 4–5
+/// makes the same bug look identical. Both size and pivot are forced here so a
+/// wrong/`None` catalog entry cannot silently keep the +1 offset.
 pub const AQUEDUCT_CISTERN_GUIDS: &[u32] = &[19753, 29526];
 
+/// Canonical tile size for aqueduct cisterns (ignore catalog AABB guesses).
+pub const AQUEDUCT_CISTERN_SIZE: [f32; 2] = [3.0, 3.0];
+
+pub fn is_aqueduct_cistern(guid: u32) -> bool {
+    AQUEDUCT_CISTERN_GUIDS.contains(&guid)
+}
+
 /// BuildBlocker min corner relative to pipette Pos for known decentered assets.
+///
+/// For cisterns the offset is `mx = 1 - w/2` (= −0.5 at w=3): one tile left of center.
 pub fn known_blocker_min(guid: u32, w: f32, h: f32) -> Option<(f32, f32)> {
-    if AQUEDUCT_CISTERN_GUIDS.contains(&guid) {
-        // width 3 → min.x = -0.5 (not -1.5); height stays centered.
-        Some((-0.5, -h * 0.5))
+    let _ = (w, h);
+    if is_aqueduct_cistern(guid) {
+        Some((
+            1.0 - AQUEDUCT_CISTERN_SIZE[0] * 0.5,
+            -AQUEDUCT_CISTERN_SIZE[1] * 0.5,
+        ))
     } else {
-        let _ = w;
         None
     }
 }
 
 /// Resolve BuildBlocker min corner `(mx, my)` for footprint ↔ Pos conversion.
+///
+/// Aqueduct cistern GUIDs always use [`known_blocker_min`] — catalog `blocker_min`
+/// must not override (a centered `[-1.5,-1.5]` from a bad extract would re-break
+/// the +1 gap).
 pub fn blocker_min_for(
     guid: u32,
     w: f32,
@@ -96,17 +115,35 @@ pub fn blocker_min_for(
     def: Option<&BuildingDef>,
     variation: Option<u32>,
 ) -> (f32, f32) {
+    if let Some(m) = known_blocker_min(guid, w, h) {
+        return m;
+    }
     if let Some(d) = def {
         if let Some(m) = d.blocker_min {
             return (m[0], m[1]);
         }
         let s = d.size_for_variation(variation);
-        if let Some(m) = known_blocker_min(d.guid, s[0], s[1]) {
-            return m;
-        }
         return (-s[0] * 0.5, -s[1] * 0.5);
     }
-    known_blocker_min(guid, w, h).unwrap_or((-w * 0.5, -h * 0.5))
+    (-w * 0.5, -h * 0.5)
+}
+
+/// Footprint size for placement / coverage. Cisterns are forced to 3×3.
+pub fn size_for_guid(
+    guid: u32,
+    w: f32,
+    h: f32,
+    def: Option<&BuildingDef>,
+    variation: Option<u32>,
+) -> (f32, f32) {
+    if is_aqueduct_cistern(guid) {
+        return (AQUEDUCT_CISTERN_SIZE[0], AQUEDUCT_CISTERN_SIZE[1]);
+    }
+    if let Some(d) = def {
+        let s = d.size_for_variation(variation);
+        return (s[0].max(1.0), s[1].max(1.0));
+    }
+    (w.max(1.0), h.max(1.0))
 }
 
 /// Rotate BuildBlocker min + size for pipette Dir (0/2/4/6). Diagonals keep catalog order.
@@ -147,6 +184,49 @@ mod blocker_offset_tests {
             "want Pos.x=1.5 (not centered 2.5), got {pos_x}"
         );
         assert!((pos_y - 1.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn cistern_ignores_catalog_centered_blocker_min_and_wrong_size() {
+        // Bad extract: centered mins + AABB size 5 must not reintroduce the +1 gap.
+        let bad = BuildingDef {
+            guid: 19753,
+            name: "Aqueduct Cistern".into(),
+            short_name: None,
+            template: "AqueductDistributor".into(),
+            category: "other".into(),
+            size: [5.0, 5.0],
+            size_marsh: None,
+            blocker_min: Some([-2.5, -2.5]),
+            outputs: vec![],
+            inputs: vec![],
+            cycle_ms: None,
+            influence_radius: None,
+            needed_area: None,
+            module_limit: None,
+            farm_type: None,
+            radius_distance: None,
+            street_distance: None,
+            effect_scope: None,
+            effect_bonuses: vec![],
+            service_kind: None,
+            road_kind: None,
+            needs_fuel: false,
+            logistic_speed_factor: None,
+            tileset_folder: None,
+            constructable: Some(true),
+            regions: vec![],
+        };
+        let (mx, my) = blocker_min_for(19753, 5.0, 5.0, Some(&bad), None);
+        assert!((mx - (-0.5)).abs() < 1e-5, "mx={mx}");
+        assert!((my - (-1.5)).abs() < 1e-5, "my={my}");
+        let (w, h) = size_for_guid(19753, 5.0, 5.0, Some(&bad), None);
+        assert!((w - 3.0).abs() < 1e-5 && (h - 3.0).abs() < 1e-5);
+        let pos_x = 1.0 - mx;
+        assert!(
+            (pos_x - 1.5).abs() < 1e-5,
+            "flush TL=1 must encode Pos.x=1.5, got {pos_x}"
+        );
     }
 }
 

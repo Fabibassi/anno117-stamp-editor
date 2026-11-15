@@ -908,7 +908,93 @@ impl Stamp {
 #[cfg(test)]
 mod cistern_roundtrip {
     use super::*;
+    use crate::catalog::{blocker_min_for, size_for_guid};
     use crate::coverage::footprint_cells;
+
+    /// Editor TL flush to road at x=0 ⇒ written Pos must be the decentered pivot,
+    /// not the geometric center. Neighbor buildings stay centered.
+    ///
+    /// Numbers (road column x=0, cistern TL x=1, size 3×3):
+    /// - OLD centered write: Pos=(2.5, 1.5) → game TL=2 → 1 grass gap
+    /// - NEW decentered write: Pos=(1.5, 1.5) → game TL=1 → flush
+    #[test]
+    fn cistern_flush_to_road_encodes_decentered_pos_not_center() {
+        let road_x = 0i32;
+        let tl = (road_x + 1, 0i32); // flush
+        let (w, h) = size_for_guid(19753, 3.0, 3.0, None, None);
+        assert!((w - 3.0).abs() < 1e-5 && (h - 3.0).abs() < 1e-5);
+
+        let (mx, my) = blocker_min_for(19753, w, h, None, None);
+        let cistern_pos = (tl.0 as f32 - mx, tl.1 as f32 - my);
+        let neighbor_pos = (tl.0 as f32 + 1.5, tl.1 as f32 + 4.5); // centered 3×3 below
+
+        assert!(
+            (cistern_pos.0 - 1.5).abs() < 1e-5,
+            "cistern Pos.x must be 1.5 (pivot), not centered 2.5; got {}",
+            cistern_pos.0
+        );
+        assert!(
+            (neighbor_pos.0 - 2.5).abs() < 1e-5,
+            "neighbor stays centered at 2.5"
+        );
+
+        let mut stamp = Stamp::blank().expect("blank");
+        stamp
+            .add_building_from_template(19753, cistern_pos.0, cistern_pos.1, 0, None)
+            .expect("cistern");
+        stamp
+            .add_building_from_template(2878, neighbor_pos.0, neighbor_pos.1, 0, None)
+            .expect("neighbor");
+
+        let encoded = encode_pipette_b64(&stamp).expect("encode");
+        let back = decode_pipette_b64(&encoded).expect("decode");
+
+        let mut raw_pos: Vec<(u32, f32, f32)> = Vec::new();
+        for root in &back.document.roots {
+            let Node::Tag(pipette) = root else { continue };
+            if pipette.name != "PipetteData" {
+                continue;
+            }
+            let Some(info) = find_tag(&pipette.children, "BuildingInfo") else {
+                continue;
+            };
+            for child in &info.children {
+                let Node::Tag(entry) = child else { continue };
+                if entry.name != "None" {
+                    continue;
+                }
+                let guid = find_attrib(&entry.children, "GUID")
+                    .map(|a| u32_le(&a.content))
+                    .unwrap_or(0);
+                let pos = find_attrib(&entry.children, "Pos")
+                    .and_then(|a| f32x2(&a.content))
+                    .unwrap_or((0.0, 0.0));
+                raw_pos.push((guid, pos.0, pos.1));
+            }
+        }
+        assert_eq!(raw_pos.len(), 2, "raw BuildingInfo entries: {raw_pos:?}");
+        let cistern = raw_pos.iter().find(|p| p.0 == 19753).expect("cistern raw");
+        let neighbor = raw_pos.iter().find(|p| p.0 == 2878).expect("neighbor raw");
+        assert!(
+            (cistern.1 - 1.5).abs() < 1e-5 && (cistern.2 - 1.5).abs() < 1e-5,
+            "encoded cistern Pos must be (1.5,1.5), got ({},{})",
+            cistern.1,
+            cistern.2
+        );
+        assert!(
+            (neighbor.1 - 2.5).abs() < 1e-5,
+            "encoded neighbor Pos.x must stay 2.5, got {}",
+            neighbor.1
+        );
+
+        let b = back
+            .buildings
+            .iter()
+            .find(|b| b.guid == 19753)
+            .expect("cistern building");
+        let min_x = footprint_cells(b, None).iter().map(|c| c.x).min().unwrap();
+        assert_eq!(min_x, 1, "editor footprint TL.x must be 1 (flush to road@0)");
+    }
 
     #[test]
     fn cistern_pos_survives_encode_decode() {

@@ -81,14 +81,15 @@ def size_and_min_from_ifo(text: str) -> tuple[list[float], list[float]] | None:
     zs = [float(z) for z in re.findall(r"<zf>([^<]+)</zf>", m.group(1))]
     if len(xs) < 2 or len(zs) < 2:
         return None
-    # Prefer the first rectangle (4 corners) when a second DummyBuildBlocker exists.
+    # Prefer the *larger* rectangle when a second DummyBuildBlocker exists
+    # (aqueduct cisterns may ship a small connector rect first).
     if len(xs) >= 8 and len(zs) >= 8:
         xs0, zs0 = xs[:4], zs[:4]
         xs1, zs1 = xs[4:8], zs[4:8]
         d0 = (max(xs0) - min(xs0)) ** 2 + (max(zs0) - min(zs0)) ** 2
         d1 = (max(xs1) - min(xs1)) ** 2 + (max(zs1) - min(zs1)) ** 2
         if d1 > d0 + 0.01:
-            xs, zs = xs0, zs0
+            xs, zs = xs1, zs1
         else:
             xs, zs = xs0, zs0
     tw = max(1.0, float(round(max(xs) - min(xs))))

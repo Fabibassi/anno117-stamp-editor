@@ -83,12 +83,7 @@ pub fn footprint_cells_for_region(
     _region_guid: u32,
     drag: (f32, f32),
 ) -> Vec<Cell> {
-    let (w0, h0) = def
-        .map(|d| {
-            let s = d.size_for_variation(b.variation);
-            (s[0].max(1.0), s[1].max(1.0))
-        })
-        .unwrap_or((1.0, 1.0));
+    let (w0, h0) = crate::catalog::size_for_guid(b.guid, 1.0, 1.0, def, b.variation);
     let (mx0, my0) = crate::catalog::blocker_min_for(b.guid, w0, h0, def, b.variation);
     let (mx, my, w, h) = crate::catalog::oriented_blocker(mx0, my0, w0, h0, b.direction);
     let ww = w.round().max(1.0) as i32;

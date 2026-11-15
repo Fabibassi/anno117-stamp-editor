@@ -1,5 +1,7 @@
 ﻿use stamp_editor::buildmenu::{ConstructionMenu, MenuEntry};
-use stamp_editor::catalog::{blocker_min_for, oriented_blocker, Catalog, RegionFilter};
+use stamp_editor::catalog::{
+    blocker_min_for, is_aqueduct_cistern, oriented_blocker, size_for_guid, Catalog, RegionFilter,
+};
 use stamp_editor::icons::{chrome, UiIcons};
 use stamp_editor::coverage::{
     build_road_map_region, compute_coverage_region, compute_roads_only_region,
@@ -2855,13 +2857,13 @@ impl StampEditorApp {
     }
 
     fn building_size(&self, guid: u32, variation: Option<u32>) -> (f32, f32) {
-        self.catalog
-            .building(guid)
-            .map(|d| {
-                let s = d.size_for_variation(variation);
-                (s[0].max(1.0), s[1].max(1.0))
-            })
-            .unwrap_or((2.0, 2.0))
+        size_for_guid(
+            guid,
+            2.0,
+            2.0,
+            self.catalog.building(guid),
+            variation,
+        )
     }
 
     /// Oriented BuildBlocker `(min_x, min_y, w, h)` relative to pipette Pos.
@@ -5927,15 +5929,38 @@ impl eframe::App for StampEditorApp {
                             }
                             if let Some(idx) = hit {
                                 self.push_history();
+                                // Keep footprint top-left stable when swapping to/from a
+                                // decentered aqueduct cistern (otherwise Pos stays centered
+                                // and the game shows the classic +1 tile gap).
+                                let (old_guid, old_var, old_dir, ox, oy) = self
+                                    .open
+                                    .as_ref()
+                                    .and_then(|o| o.stamp.buildings.get(idx))
+                                    .map(|b| (b.guid, b.variation, b.direction, b.x, b.y))
+                                    .unwrap_or((0, None, 0, 0.0, 0.0));
+                                let (tx, ty) = {
+                                    let (mx, my, _, _) =
+                                        self.building_oriented_blocker(old_guid, old_var, old_dir);
+                                    footprint_top_left_blocker(ox, oy, mx, my, self.stamp_drag())
+                                };
+                                let resnap = is_aqueduct_cistern(old_guid)
+                                    || is_aqueduct_cistern(new_guid);
+                                let (nx, ny) = if resnap {
+                                    self.place_pos_for_tl(tx, ty, new_guid, old_var, old_dir)
+                                } else {
+                                    (ox, oy)
+                                };
+                                let label = self.catalog.label(new_guid);
                                 if let Some(open_mut) = self.open.as_mut() {
                                     if let Ok(()) = open_mut.stamp.set_building_guid(idx, new_guid)
                                     {
+                                        if resnap {
+                                            let _ = open_mut.stamp.set_building_pos(idx, nx, ny);
+                                        }
                                         open_mut.dirty = true;
                                         self.schedule_autosave();
                                         self.status = format!(
-                                            "GUID getauscht → {} ({})",
-                                            self.catalog.label(new_guid),
-                                            new_guid
+                                            "GUID getauscht → {label} ({new_guid})"
                                         );
                                         self.selected_building = Some(idx);
                                         self.refresh_coverage();
