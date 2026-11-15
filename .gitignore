@@ -1,9 +1,14 @@
 ﻿# Build
 stamp_editor/target/
 **/*.pdb
+dist/
 
 # Local editor state
 stamp_editor_config.json
+
+# User stamp library / backups (personal, not for the repo)
+library/
+backups/
 
 # Proprietary / derived game data — regenerate locally, never push
 _gamedata/
@@ -16,6 +21,24 @@ _gamedata/
 # Scratch / one-off scripts at repo root
 _tmp_*.py
 **/__pycache__/
+stamp_editor/tmp_*.py
+
+# One-shot diagnostic examples (local experiments)
+stamp_editor/examples/ab_*.rs
+stamp_editor/examples/analyze_*.rs
+stamp_editor/examples/check_*.rs
+stamp_editor/examples/cistern_*.rs
+stamp_editor/examples/compare_*.rs
+stamp_editor/examples/dump_aq_*.rs
+stamp_editor/examples/dump_backup_*.rs
+stamp_editor/examples/find_icon.rs
+stamp_editor/examples/fix_*.rs
+stamp_editor/examples/flip_*.rs
+stamp_editor/examples/layout_ascii.rs
+stamp_editor/examples/migrate_*.rs
+stamp_editor/examples/probe_*.rs
+stamp_editor/examples/rebuild_*.rs
+stamp_editor/examples/repair_*.rs
 
 # OS / editor junk
 .DS_Store

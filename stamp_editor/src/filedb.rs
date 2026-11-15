@@ -165,6 +165,13 @@ impl OrderedDict {
             .map(|(_, s)| s.as_str())
     }
 
+    pub fn id_of(&self, name: &str) -> Option<u16> {
+        self.items
+            .iter()
+            .find(|(_, n)| n == name)
+            .map(|(id, _)| *id)
+    }
+
     pub fn to_map(&self) -> BTreeMap<u16, String> {
         self.items.iter().cloned().collect()
     }
@@ -220,6 +227,28 @@ impl DocumentOrdered {
             .get(id)
             .map(|s| s.to_string())
             .unwrap_or_else(|| format!("a_{id}"))
+    }
+
+    /// Look up or allocate an attribute-name id in the FileDB dictionary.
+    /// Attribute ids use the high bit (`0x8000+`); never returns `NONE_ATTRIB_ID`.
+    pub fn ensure_attrib_id(&mut self, name: &str) -> u16 {
+        if let Some((id, _)) = self.attribs.items.iter().find(|(_, n)| n == name) {
+            return *id;
+        }
+        let mut id = self
+            .attribs
+            .items
+            .iter()
+            .map(|(i, _)| *i)
+            .filter(|i| *i >= NONE_ATTRIB_ID)
+            .max()
+            .unwrap_or(NONE_ATTRIB_ID);
+        id = id.wrapping_add(1);
+        if id == NONE_ATTRIB_ID || id < NONE_ATTRIB_ID {
+            id = NONE_ATTRIB_ID + 1;
+        }
+        self.attribs.items.push((id, name.to_string()));
+        id
     }
 
     pub fn count_nodes(&self) -> i32 {

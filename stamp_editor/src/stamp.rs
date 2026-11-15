@@ -141,6 +141,51 @@ fn read_direction(building: &Tag) -> i32 {
     i32_le(&attrib.content)
 }
 
+/// Aqueduct cisterns (Distributor) — in-game stamps omit `Variation`; adding
+/// `Variation=0` makes the game refuse to place them in a blueprint.
+fn is_cistern_guid(guid: u32) -> bool {
+    matches!(guid, 19753 | 29526 | 149794) // Roman / Celtic / Egyptian Distributor
+}
+
+fn building_entry_guid(entry: &Tag) -> Option<u32> {
+    find_attrib(&entry.children, "GUID").map(|a| u32_le(&a.content))
+}
+
+fn remove_variation_attrib(entry: &mut Tag) {
+    entry
+        .children
+        .retain(|n| !matches!(n, Node::Attrib(a) if a.name == "Variation"));
+}
+
+/// Keep a `Variation` attrib for normal buildings (game rejects modern stamps without it).
+fn apply_variation_attrib(entry: &mut Tag, id: u16, value: u32) {
+    if building_entry_guid(entry).is_some_and(is_cistern_guid) {
+        remove_variation_attrib(entry);
+        return;
+    }
+    let bytes = value.to_le_bytes().to_vec();
+    if let Some(a) = find_attrib_mut(&mut entry.children, "Variation") {
+        a.id = id;
+        a.content = bytes;
+        return;
+    }
+    // Insert after GUID when possible (matches in-game field order).
+    let insert_at = entry
+        .children
+        .iter()
+        .position(|n| matches!(n, Node::Attrib(a) if a.name == "GUID"))
+        .map(|i| i + 1)
+        .unwrap_or(entry.children.len());
+    entry.children.insert(
+        insert_at,
+        Node::Attrib(Attrib {
+            id,
+            name: "Variation".into(),
+            content: bytes,
+        }),
+    );
+}
+
 fn write_direction(entry: &mut Tag, direction: i32) -> bool {
     let Some(dir_tag) = entry.children.iter_mut().find_map(|n| match n {
         Node::Tag(t) if t.name == "Dir" => Some(t),
@@ -248,6 +293,61 @@ fn bit_set(bits: &[u8], index: usize) -> bool {
     let byte = index / 8;
     let bit = index % 8;
     bits.get(byte).map(|b| (b >> bit) & 1 == 1).unwrap_or(false)
+}
+
+fn bit_set_mut(bits: &mut Vec<u8>, index: usize, on: bool) {
+    let byte = index / 8;
+    let bit = index % 8;
+    if bits.len() <= byte {
+        bits.resize(byte + 1, 0);
+    }
+    if on {
+        bits[byte] |= 1 << bit;
+    } else {
+        bits[byte] &= !(1 << bit);
+    }
+}
+
+fn subtile_stride(gx: usize) -> usize {
+    ((gx + 31) / 32) * 32
+}
+
+/// Copy bits into a possibly larger grid (origin may move left/up).
+fn remap_subtile_bits(
+    old_bits: &[u8],
+    old_ox: i32,
+    old_oy: i32,
+    old_gx: usize,
+    old_gy: usize,
+    new_ox: i32,
+    new_oy: i32,
+    new_gx: usize,
+    new_gy: usize,
+) -> Vec<u8> {
+    let old_stride = subtile_stride(old_gx);
+    let new_stride = subtile_stride(new_gx);
+    let mut out = vec![0u8; (new_stride * new_gy + 7) / 8];
+    let shift_x = (old_ox - new_ox) * 4;
+    let shift_y = old_oy - new_oy;
+    for sy in 0..old_gy {
+        for sx in 0..old_gx {
+            if !bit_set(old_bits, sy * old_stride + sx) {
+                continue;
+            }
+            let nsx = sx as i32 + shift_x;
+            let nsy = sy as i32 + shift_y;
+            if nsx < 0 || nsy < 0 {
+                continue;
+            }
+            let nsx = nsx as usize;
+            let nsy = nsy as usize;
+            if nsx >= new_gx || nsy >= new_gy {
+                continue;
+            }
+            bit_set_mut(&mut out, nsy * new_stride + nsx, true);
+        }
+    }
+    out
 }
 
 /// Decode SubTileGrid → unique tile cells + set-bit count.
@@ -393,8 +493,19 @@ fn extract_polygon_modules(
     (modules, cells, area)
 }
 
+/// Anno appends a 12-byte trailer after the zlib stream:
+/// `78 da 03 00 | 00 00 00 01 | uncompressed_size_u32_le`.
+/// Without it the game loads the stamp briefly, then drops it from the bar.
+const PIPETTE_ZLIB_FOOTER_PREFIX: [u8; 8] = [0x78, 0xda, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01];
+
+fn append_pipette_zlib_footer(compressed: &mut Vec<u8>, uncompressed_len: u32) {
+    compressed.extend_from_slice(&PIPETTE_ZLIB_FOOTER_PREFIX);
+    compressed.extend_from_slice(&uncompressed_len.to_le_bytes());
+}
+
 pub fn decode_pipette_b64(data: &str) -> Result<Stamp, StampError> {
     let compressed = B64.decode(data).map_err(|e| StampError::Zlib(e.to_string()))?;
+    // Trailing Anno footer is ignored by ZlibDecoder (unused_data).
     let mut dec = ZlibDecoder::new(std::io::Cursor::new(compressed));
     let mut raw = Vec::new();
     dec.read_to_end(&mut raw)
@@ -521,18 +632,481 @@ fn filter_field_cells_off_roads(
     cells
 }
 
+fn write_i32_le(a: &mut Attrib, v: i32) {
+    let mut bytes = vec![0u8; a.content.len().max(4)];
+    bytes[0..4].copy_from_slice(&v.to_le_bytes());
+    a.content = bytes;
+}
+
+fn write_i32_pair_attrib(a: &mut Attrib, x: i32, y: i32) {
+    let mut bytes = vec![0u8; a.content.len().max(8)];
+    bytes[0..4].copy_from_slice(&x.to_le_bytes());
+    bytes[4..8].copy_from_slice(&y.to_le_bytes());
+    a.content = bytes;
+}
+
+fn clear_all_subtile_bits(entry: &mut Tag) {
+    let Some(stg) = find_tag_mut(&mut entry.children, "SubTileGrid") else {
+        return;
+    };
+    let Some(grid_wrap) = find_tag_mut(&mut stg.children, "Grid") else {
+        return;
+    };
+    let Some(grid) = find_tag_mut(&mut grid_wrap.children, "grid") else {
+        return;
+    };
+    if let Some(bits) = find_attrib_mut(&mut grid.children, "bits") {
+        for b in bits.content.iter_mut() {
+            *b = 0;
+        }
+    }
+}
+
+fn ensure_owner_attrib(entry: &mut Tag, owner: u64) {
+    if let Some(a) = find_attrib_mut(&mut entry.children, "ComplexOwnerID") {
+        let mut bytes = vec![0u8; a.content.len().max(8)];
+        bytes[0..8].copy_from_slice(&owner.to_le_bytes());
+        a.content = bytes;
+    } else {
+        entry.children.push(Node::Attrib(Attrib {
+            id: 0,
+            name: "ComplexOwnerID".into(),
+            content: owner.to_le_bytes().to_vec(),
+        }));
+    }
+}
+
+/// Clone a SubTileGrid polygon template (same field GUID), clear bits, bind owner.
+fn ensure_field_polygon(
+    doc: &mut DocumentOrdered,
+    owner: u64,
+    field_guid: u32,
+    seed_abs: (i32, i32),
+) -> bool {
+    // Already have an owned SubTileGrid polygon?
+    for root in &doc.roots {
+        let Node::Tag(pipette) = root else { continue };
+        if pipette.name != "PipetteData" {
+            continue;
+        }
+        let Some(polys) = find_tag(&pipette.children, "Polygons") else {
+            continue;
+        };
+        for child in &polys.children {
+            let Node::Tag(entry) = child else { continue };
+            if entry.name != "None" {
+                continue;
+            }
+            let oid = find_attrib(&entry.children, "ComplexOwnerID")
+                .and_then(|a| owner_id_from_attrib(&a.content));
+            if oid != Some(owner) {
+                continue;
+            }
+            if find_tag(&entry.children, "SubTileGrid").is_some() {
+                return true;
+            }
+        }
+    }
+
+    // Template: any polygon with this field GUID + SubTileGrid.
+    let template = {
+        let mut found = None;
+        for root in &doc.roots {
+            let Node::Tag(pipette) = root else { continue };
+            if pipette.name != "PipetteData" {
+                continue;
+            }
+            let Some(polys) = find_tag(&pipette.children, "Polygons") else {
+                continue;
+            };
+            for child in &polys.children {
+                let Node::Tag(entry) = child else { continue };
+                if entry.name != "None" {
+                    continue;
+                }
+                let g = find_attrib(&entry.children, "GUID").map(|a| i32_le(&a.content) as u32);
+                if g != Some(field_guid) {
+                    continue;
+                }
+                if find_tag(&entry.children, "SubTileGrid").is_some() {
+                    found = Some(entry.clone());
+                    break;
+                }
+            }
+            if found.is_some() {
+                break;
+            }
+        }
+        found
+    };
+    let Some(mut entry) = template else {
+        return false;
+    };
+    ensure_owner_attrib(&mut entry, owner);
+    clear_all_subtile_bits(&mut entry);
+    if let Some(stg) = find_tag_mut(&mut entry.children, "SubTileGrid") {
+        if let Some(origin) = find_attrib_mut(&mut stg.children, "GridOriginWS") {
+            write_i32_pair_attrib(origin, seed_abs.0, seed_abs.1);
+        }
+    }
+    if let Some(rel) = find_attrib_mut(&mut entry.children, "RelativePos") {
+        let drag = drag_center(doc);
+        let rx = seed_abs.0 as f32 - drag.0.floor();
+        let ry = seed_abs.1 as f32 - drag.1.floor();
+        let mut bytes = vec![0u8; 8];
+        bytes[0..4].copy_from_slice(&rx.to_le_bytes());
+        bytes[4..8].copy_from_slice(&ry.to_le_bytes());
+        rel.content = bytes;
+    }
+
+    for root in &mut doc.roots {
+        let Node::Tag(pipette) = root else { continue };
+        if pipette.name != "PipetteData" {
+            continue;
+        }
+        let Some(polys) = find_tag_mut(&mut pipette.children, "Polygons") else {
+            continue;
+        };
+        polys.children.push(Node::Tag(entry));
+        return true;
+    }
+    false
+}
+
+fn paint_tile_on_grid(
+    entry: &mut Tag,
+    drag: (f32, f32),
+    tx: i32,
+    ty: i32,
+    paint_on: bool,
+) -> bool {
+    let (ox0, oy0, gx0, gy0, bits0) = {
+        let Some(stg) = find_tag(&entry.children, "SubTileGrid") else {
+            return false;
+        };
+        let Some(origin_a) = find_attrib(&stg.children, "GridOriginWS") else {
+            return false;
+        };
+        if origin_a.content.len() < 8 {
+            return false;
+        }
+        let ox = i32_le(&origin_a.content[0..4]);
+        let oy = i32_le(&origin_a.content[4..8]);
+        let Some(grid_wrap) = find_tag(&stg.children, "Grid") else {
+            return false;
+        };
+        let Some(grid) = find_tag(&grid_wrap.children, "grid") else {
+            return false;
+        };
+        let gx = find_attrib(&grid.children, "x")
+            .map(|a| i32_le(&a.content).max(0) as usize)
+            .unwrap_or(0);
+        let gy = find_attrib(&grid.children, "y")
+            .map(|a| i32_le(&a.content).max(0) as usize)
+            .unwrap_or(0);
+        let Some(bits_a) = find_attrib(&grid.children, "bits") else {
+            return false;
+        };
+        if gx == 0 || gy == 0 {
+            return false;
+        }
+        (ox, oy, gx, gy, bits_a.content.clone())
+    };
+
+    let ax = tx + drag.0.floor() as i32;
+    let ay = ty + drag.1.floor() as i32;
+    let tile_cols = (gx0 as i32) / 4;
+    let cur_max_x = ox0 + tile_cols - 1;
+    let cur_max_y = oy0 + gy0 as i32 - 1;
+    let new_ox = ox0.min(ax);
+    let new_oy = oy0.min(ay);
+    let new_max_x = cur_max_x.max(ax);
+    let new_max_y = cur_max_y.max(ay);
+    let new_gx = ((new_max_x - new_ox + 1) * 4).max(4) as usize;
+    let new_gy = (new_max_y - new_oy + 1).max(1) as usize;
+
+    let mut bits = if new_ox != ox0 || new_oy != oy0 || new_gx != gx0 || new_gy != gy0 {
+        remap_subtile_bits(&bits0, ox0, oy0, gx0, gy0, new_ox, new_oy, new_gx, new_gy)
+    } else {
+        bits0
+    };
+    let ox = new_ox;
+    let oy = new_oy;
+    let gx = new_gx;
+    let gy = new_gy;
+
+    let sx0 = (ax - ox) * 4;
+    let sy = ay - oy;
+    if sx0 < 0 || sy < 0 {
+        return false;
+    }
+    let sx0 = sx0 as usize;
+    let sy = sy as usize;
+    if sx0 + 4 > gx || sy >= gy {
+        return false;
+    }
+    let stride = subtile_stride(gx);
+    let mut changed = false;
+    for dx in 0..4 {
+        let idx = sy * stride + sx0 + dx;
+        let was = bit_set(&bits, idx);
+        if was != paint_on {
+            bit_set_mut(&mut bits, idx, paint_on);
+            changed = true;
+        }
+    }
+    if !changed && ox == ox0 && oy == oy0 && gx == gx0 && gy == gy0 {
+        return false;
+    }
+
+    let Some(stg) = find_tag_mut(&mut entry.children, "SubTileGrid") else {
+        return false;
+    };
+    if let Some(origin_a) = find_attrib_mut(&mut stg.children, "GridOriginWS") {
+        write_i32_pair_attrib(origin_a, ox, oy);
+    }
+    let Some(grid_wrap) = find_tag_mut(&mut stg.children, "Grid") else {
+        return false;
+    };
+    let Some(grid) = find_tag_mut(&mut grid_wrap.children, "grid") else {
+        return false;
+    };
+    if let Some(a) = find_attrib_mut(&mut grid.children, "x") {
+        write_i32_le(a, gx as i32);
+    }
+    if let Some(a) = find_attrib_mut(&mut grid.children, "y") {
+        write_i32_le(a, gy as i32);
+    }
+    if let Some(a) = find_attrib_mut(&mut grid.children, "bits") {
+        a.content = bits;
+    }
+    true
+}
+
+fn ortho4(x: i32, y: i32) -> [(i32, i32); 4] {
+    [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+}
+
+/// Field tiles claimed by `owner`.
+pub fn field_cells_of_owner(stamp: &Stamp, owner: u64) -> std::collections::HashSet<(i32, i32)> {
+    stamp
+        .polygon_cells
+        .iter()
+        .filter(|c| c.complex_owner_id == Some(owner))
+        .map(|c| (c.x, c.y))
+        .collect()
+}
+
+/// Field tiles claimed by any *other* farm (must not overlap).
+pub fn foreign_field_cells(stamp: &Stamp, owner: u64) -> std::collections::HashSet<(i32, i32)> {
+    stamp
+        .polygon_cells
+        .iter()
+        .filter(|c| {
+            c.complex_owner_id
+                .filter(|o| *o != 0 && *o != owner)
+                .is_some()
+        })
+        .map(|c| (c.x, c.y))
+        .collect()
+}
+
+/// Among `candidates`, keep those 4-connected to `seeds` through `seeds ∪ candidates`.
+pub fn connected_field_subset(
+    seeds: &std::collections::HashSet<(i32, i32)>,
+    candidates: &std::collections::HashSet<(i32, i32)>,
+) -> std::collections::HashSet<(i32, i32)> {
+    use std::collections::VecDeque;
+    let mut connected = seeds.clone();
+    let mut q: VecDeque<(i32, i32)> = connected.iter().copied().collect();
+    while let Some((x, y)) = q.pop_front() {
+        for n in ortho4(x, y) {
+            if candidates.contains(&n) && connected.insert(n) {
+                q.push_back(n);
+            }
+        }
+    }
+    connected
+        .into_iter()
+        .filter(|c| candidates.contains(c))
+        .collect()
+}
+
+fn paint_cells_on_owner_polygon(
+    stamp: &mut Stamp,
+    owner: u64,
+    field_guid: u32,
+    cells: &[(i32, i32)],
+    paint_on: bool,
+    blocked: &std::collections::HashSet<(i32, i32)>,
+) -> usize {
+    if cells.is_empty() {
+        return 0;
+    }
+    let drag = drag_center(&stamp.document);
+    if paint_on {
+        let Some(seed) = cells.iter().copied().find(|c| !blocked.contains(c)) else {
+            return 0;
+        };
+        let seed_abs = (
+            seed.0 + drag.0.floor() as i32,
+            seed.1 + drag.1.floor() as i32,
+        );
+        if !ensure_field_polygon(&mut stamp.document, owner, field_guid, seed_abs) {
+            return 0;
+        }
+    }
+
+    fn apply_on_entry(
+        entry: &mut Tag,
+        drag: (f32, f32),
+        cells: &[(i32, i32)],
+        paint_on: bool,
+        blocked: &std::collections::HashSet<(i32, i32)>,
+    ) -> usize {
+        let mut local = 0usize;
+        for &(tx, ty) in cells {
+            if paint_on && blocked.contains(&(tx, ty)) {
+                continue;
+            }
+            if paint_tile_on_grid(entry, drag, tx, ty, paint_on) {
+                local += 1;
+            }
+        }
+        local
+    }
+
+    for root in &mut stamp.document.roots {
+        let Node::Tag(pipette) = root else { continue };
+        if pipette.name != "PipetteData" {
+            continue;
+        }
+        let Some(polys) = find_tag_mut(&mut pipette.children, "Polygons") else {
+            continue;
+        };
+        for child in &mut polys.children {
+            let Node::Tag(entry) = child else { continue };
+            if entry.name != "None" {
+                continue;
+            }
+            let oid = find_attrib(&entry.children, "ComplexOwnerID")
+                .and_then(|a| owner_id_from_attrib(&a.content));
+            if oid != Some(owner) {
+                continue;
+            }
+            if find_tag(&entry.children, "SubTileGrid").is_none() {
+                continue;
+            }
+            let g = find_attrib(&entry.children, "GUID").map(|a| i32_le(&a.content) as u32);
+            if g.is_some() && g != Some(field_guid) {
+                continue;
+            }
+            return apply_on_entry(entry, drag, cells, paint_on, blocked);
+        }
+        for child in &mut polys.children {
+            let Node::Tag(entry) = child else { continue };
+            if entry.name != "None" {
+                continue;
+            }
+            let oid = find_attrib(&entry.children, "ComplexOwnerID")
+                .and_then(|a| owner_id_from_attrib(&a.content));
+            if oid != Some(owner) {
+                continue;
+            }
+            if find_tag(&entry.children, "SubTileGrid").is_none() {
+                continue;
+            }
+            return apply_on_entry(entry, drag, cells, paint_on, blocked);
+        }
+    }
+    0
+}
+
+/// Owner field tiles that are *not* 4-connected to `main_seeds` (farm footprint).
+pub fn disconnected_field_cells(
+    stamp: &Stamp,
+    owner: u64,
+    main_seeds: &std::collections::HashSet<(i32, i32)>,
+) -> std::collections::HashSet<(i32, i32)> {
+    let remaining = field_cells_of_owner(stamp, owner);
+    let keep = connected_field_subset(main_seeds, &remaining);
+    remaining.into_iter().filter(|c| !keep.contains(c)).collect()
+}
+
+/// Paint or erase PlantFarm field tiles into the owner's SubTileGrid.
+///
+/// When painting:
+/// - skips `blocked` (roads/buildings) and tiles already owned by another farm
+/// - if `connect_seeds` is set (farm footprint ± existing fields), only paints tiles
+///   that stay 4-connected to those seeds (Anno: fields must touch the main)
+///
+/// Disconnected leftovers after erase are kept and shown red in the UI
+/// (`disconnected_field_cells`) — they are not auto-deleted.
+pub fn apply_field_tiles(
+    stamp: &mut Stamp,
+    owner: u64,
+    field_guid: u32,
+    cells: &[(i32, i32)],
+    paint_on: bool,
+    blocked: &std::collections::HashSet<(i32, i32)>,
+    connect_seeds: Option<&std::collections::HashSet<(i32, i32)>>,
+) -> usize {
+    if owner == 0 || cells.is_empty() {
+        return 0;
+    }
+
+    let mut effective_blocked = blocked.clone();
+    if paint_on {
+        effective_blocked.extend(foreign_field_cells(stamp, owner));
+    }
+
+    let cells: Vec<(i32, i32)> = if paint_on {
+        if let Some(seeds) = connect_seeds {
+            let mut seed_set = seeds.clone();
+            seed_set.extend(field_cells_of_owner(stamp, owner));
+            let cand: std::collections::HashSet<(i32, i32)> = cells
+                .iter()
+                .copied()
+                .filter(|c| !effective_blocked.contains(c))
+                .collect();
+            let ok = connected_field_subset(&seed_set, &cand);
+            cells
+                .iter()
+                .copied()
+                .filter(|c| ok.contains(c))
+                .collect()
+        } else {
+            cells.to_vec()
+        }
+    } else {
+        cells.to_vec()
+    };
+
+    paint_cells_on_owner_polygon(
+        stamp,
+        owner,
+        field_guid,
+        &cells,
+        paint_on,
+        &effective_blocked,
+    )
+}
+
 pub fn encode_pipette_b64(stamp: &Stamp) -> Result<String, StampError> {
     let raw = dump(&stamp.document);
-    let mut enc = ZlibEncoder::new(Vec::new(), Compression::best());
+    // Anno 1800/117 stamps use zlib level 8 plus a 12-byte size trailer.
+    let mut enc = ZlibEncoder::new(Vec::new(), Compression::new(8));
     enc.write_all(&raw)
         .map_err(|e| StampError::Zlib(e.to_string()))?;
-    let compressed = enc.finish().map_err(|e| StampError::Zlib(e.to_string()))?;
+    let mut compressed = enc.finish().map_err(|e| StampError::Zlib(e.to_string()))?;
+    append_pipette_zlib_footer(&mut compressed, raw.len() as u32);
     Ok(B64.encode(compressed))
 }
 
-/// Minimal valid pipette (from a tiny in-game stamp) used as document skeleton /
-/// building-entry template when creating a blank stamp.
-const BLANK_SEED_PIPETTE_B64: &str = "eNrFVU1OwlAQHqGlpcVEjmDiATyBKVBCWBCNojsXjTxLk9KStiju3tYlJ4CdS70ASW/h0ht4A4Pz2mKbBkL5k0km7TdvvvdN30zzAABy6Bz6EUWH2PLRk8VElkcZmvgAvg8RhxmfyAtiNF5bZmw9j3kXcojZ/hxdnJvSV7LoF/amz2y1fi6jfrm0rn6ovUof9qYf9F/57/7vqt/fpY3mTTnwvCkHnDcly7xxO9Sf2/xMhSifT52zkKqjgOv3p/H+AuLXE4D3cohFxKMIp793GX+U4o834E9T/Oka/HFK/23L+kdb6i+qP92PXeH53BRR9yzCKA8SYhUL+kRvo3+Jcc1JKybe2ZrM5s3n6vBxXE/mSRnz5nty+LcJeDvyOI0iRiRQDQeujD7xPKJqngb1jk5cqA4Ms2NYetN6tOFJMwcEWsTtNhyt3w3SVGISj1yTBw+aumU7JORd2eaLblsu05ODezlH87RAOcpTgYq0SCUq0xtP6/XviOMatoUUFxq3TRX0gdGBmt3rm2R4+WwRB2N/ojV7YHkst2UElJY2hLZhkjBeqVSroDqazgqqEcsjTvjNrJBzbM5ECM/nZzab/QKoeplWeNoDAAAAAAE4CAAA";
+/// Minimal valid pipette used as document skeleton / building-entry template.
+/// Must be a **modern** in-game stamp that includes `Variation` on buildings —
+/// older seeds (e.g. Woodcutter) omit it and the game rejects the stamp after load.
+const BLANK_SEED_PIPETTE_B64: &str = "eNq9VE1PwkAQHaGlUEjUn+G/4KOGYNJIVLiZsJG1bFJa0i6KF7M/xTsH4t1E/UmGGA7G4GxbbC1EizFOMoE3+97M5HVbAIAcpoK5IzAhjnz0K2tFyRMBfALoVSHSyFATvKCGvAJ8H5KXR95uJcaKiHvJearYrF3fBx5/2kfJuM+BufX8ahY/cv/nRzWLH4U/9GMVq55axC+k5mipPTQ8fziP+xcRv+oAUz3EpQg/65vnbepXNr/2e0HtLNFP4nt93b+s+nmEs+oXKf3blvp5Sr/YoE/78Vu8eu46ztmP8B5mGfEEL1EH8xaTqPGOySgl/suzirwv7ZkBvamR5OkZeaueCr49Gn6NVLxNRazoYDAP2mxEOacG4QQO+xb1oT5mdp85Vsu5dOGK2GMKJvUHTY+MBgHNoDbl9IRecGhZjuvRUNd27RvLdXw5rxJ8B3MiLzShCFUURFGUhC7KoiJOORmOutTzmeugyIdmp2WANWZ96BKPES7rDXc4sunk+NqhHp5+LtBwxw6XKpMFYpNM4IzZNKzXavU6GB6x5HIN6nDqxR4cYd7hg9lTQ7/el8vlB4JShyp42gMAAAAAAbgFAAA=";
 
 fn seed_building_template_tag() -> Result<Tag, StampError> {
     let seed = decode_pipette_b64(BLANK_SEED_PIPETTE_B64)?;
@@ -579,7 +1153,33 @@ impl Stamp {
         // Seed pipette still carries MeshGraph streets — wipe them for a true blank.
         let _ = clear_roads(&mut stamp.document, &stamp.buildings);
         recompute_bounds(&mut stamp.document, &stamp.buildings);
+        // Keep Variation in the attrib dictionary even with zero buildings.
+        let _ = stamp.document.ensure_attrib_id("Variation");
         Ok(stamp)
+    }
+
+    /// Ensure every BuildingInfo entry has a `Variation` attrib (game requirement).
+    pub fn ensure_building_variations(&mut self) {
+        let var_id = self.document.ensure_attrib_id("Variation");
+        for root in &mut self.document.roots {
+            let Node::Tag(pipette) = root else { continue };
+            if pipette.name != "PipetteData" {
+                continue;
+            }
+            let Some(info) = find_tag_mut(&mut pipette.children, "BuildingInfo") else {
+                continue;
+            };
+            for child in &mut info.children {
+                let Node::Tag(entry) = child else { continue };
+                if entry.name != "None" {
+                    continue;
+                }
+                let current = find_attrib(&entry.children, "Variation")
+                    .map(|a| u32_le(&a.content))
+                    .unwrap_or(0);
+                apply_variation_attrib(entry, var_id, current);
+            }
+        }
     }
 
     pub fn refresh_buildings(&mut self) {
@@ -981,6 +1581,8 @@ impl Stamp {
     ) -> Result<(), StampError> {
         let cistern_mark_id = is_aqueduct_cistern(guid)
             .then(|| ensure_attrib_id(&mut self.document, CISTERN_PIVOT_ATTRIB));
+        let var_val = variation.unwrap_or(0);
+        let var_id = self.document.ensure_attrib_id("Variation");
         for root in &mut self.document.roots {
             let Node::Tag(pipette) = root else { continue };
             if pipette.name != "PipetteData" {
@@ -1026,24 +1628,9 @@ impl Stamp {
                 g.content = content;
             }
             let _ = write_direction(&mut entry, direction);
-            // Marsh / land CFG selector (Warehouse Celtic: 0=6×6, 1=5×5).
-            if let Some(v) = variation.filter(|v| *v > 0) {
-                if let Some(a) = find_attrib_mut(&mut entry.children, "Variation") {
-                    let mut bytes = vec![0u8; a.content.len().max(4)];
-                    bytes[0..4].copy_from_slice(&v.to_le_bytes());
-                    a.content = bytes;
-                } else {
-                    entry.children.push(Node::Attrib(Attrib {
-                        id: 0,
-                        name: "Variation".into(),
-                        content: v.to_le_bytes().to_vec(),
-                    }));
-                }
-            } else {
-                entry
-                    .children
-                    .retain(|n| !matches!(n, Node::Attrib(a) if a.name == "Variation"));
-            }
+            // Cisterns must omit Variation; other modern buildings need it.
+            // Marsh / land CFG: Variation>0 kept via apply_variation_attrib.
+            apply_variation_attrib(&mut entry, var_id, var_val);
             if let Some(mark_id) = cistern_mark_id {
                 ensure_cistern_pivot_mark(&mut entry, mark_id);
             } else {
@@ -1112,12 +1699,15 @@ impl Stamp {
         Err(StampError::MissingField)
     }
 
-    /// Set pipette `Variation` (e.g. warehouse Land=`None` / Marsh=`Some(1)`).
+    /// Set pipette `Variation` (e.g. warehouse Land=`None`/`Some(0)` / Marsh=`Some(1)`).
+    /// Never removes the attrib — the game expects it on every building.
     pub fn set_building_variation(
         &mut self,
         index: usize,
         variation: Option<u32>,
     ) -> Result<(), StampError> {
+        let var_val = variation.unwrap_or(0);
+        let var_id = self.document.ensure_attrib_id("Variation");
         let mut count = 0usize;
         for root in &mut self.document.roots {
             let Node::Tag(pipette) = root else { continue };
@@ -1133,23 +1723,7 @@ impl Stamp {
                     continue;
                 }
                 if count == index {
-                    if let Some(v) = variation.filter(|v| *v > 0) {
-                        if let Some(a) = find_attrib_mut(&mut entry.children, "Variation") {
-                            let mut bytes = vec![0u8; a.content.len().max(4)];
-                            bytes[0..4].copy_from_slice(&v.to_le_bytes());
-                            a.content = bytes;
-                        } else {
-                            entry.children.push(Node::Attrib(Attrib {
-                                id: 0,
-                                name: "Variation".into(),
-                                content: v.to_le_bytes().to_vec(),
-                            }));
-                        }
-                    } else {
-                        entry
-                            .children
-                            .retain(|n| !matches!(n, Node::Attrib(a) if a.name == "Variation"));
-                    }
+                    apply_variation_attrib(entry, var_id, var_val);
                     if let Some(b) = self.buildings.get_mut(index) {
                         b.variation = variation.filter(|v| *v > 0);
                     }

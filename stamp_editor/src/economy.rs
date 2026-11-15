@@ -3,6 +3,7 @@
 use crate::area_efficiency::{analyze_area_efficiency_with_fields, efficiency_by_index};
 use crate::catalog::Catalog;
 use crate::filedb::DocumentOrdered;
+use crate::i18n::Language;
 use crate::stamp::{Building, PolygonCell};
 use std::collections::BTreeMap;
 
@@ -43,7 +44,7 @@ fn cycles_per_minute(cycle: f32) -> f32 {
 }
 
 pub fn analyze_chain(buildings: &[Building], catalog: &Catalog) -> ChainReport {
-    analyze_chain_region(buildings, catalog, None, 0, &[])
+    analyze_chain_region(buildings, catalog, None, 0, &[], Language::De)
 }
 
 /// Like [`analyze_chain`], but scales Production-Area I/O by dense-resource efficiency.
@@ -53,6 +54,7 @@ pub fn analyze_chain_region(
     document: Option<&DocumentOrdered>,
     region_guid: u32,
     polygon_cells: &[PolygonCell],
+    lang: Language,
 ) -> ChainReport {
     let areas = analyze_area_efficiency_with_fields(
         buildings,
@@ -60,6 +62,7 @@ pub fn analyze_chain_region(
         document,
         region_guid,
         polygon_cells,
+        lang,
     );
     let eff_map = efficiency_by_index(&areas);
 
@@ -100,7 +103,7 @@ pub fn analyze_chain_region(
     for product in keys.keys() {
         let flow = ProductFlow {
             product: *product,
-            name: catalog.name(*product),
+            name: catalog.label(*product, lang),
             produced_per_min: *produced.get(product).unwrap_or(&0.0),
             consumed_per_min: *consumed.get(product).unwrap_or(&0.0),
         };

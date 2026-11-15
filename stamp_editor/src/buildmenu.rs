@@ -199,7 +199,7 @@ impl ConstructionMenu {
     pub fn region_key(filter: RegionFilter) -> Option<&'static str> {
         match filter {
             RegionFilter::Latium => Some("Roman"),
-            RegionFilter::Albion | RegionFilter::Celtic => Some("Celtic"),
+            RegionFilter::Albion => Some("Celtic"),
             RegionFilter::Delta => Some("Egyptian"),
             RegionFilter::All => None,
         }

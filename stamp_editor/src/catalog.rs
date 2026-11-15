@@ -1,3 +1,4 @@
+use crate::i18n::Language;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -15,12 +16,85 @@ pub struct EffectBonus {
     pub value: f32,
 }
 
+/// One entry from a residence `NeedsList` (service or goods/food).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ResidenceNeed {
+    pub need_guid: u32,
+    /// `service` (coverage) or `goods` (consumption only in analyse).
+    #[serde(default = "default_need_kind")]
+    pub kind: String,
+    #[serde(default)]
+    pub need_product: Option<u32>,
+    #[serde(default)]
+    pub consumption_rate: Option<f32>,
+    #[serde(default)]
+    pub buff_only: bool,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub name_en: Option<String>,
+    #[serde(default)]
+    pub name_de: Option<String>,
+}
+
+fn default_need_kind() -> String {
+    "goods".into()
+}
+
+impl ResidenceNeed {
+    pub fn is_service(&self) -> bool {
+        self.kind == "service"
+    }
+
+    pub fn is_goods(&self) -> bool {
+        !self.is_service()
+    }
+
+    pub fn label(&self, lang: Language) -> String {
+        let pick = match lang {
+            Language::En => self.name_en.as_ref().or(self.name_de.as_ref()),
+            Language::De => self.name_de.as_ref().or(self.name_en.as_ref()),
+        };
+        if let Some(s) = pick.filter(|s| !s.is_empty()) {
+            return short_label(s);
+        }
+        if let Some(s) = self.name.as_ref().filter(|s| !s.is_empty()) {
+            return short_label(s);
+        }
+        format!("Need {}", self.need_guid)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct NeedDef {
+    pub guid: u32,
+    pub name: String,
+    #[serde(default)]
+    pub need_product: Option<u32>,
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub name_en: Option<String>,
+    #[serde(default)]
+    pub name_de: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct BuildingDef {
     pub guid: u32,
     pub name: String,
     #[serde(default)]
     pub short_name: Option<String>,
+    /// Official English display name from game texts (OasisId).
+    #[serde(default)]
+    pub name_en: Option<String>,
+    /// Official German display name from game texts (OasisId).
+    #[serde(default)]
+    pub name_de: Option<String>,
     pub template: String,
     pub category: String,
     pub size: [f32; 2],
@@ -69,6 +143,26 @@ pub struct BuildingDef {
     /// Game AssociatedRegions / name hints: Celtic, Roman, Egyptian, …
     #[serde(default)]
     pub regions: Vec<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    /// Game PopulationLevel GUID (tier identity).
+    #[serde(default)]
+    pub population_level: Option<u32>,
+    /// Portrait icon from the linked PopulationLevel (distinct per tier).
+    #[serde(default)]
+    pub population_icon: Option<String>,
+    /// Needs from Residence NeedsList (services + goods).
+    #[serde(default)]
+    pub residence_needs: Vec<ResidenceNeed>,
+    /// Immediate PossibleUpgrades targets.
+    #[serde(default)]
+    pub upgrade_guids: Vec<u32>,
+    /// Who upgrades into this GUID.
+    #[serde(default)]
+    pub base_guids: Vec<u32>,
+    /// This GUID plus all forward upgrades (BFS).
+    #[serde(default)]
+    pub upgrade_chain: Vec<u32>,
 }
 
 /// Latium (19753) / Celtic (29526) Aqueduct Cistern — `AqueductDistributor`.
@@ -231,6 +325,71 @@ mod blocker_offset_tests {
 }
 
 impl BuildingDef {
+    pub fn is_residence(&self) -> bool {
+        self.category == "residence" && !self.residence_needs.is_empty()
+    }
+
+    pub fn is_aqueduct_connector(&self) -> bool {
+        self.road_kind.as_deref() == Some("aqueduct")
+            || self.template.contains("AqueductConnector")
+            || (self.name.contains("Aqueduct")
+                && (self.name.contains("MinGround") || self.name.contains("MaxGround")))
+    }
+
+    pub fn is_aqueduct_maxground(&self) -> bool {
+        self.name.contains("MaxGround")
+            || crate::meshgraph::is_aqueduct_maxground_guid(self.guid as i32)
+    }
+
+    pub fn is_aqueduct_minground(&self) -> bool {
+        self.is_aqueduct_connector() && !self.is_aqueduct_maxground()
+    }
+
+    pub fn is_aqueduct_cistern(&self) -> bool {
+        self.template.contains("AqueductDistributor")
+            || (self.name.contains("Aqueduct") && self.name.contains("Distribution"))
+    }
+
+    pub fn is_aqueduct_basin(&self) -> bool {
+        self.template.contains("AqueductProducer")
+            || (self.name.contains("Aqueduct") && self.name.contains("Basin"))
+    }
+
+    pub fn is_aqueduct_piece(&self) -> bool {
+        self.is_aqueduct_connector() || self.is_aqueduct_cistern() || self.is_aqueduct_basin()
+    }
+
+    pub fn service_needs(&self) -> impl Iterator<Item = &ResidenceNeed> {
+        self.residence_needs.iter().filter(|n| n.is_service())
+    }
+
+    pub fn goods_needs(&self) -> impl Iterator<Item = &ResidenceNeed> {
+        self.residence_needs.iter().filter(|n| n.is_goods())
+    }
+
+    /// Tier digit from asset name (`Residence Roman 02 …` → 2), if present.
+    pub fn residence_tier_digit(&self) -> Option<u8> {
+        for part in self.name.split_whitespace() {
+            if part.len() == 2 && part.chars().all(|c| c.is_ascii_digit()) {
+                return part.parse().ok().filter(|&n| n > 0);
+            }
+        }
+        None
+    }
+
+    /// Build-menu style tag (`T1`…`T4`) from asset digit or chain index.
+    pub fn residence_tier_tag(&self) -> Option<String> {
+        self.residence_tier_digit().map(|n| format!("T{n}"))
+    }
+
+    /// Prefer population portrait over the shared house building icon.
+    pub fn residence_display_icon(&self) -> Option<&str> {
+        self.population_icon
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .or(self.icon.as_deref())
+    }
+
     /// Footprint for a pipette Variation index.
     /// For Warehouse Roman Celtic (7055+), Variation `1` selects the marsh CFG (5×5);
     /// missing/`0` keeps the land CFG (6×6). Region alone must not force marsh —
@@ -250,37 +409,41 @@ impl BuildingDef {
     }
 }
 
-/// Palette region filter. Albion≈Celtic, Latium≈Roman, Delta≈Egyptian.
+/// Palette region filter. Albion = Celtic culture (GUID 6626), Latium≈Roman, Delta≈Egyptian.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RegionFilter {
     #[default]
     All,
+    /// Island Albion / culture Celtic — one game region (GUID 6626).
     Albion,
-    Celtic,
     Latium,
     Delta,
 }
 
 impl RegionFilter {
-    pub const ALL: [RegionFilter; 5] = [
+    pub const ALL: [RegionFilter; 4] = [
         RegionFilter::All,
         RegionFilter::Albion,
-        RegionFilter::Celtic,
         RegionFilter::Latium,
         RegionFilter::Delta,
     ];
 
     pub fn label(self) -> &'static str {
-        match self {
-            RegionFilter::All => "Alle",
-            RegionFilter::Albion => "Albion",
-            RegionFilter::Celtic => "Celtic",
-            RegionFilter::Latium => "Latium",
-            RegionFilter::Delta => "Delta (Ägypten)",
+        self.label_lang(Language::De)
+    }
+
+    pub fn label_lang(self, lang: Language) -> &'static str {
+        match (self, lang) {
+            (RegionFilter::All, Language::En) => "All",
+            (RegionFilter::All, Language::De) => "Alle",
+            (RegionFilter::Albion, _) => "Albion (Celtic)",
+            (RegionFilter::Latium, _) => "Latium",
+            (RegionFilter::Delta, Language::En) => "Delta (Egypt)",
+            (RegionFilter::Delta, Language::De) => "Delta (Ägypten)",
         }
     }
 
-    /// Stamp RegionGUID → filter (6626 Celtic/Albion, 3225 Roman/Latium, 149678 Delta).
+    /// Stamp RegionGUID → filter (6626 Albion/Celtic, 3225 Roman/Latium, 149678 Delta).
     pub fn from_region_guid(guid: u32) -> Self {
         match guid {
             6626 => RegionFilter::Albion,
@@ -293,9 +456,32 @@ impl RegionFilter {
     /// RegionGUID written into new stamp packs for the active filter.
     pub fn stamp_region_guid(self) -> u32 {
         match self {
-            RegionFilter::Albion | RegionFilter::Celtic | RegionFilter::All => 6626,
-            RegionFilter::Latium => 3225,
+            RegionFilter::Albion => 6626,
+            // "Alle" defaults to Roman — game has no unsorted bucket.
+            RegionFilter::Latium | RegionFilter::All => 3225,
             RegionFilter::Delta => 149678,
+        }
+    }
+
+    /// On-disk folder under Documents/…/stamps (game wipe-sync only keeps these).
+    pub fn game_stamp_folder(self) -> &'static str {
+        Self::game_stamp_folder_for_guid(self.stamp_region_guid())
+    }
+
+    pub fn game_stamp_folder_for_guid(guid: u32) -> &'static str {
+        match guid {
+            6626 => "Region Celtic",
+            149678 => "Region Egyptian",
+            _ => "Region Roman", // 3225 Latium/Roman
+        }
+    }
+
+    /// Key for MeshGraph aqueduct GUID helpers (`Roman` / `Celtic` / `Egyptian`).
+    pub fn region_key(self) -> Option<&'static str> {
+        match self {
+            RegionFilter::Albion => Some("Celtic"),
+            RegionFilter::Delta => Some("Egyptian"),
+            RegionFilter::Latium | RegionFilter::All => Some("Roman"),
         }
     }
 
@@ -306,7 +492,7 @@ impl RegionFilter {
         }
         let folder = folder_name.to_ascii_lowercase();
         match self {
-            RegionFilter::Albion | RegionFilter::Celtic => {
+            RegionFilter::Albion => {
                 region_guid == 6626
                     || folder.contains("albion")
                     || folder.contains("celtic")
@@ -330,7 +516,7 @@ impl RegionFilter {
         let r = region.to_ascii_lowercase();
         match self {
             RegionFilter::All => true,
-            RegionFilter::Albion | RegionFilter::Celtic => r == "celtic",
+            RegionFilter::Albion => r == "celtic",
             RegionFilter::Latium => r == "roman",
             RegionFilter::Delta => r == "egyptian" || r == "delta",
         }
@@ -348,7 +534,7 @@ impl RegionFilter {
         if b.regions.is_empty() {
             let n = b.name.to_ascii_lowercase();
             return match self {
-                RegionFilter::Albion | RegionFilter::Celtic => {
+                RegionFilter::Albion => {
                     n.contains("celtic") || n.contains("albion") || n.contains("marsh")
                 }
                 RegionFilter::Latium => n.contains("roman") || n.contains("latium"),
@@ -367,19 +553,28 @@ pub struct ProductDef {
     pub guid: u32,
     pub name: String,
     #[serde(default)]
+    pub name_en: Option<String>,
+    #[serde(default)]
+    pub name_de: Option<String>,
+    #[serde(default)]
     pub template: String,
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 struct CatalogFile {
     buildings: HashMap<String, BuildingDef>,
     products: HashMap<String, ProductDef>,
+    #[serde(default)]
+    needs: HashMap<String, NeedDef>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Catalog {
     pub buildings: HashMap<u32, BuildingDef>,
     pub products: HashMap<u32, ProductDef>,
+    pub needs: HashMap<u32, NeedDef>,
 }
 
 impl Catalog {
@@ -396,10 +591,66 @@ impl Catalog {
             let guid = k.parse::<u32>().unwrap_or(v.guid);
             products.insert(guid, v);
         }
+        let mut needs = HashMap::new();
+        for (k, v) in raw.needs {
+            let guid = k.parse::<u32>().unwrap_or(v.guid);
+            needs.insert(guid, v);
+        }
         Ok(Self {
             buildings,
             products,
+            needs,
         })
+    }
+
+    pub fn need(&self, guid: u32) -> Option<&NeedDef> {
+        self.needs.get(&guid)
+    }
+
+    /// Full upgrade chain for a residence: walk to root via `base_guids`, then
+    /// return that root's forward `upgrade_chain` (includes sibling branches).
+    pub fn residence_chain(&self, guid: u32) -> Vec<u32> {
+        let mut root = guid;
+        for _ in 0..32 {
+            let Some(b) = self.buildings.get(&root) else {
+                break;
+            };
+            match b.base_guids.first().copied() {
+                Some(parent) if parent != root => root = parent,
+                _ => break,
+            }
+        }
+        self.buildings
+            .get(&root)
+            .map(|b| {
+                if b.upgrade_chain.is_empty() {
+                    vec![root]
+                } else {
+                    b.upgrade_chain.clone()
+                }
+            })
+            .unwrap_or_else(|| vec![guid])
+    }
+
+    /// 1-based tier in the upgrade chain (`T1`…), falling back to asset digit.
+    pub fn residence_tier_number(&self, guid: u32) -> Option<u8> {
+        let def = self.buildings.get(&guid)?;
+        if let Some(d) = def.residence_tier_digit() {
+            return Some(d);
+        }
+        if !def.is_residence() {
+            return None;
+        }
+        let chain = self.residence_chain(guid);
+        chain
+            .iter()
+            .position(|&g| g == guid)
+            .map(|i| (i + 1) as u8)
+    }
+
+    /// `T1`…`T4` for canvas / strip badges.
+    pub fn residence_tier_tag(&self, guid: u32) -> Option<String> {
+        self.residence_tier_number(guid).map(|n| format!("T{n}"))
     }
 
     pub fn name(&self, guid: u32) -> String {
@@ -412,12 +663,30 @@ impl Catalog {
         format!("GUID {guid}")
     }
 
-    pub fn label(&self, guid: u32) -> String {
+    fn loca_name(en: &Option<String>, de: &Option<String>, lang: Language) -> Option<String> {
+        let pick = match lang {
+            Language::En => en.as_ref().or(de.as_ref()),
+            Language::De => de.as_ref().or(en.as_ref()),
+        };
+        pick.filter(|s| !s.is_empty()).cloned()
+    }
+
+    /// Display label for the active UI language (game texts when available).
+    pub fn label(&self, guid: u32, lang: Language) -> String {
         if let Some(b) = self.buildings.get(&guid) {
+            if let Some(loca) = Self::loca_name(&b.name_en, &b.name_de, lang) {
+                return short_label(&loca);
+            }
             if let Some(s) = b.short_name.as_ref().filter(|s| !s.is_empty()) {
                 return s.clone();
             }
             return short_label(&b.name);
+        }
+        if let Some(p) = self.products.get(&guid) {
+            if let Some(loca) = Self::loca_name(&p.name_en, &p.name_de, lang) {
+                return short_label(&loca);
+            }
+            return short_label(&p.name);
         }
         self.name(guid)
     }
@@ -428,6 +697,61 @@ impl Catalog {
 
     pub fn buildings_iter(&self) -> impl Iterator<Item = &BuildingDef> {
         self.buildings.values()
+    }
+
+    /// Buildings whose `ProvidedNeed` effect covers this Need GUID (Market → 2750, …).
+    pub fn buildings_providing_need(
+        &self,
+        need_guid: u32,
+        region: RegionFilter,
+    ) -> Vec<&BuildingDef> {
+        let mut out: Vec<&BuildingDef> = self
+            .buildings
+            .values()
+            .filter(|b| {
+                b.effect_bonuses.iter().any(|bon| {
+                    bon.attr == "ProvidedNeed" && bon.value.round() as u32 == need_guid
+                }) && region.matches_building(b)
+            })
+            .collect();
+        out.sort_by_key(|b| b.guid);
+        out
+    }
+
+    /// Basin → MinGround → MaxGround (hoch) → Cistern for the active region.
+    pub fn aqueduct_kit(&self, region: RegionFilter) -> Vec<&BuildingDef> {
+        let mut basin: Option<&BuildingDef> = None;
+        let mut min_ground: Option<&BuildingDef> = None;
+        let mut max_ground: Option<&BuildingDef> = None;
+        let mut cistern: Option<&BuildingDef> = None;
+        for b in self.buildings.values() {
+            if !region.matches_building(b) {
+                continue;
+            }
+            if b.is_aqueduct_basin() {
+                basin.get_or_insert(b);
+            } else if b.is_aqueduct_maxground() {
+                max_ground.get_or_insert(b);
+            } else if b.is_aqueduct_minground() {
+                min_ground.get_or_insert(b);
+            } else if b.is_aqueduct_cistern() {
+                cistern.get_or_insert(b);
+            }
+        }
+        // Prefer well-known MeshGraph brush GUIDs when catalog region tags are messy.
+        let region_key = region.region_key();
+        let min_g = crate::meshgraph::aqueduct_guid_for_region(region_key) as u32;
+        let max_g = crate::meshgraph::aqueduct_maxground_guid_for_region(region_key) as u32;
+        if min_ground.is_none() {
+            min_ground = self.building(min_g);
+        }
+        if max_ground.is_none() {
+            max_ground = self.building(max_g);
+        }
+        [basin, min_ground, max_ground, cistern]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 
     pub fn palette(&self, filter: &str, region: RegionFilter) -> Vec<&BuildingDef> {
@@ -450,12 +774,28 @@ impl Catalog {
                         .as_ref()
                         .map(|s| s.to_lowercase().contains(&f))
                         .unwrap_or(false)
+                    || b.name_en
+                        .as_ref()
+                        .map(|s| s.to_lowercase().contains(&f))
+                        .unwrap_or(false)
+                    || b.name_de
+                        .as_ref()
+                        .map(|s| s.to_lowercase().contains(&f))
+                        .unwrap_or(false)
                     || b.guid.to_string().contains(&f)
             })
             .collect();
         items.sort_by(|a, b| {
-            let la = a.short_name.as_deref().unwrap_or(a.name.as_str());
-            let lb = b.short_name.as_deref().unwrap_or(b.name.as_str());
+            let la = a
+                .name_en
+                .as_deref()
+                .or(a.short_name.as_deref())
+                .unwrap_or(a.name.as_str());
+            let lb = b
+                .name_en
+                .as_deref()
+                .or(b.short_name.as_deref())
+                .unwrap_or(b.name.as_str());
             la.cmp(lb)
         });
         items
@@ -523,6 +863,7 @@ pub fn short_label(name: &str) -> String {
         "Institution ",
         "Ornament ",
         "HoF Ornament ",
+        "Good ",
     ];
     for p in prefixes {
         if let Some(rest) = s.strip_prefix(p) {

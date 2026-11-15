@@ -159,9 +159,95 @@ pub fn normalize_key(path: &str) -> String {
 
 pub type SharedRda = Arc<RdaArchive>;
 
-pub fn open_ui_rda(game_install: &Path) -> Result<SharedRda, String> {
-    let rda = game_install.join("maindata").join("ui.rda");
-    Ok(Arc::new(RdaArchive::open(rda)?))
+/// Several RDAs searched in order (patches first, then base `ui.rda`).
+/// DLC UI icons (e.g. dlc03 shrines) often live in `zz_patchfiles_*.rda`, not `ui.rda`.
+#[derive(Clone, Default)]
+pub struct RdaSet {
+    archives: Vec<SharedRda>,
+}
+
+impl RdaSet {
+    pub fn len(&self) -> usize {
+        self.archives.iter().map(|a| a.len()).sum()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.archives.is_empty()
+    }
+
+    pub fn archives(&self) -> &[SharedRda] {
+        &self.archives
+    }
+
+    /// First matching candidate across all archives (patch order wins).
+    pub fn resolve(&self, candidates: &[String]) -> Option<(SharedRda, String)> {
+        for a in &self.archives {
+            if let Some(k) = a.resolve(candidates) {
+                return Some((a.clone(), k));
+            }
+        }
+        None
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = &String> {
+        self.archives.iter().flat_map(|a| a.keys())
+    }
+}
+
+fn open_optional_rda(path: PathBuf, out: &mut Vec<SharedRda>, notes: &mut Vec<String>) {
+    if !path.exists() {
+        return;
+    }
+    match RdaArchive::open(&path) {
+        Ok(a) => {
+            notes.push(format!(
+                "{}:{}",
+                path.file_name()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| path.display().to_string()),
+                a.len()
+            ));
+            out.push(Arc::new(a));
+        }
+        Err(e) => notes.push(format!("{}:err({e})", path.display())),
+    }
+}
+
+/// Open UI icon sources: newest `zz_patchfiles_*.rda` first, then `ui.rda` / `graphics_ui.rda`.
+pub fn open_ui_rda(game_install: &Path) -> Result<(Arc<RdaSet>, String), String> {
+    let maindata = game_install.join("maindata");
+    if !maindata.is_dir() {
+        return Err(format!("missing maindata: {}", maindata.display()));
+    }
+    let mut archives = Vec::new();
+    let mut notes = Vec::new();
+
+    // Patch archives — highest version first (DLC UI icons land here).
+    let mut patches: Vec<PathBuf> = std::fs::read_dir(&maindata)
+        .map_err(|e| e.to_string())?
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| {
+            p.extension().and_then(|e| e.to_str()) == Some("rda")
+                && p.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.to_ascii_lowercase().starts_with("zz_patchfiles_"))
+                    .unwrap_or(false)
+        })
+        .collect();
+    patches.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+    for p in patches {
+        open_optional_rda(p, &mut archives, &mut notes);
+    }
+
+    open_optional_rda(maindata.join("ui.rda"), &mut archives, &mut notes);
+    open_optional_rda(maindata.join("graphics_ui.rda"), &mut archives, &mut notes);
+
+    if archives.is_empty() {
+        return Err("no UI RDA opened (ui.rda / patches)".into());
+    }
+    let summary = notes.join(", ");
+    Ok((Arc::new(RdaSet { archives }), summary))
 }
 
 fn push_unique(out: &mut Vec<String>, s: impl AsRef<str>) {

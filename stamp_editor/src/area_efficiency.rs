@@ -17,6 +17,7 @@
 use crate::catalog::{BuildingDef, Catalog};
 use crate::coverage::{build_road_map_region, footprint_cells_for_region, Cell};
 use crate::filedb::DocumentOrdered;
+use crate::i18n::Language;
 use crate::meshgraph::read_mesh_info;
 use crate::stamp::{Building, PolygonCell};
 use std::collections::HashMap;
@@ -174,7 +175,14 @@ pub fn analyze_area_efficiency(
     document: Option<&DocumentOrdered>,
     region_guid: u32,
 ) -> Vec<AreaEfficiency> {
-    analyze_area_efficiency_with_fields(buildings, catalog, document, region_guid, &[])
+    analyze_area_efficiency_with_fields(
+        buildings,
+        catalog,
+        document,
+        region_guid,
+        &[],
+        Language::De,
+    )
 }
 
 pub fn analyze_area_efficiency_with_fields(
@@ -183,6 +191,7 @@ pub fn analyze_area_efficiency_with_fields(
     document: Option<&DocumentOrdered>,
     region_guid: u32,
     polygon_cells: &[PolygonCell],
+    lang: Language,
 ) -> Vec<AreaEfficiency> {
     let blocked = blocker_map(buildings, catalog, document, region_guid, polygon_cells);
 
@@ -200,7 +209,7 @@ pub fn analyze_area_efficiency_with_fields(
         claimants.push(Claimant {
             index: i,
             guid: b.guid,
-            label: catalog.label(b.guid),
+            label: catalog.label(b.guid, lang),
             group: competition_group(def),
             x: b.x,
             y: b.y,
@@ -467,6 +476,8 @@ mod tests {
             guid,
             name: format!("Test {guid}"),
             short_name: Some(short.into()),
+            name_en: None,
+            name_de: None,
             template: template.into(),
             category: "production".into(),
             size,
@@ -846,11 +857,11 @@ mod tests {
             })
             .collect();
         let without = analyze_area_efficiency_with_fields(
-            &buildings, &catalog, None, 0, &[],
+            &buildings, &catalog, None, 0, &[], Language::De,
         )[0]
         .have;
         let with = analyze_area_efficiency_with_fields(
-            &buildings, &catalog, None, 0, &fields,
+            &buildings, &catalog, None, 0, &fields, Language::De,
         )[0]
         .clone();
         assert!(with.have < without);

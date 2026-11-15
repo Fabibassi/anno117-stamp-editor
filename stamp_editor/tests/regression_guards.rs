@@ -105,8 +105,8 @@ fn polygon_field_modules_are_extracted() {
         "Polygons SubTileGrid bits must become polygon_cells (Loungers/Bread empty wings)"
     );
     assert!(
-        stamp.contains("* 0.25") && stamp.contains("stride"),
-        "SubTileGrid must use quarter-tile scale (0.25) and 32-bit row stride — 0.5 overflowed the road frame"
+        (stamp.contains("* 0.25") || stamp.contains("/ 4")) && stamp.contains("stride"),
+        "SubTileGrid must use quarter-tile scale (4 bits / tile X) and 32-bit row stride — 0.5 overflowed the road frame"
     );
     assert!(
         app.contains("polygon_cells"),

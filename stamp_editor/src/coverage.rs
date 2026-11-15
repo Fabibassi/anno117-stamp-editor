@@ -2,7 +2,9 @@
 
 use crate::catalog::{BuildingDef, Catalog, EffectBonus};
 use crate::filedb::DocumentOrdered;
-use crate::meshgraph::{mesh_road_cells, read_mesh_info, relative_to_tile};
+use crate::meshgraph::{
+    is_aqueduct_brush_guid, mesh_road_cells, read_mesh_info, relative_to_tile,
+};
 use crate::stamp::Building;
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -107,6 +109,9 @@ pub fn footprint_cells_for_region(
 fn is_road(def: Option<&BuildingDef>) -> Option<RoadKind> {
     let def = def?;
     if let Some(kind) = def.road_kind.as_deref() {
+        if kind == "aqueduct" {
+            return None;
+        }
         return Some(match kind {
             "stone" => RoadKind::Stone,
             _ => RoadKind::Dirt,
@@ -156,6 +161,10 @@ pub fn build_road_map_region(
     }
     if let Some(doc) = document {
         for (x, y, guid) in mesh_road_cells(doc) {
+            // Aqueducts share MeshGraph with roads but are not street network.
+            if is_aqueduct_brush_guid(guid) {
+                continue;
+            }
             let kind = catalog
                 .building(guid as u32)
                 .and_then(|d| is_road(Some(d)))
@@ -645,6 +654,8 @@ mod regression_footprint {
             guid: 1,
             name: "t".into(),
             short_name: None,
+            name_en: None,
+            name_de: None,
             template: String::new(),
             category: "public".into(),
             size: [w, h],

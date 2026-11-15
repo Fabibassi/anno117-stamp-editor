@@ -1,309 +1,309 @@
 {
-    "Version": 1,
-    "Stamps": [
-        {
-            "Name": "Latium",
-            "FolderName": "",
-            "RegionGUID": 3225,
-            "PipetteData": "",
-            "IconGUID": 2880,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Coal x12",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFV81u00AQHpof54cqfQTaOxKPYCdGVQ4RFdDeerDI4lhy7Mh2INz2CRDHHjlw4JJnaHLikEulyq186xO0Rzi0CrPeDbFMiGIc2JVGzoy/b76ZiXctAwDsoBXRHlE0WK6CuLJYheEo8y4mAGdTEBy2SglcHKM857rFcAXEqXXus/xFuhqb0lfl6sM5wKet6R+MMveP87+ZyJ2/TP2vUz6D9frw7/Q1ufpfpskcefWfbvj8bUvv9nHmfjUZ/aaeN1Xe/x3vd1XyfpeoH+83yfM/0yS/bzSJ7xv1f/e/WGVxVQS+RJexRTxZRxnvn+4v8yvozxoA4wb3K8L/1vi93z/xr1P8SPib8qMV/Cz6Y4H/2/pnKX6Uk8/8MGP/Sf73jPrRivrDjPMLc9Q/S/GjnHzm32XsP0zNL8zBjzLqXwv8On56P27LX5wbVdT9KPw9tBr6Vwq3e7QfyrLm5KomfrN7dXbePHnQ4eZeT+JqG+IWOYt42in4dVTC06iCkRrolgdH1oAEAdGNwIDnXZP40BxadtdyzLbz1oV3hj0k0CF+79AzBr0YphObBOQleRNA23Rcj3DekWt/MF3HZ3r1+LtshxZomRZpiSq0Qqu0Ruv0VWD0ByfE8y3XQYoPh8dtHcyh1YWW2x/YZPTivUM8jP0SbblDJ2DYjhVTOsYIXls24XFNazZB9wyTFdQiTkA83vMl2rNdgM+7fD4P8/n8JwAi+tx42gMAAAAAATgOAAA=",
-            "IconGUID": 2880,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Concrete x9",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVs1OwkAQHuWnpZjoI+hjeJKfGsKBSBS9mdjIWjYpLWkXxXjZd/EB6guYcOHA0WcwXn0BY3CGtlIbIlSNnWTSftPv229nMy0AAGxi5jE3JCYsIhdeqaYSTxIajwEexhBqKAox3rwmgzW/C+LlkLe/FWBaPy+Xc7/6U2TpP65k4b/KD9b0e03fL/V6kO15Z+pP817JeN4rGc/7v/pHUQyvSsgvyEUtqsf3UcTn53uL9RXE99tBElYRT0Oc7HddPd37KfTTJf5+Sn8/pvd/qSc8SaF/TOinP+g/qZ+k3P9khT45D3+Fo7ktoW8nxDuYGuInJcgXzGdlsed4lGL39KxM837xpkMFMxbamrxozTy+bQr+OhfwbVCxooHOXWjzAROC6YYw4LBrMg9qQ251uW027SsHrg1ryKDFvF7DNQa9OU1nFhPsmF0KaJq247JA13asW9OxPfIrz/8XbMqcLMq8LEhFqrIkNVmWJ8LoD86Y63HHRokHjdOmDuaQd6Hu9AcWGx3d2MzF2qdp3RnagrgtPpe0jBF0uMWCerVaq4HuGiZtqM5swdyg5zv6AuIZ76rB+bzPZrMPiwmpeXjaAwAAAAABuAgAAA==",
-            "IconGUID": 3129,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Mosaics x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFlc1OwkAQx0e+CsVEH0G9e/dmgRrCgUj8unloZC1NSkvaonibxBcx8QV8A/DAA/gAnLyrdzU40xZpCBFKGtlk0v6n/9nfbjvZAgCkKDIUG0gB05EOr5zLsw9Z4QDg4BnCGh7ZiM/PYTDnX4N9afLJm4Hm+TM43zvDV9bMp/0/DBbxYUn+/Ur7Xyef2YqSFP8tNh8Ok+Tv9+Lyn5itJNV/e71V+m+ntN7++1/+ZOTCqxT6szjNTfLRdeTo+eXudH6J9ONWEKzzpIehnt3vsvV8349RP5zD78fk9xOsZz2Kuf5Z/igmf7SgfvZ7JqUnfVcgbjvU2xQy6RcpiFeKd2m65ugoRO75WZH7VflUAb7UqE9e0jeZM0OnhUR/2yx1c54yMqiGAw2jIzxPqJqnwVFTFy6Uu4bZNCy9Zl3bcKOZXQF14baqjtZp+TZVmMITJ+LKg5pu2Y4I6hq2eafblsu8ov+fT2Eac5jBLEqYxwLKWMRTT2t3LoTjGrZFJS5Uz2sq6F2jCRW73TFF7/jWEg7lfqEVu2t57K0bfkld68GZYYogXyqVy6A6ms4LqgjLE06wZz7ykN7xhxS8n+/xePwDsFKnFHjaAwAAAAABiAgAAA==",
-            "IconGUID": 3203,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Tiles x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVV1Kw0AQHtuk6Y+g4AWqF2naRqRCsfj3JhjsmgbSpCQbrW97BI8geICapz70pR7BCwheQHxWpM42iY2h0qYEHRg23+x8+81sshsAgAy6gL7G0GFm2WDksTzPYxyVxwBsDAGHmxjJm8YYLDSel8W813Uf8/WFX3g/9c9lgNvU9Hf6q+hDZZF+Zkn9rcT9y3z/K2n1v5r+nfyP+vJf64eWC0YpyBfZLBbGo3XkcP5se7a+hPh+w3eO84i9AMf7XZbPnx8T8L0Yf5RQ35tTv5eAP5qjn6T+QaC3qn6cz/EwYf9x/WFC/WGK/EHC/Qu/l1X5gxh/3vuLn4e0cHhuC6i7H+BN9CLiJ8n3Z/QXaVZz1AqRZz5X4uf97V2B8ocSzSsumReuKeBtL+HfUsTbII+RIii6DS29RyglikpV2G1rxIGaqxtt3dQa5qUFV6rhEmgSp7Nnq73ONE0hBqHkkFxQaGimZROf17KMG80yHa5Xmv6nMyzLckxgIpNYnhVYkZXYEVW7vVNiO7plIsWBvZOGApqrt6FudXsG6R9cm8TG2Ldo3XJNynOb+pTSVPtwrBvEj1ertRootqrxgurEpMT2e6b8FsY9fpD8/fmcTCZfd/ayZnjaAwAAAAABSAgAAA==",
-            "IconGUID": 3091,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Timber x12",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFWM1O20AQnubPSVyJ8gbwItU6cYVyiIrawo2D1WyNJWNHttPCbY88QB+ANyCPEB4g5x72HXrnEIXZtd1YKxCYpMxII3vG8+23M94drwwA0EBtob4TqLCRZnFVvq6KE9pcAMzvoMAoaVfitE/As6Limhi3/z631fitJ3AGP6PlX2D+Nzvj/2jX5me0/Equn+Vv/Lf6q9zVOyCr/4KYn9Hy3zi0/HrvL+jW39yh5c/33lv3v13x/a2fr0ORr7HeGPF6Y8T9lhH3W0bcbxlxv2XE33uHbv3p85ZDfN4i5NfnbYf4vP2m/KV0iqtVxLfFxlf6q/Po4POzw834FtrLPYDbvdzuFrZSM9+n8NLAy5r42yL+tfxLAy+3xKt7WTP/Kv7+FfUz5y9r1k9uMf+lgZdb4pV9XzN/adRPboGXj/Cb+2FXdrlve8j7u7A/oPbR/mPluiq0nHNVepV79cxW+52tXK0V6b8wrhyzhV8bC/9OtLEbdNHTBzdI4DiY8izjrpd58Gni8xQGsyCcBJE/in7E8NMLZxzGPD0/SrzpuQ5zecgz/oV/z2DkR3HCc9xxHF75cZQqPlv/F2mIpuiIlmgLS3RFT/SFLb5m3sX0lCdpEEcISeHoZOSCPwsmMIwvpiG//Pwr4gn6/pEO41mUqdhxoCFj7xK+BSHP/Y4zGICbeL6a0JBHGU/ynG1cIHMs/MF+Xp/Ver1+AJwzCTt42gMAAAAAAbgRAAA=",
-            "IconGUID": 3089,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Timber x4 v2",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVctKw0AUvbZJkyaF6t5F/RFJ20jpoii+doLBjmkwnYQ8tO7mU9y70G0Xhf6EuBL9An9ApN7Jw4SitJViLhySc3PunJmbGQYAoIQQEBsMAVmUkyfPyVzHOLubAkynkNTwEHO6KMdgYXBdGXW7asz5+MIvdXP+WrH+b9x7oX9pSf+t2sr+WhH+6+r3e+1P/dYK7neB/tF50wo+b//qn0YleUqJXmRZLs3n51HB72c72fgS8oc6wH095jLyScLn17tsPefjFeonP/iPV/QfL6if78e6ePrfqui7nfBNhIL8GcVPiFfEi5TNOR/V3Dv/pvL/ff6hQwORC2VJXTqmgKdNwttJxN0gY0YB3fLgwHJJEBDdCAzY65vEh1Zo2X2Lml166cC1YYcEesQfdDzDHUQyndgkIIfkIoCuSR2PxHUHjn1rOtTnfmp0L5ZYmVWYwEQmMZlVmcJUdhQYQ/eUeL7lUCzxoXPS1cEMrT60naFrk9H+DSUe5r5N205IA67tWVFJzxjBsWWTON9stlqge4bJJ9QmNCBevOYrxCNu/IYU9+dzNpt9Adt4lW942gMAAAAAAbgHAAA=",
-            "IconGUID": 3089,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Timber x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVb1OwzAQPtqkSRMkYGcoL4LSNqjqUIH42xgiatKI1InyA2Xzo3RnYc2Wl2DkFXgBhMo5TmioQE2kip70yf7Od/589kkGAGggJMQOQ8DSmvnIfSqPY5zNU4A0hTyHm1yKy3wM1hqPa2LcsS4431/6I++nPrf1+o2K+ge7dfXnxnbrF9qb0q9a/6b03mvfd2pso96Vfje23O/Glvv9X+svrJWPSh4vs6Wv8JfP0cL1m6Pl/gry5z0BzlXkSc5X662az+dJjfzkF/2kpn6yJn/1PjbFi3dro+5hzvcRGvJXReAtR3HmsrVLc76m8/fufJgZSqZVjCv2lLDbFfydZOwGFT0amE4AZ45PooiYVmTBydgmIfRixx071B7SOw8eLDcmMCLhZBBY/iQLM4lLInJObiMY2tQLiMg789wn26Mh19Ozf7HBmqzFJCYzhamszTSms4vImvrXJAgdj2JKCIOroQl27Iyh7019l8xOHykJ0Pct2vdiGvHYkZOljKwZXDouEf5ut9cDM7BsfqA+oREJRM33iBds/I4i7udzsVh8AfSHkkd42gMAAAAAAbgHAAA=",
-            "IconGUID": 3089,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Timber x8",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFV8tOwlAQHXm1PBL0D/BHDI8awoJIfK00sZFraVJa0hbF3f0EPsGEpRu3xA2EL2Dh0l8wcWnU4FzaSm1EKRDuJJN2pufcM3N7mVAAgAh6DH2LosPMou6V5USGoyzqDgEGA3A5zOI+3DRH4V9juCji9tJOzNaPzeH91GfaPPW9Gv7Wjyyov5MJ3X+eb//dAmf9oX+NVfXD7/8FZ31n7zetvy69l6XOO9f3XeCr3+WtP/TeAcd5n+c87/Oc532e87zfqL5nCfcquPg4neW8vL+OBD4/352tL2DcywLcZ51YxHjkxsF+5/FHAf54RT6L+yH44wD/NaT++Jf6w+j3XPyy9Y8C/PES/fcD/Qf5wfOwrtg7t0nUPXPjbfQUqwvBT+hv6M/CrGa/JX337Fmanfe7Dwly75Ifl1oQ560Zw2kj4L/zOP4aRMykQFJNqKktYttEkm0Z9usKsaDYVrW6qisV/cqAa1lrE6gSq1E25VZjCpOIRmxySC5tqCi6YRKHVzO0W8XQLaaXnn4XRGiUJmiMxqlARZqkKZqmR7bcbJ0S01INHSkWlE8qEihttQ4lo9nSSOfgRicm5r5FS0Zbtxm2qk4pVbkDx6pGnHyhUCyCZMoKK6hEdJuYTs+P6A9YSC7j7M/nZDL5Aqftyst42gMAAAAAAbgMAAA=",
-            "IconGUID": 3089,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Pileus x28",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFm71u2zAQgC/+t5wgHbXmDZwniJm4SDIEDfq3FbDQsI4ARzJkuU03jn2MAH0KT3UmoWOHjFnqMUC7dWqRkpJcO6oLk7auR4BwSPP0kfdn6WIDABRkL8m+IWSHWSumr2quptYJNTq6BvhwDamMauW5dfGcgKVNrSvKdV+tZKyuXxLJRdjOw7UP+eOxDr+gyQ83M/wFLcNv0fKPGKb+N5br/5MEoPELWvbvENufkq/ir4mm/6KW/pvE+m8Sxx+e/kta8Wfnxl9B/3vEfOl/QOx/QBz/V2Ms/ytrxf9yPt75Vevkdv5vK9mf8vwq/+DZv6JlfxgTx9+YNv6ghaX/qp7+W8Tx16KNP8rzq/jDs39NL/+2aOOPkh/HH8PSf10v/hhx/mPE/o+mf0vv/pcR3/8y2vvfJrH/kfKl/U/R/K+x1P9U/umg8Tf16h/E9u8Q5x88/W/p1R+J9U/Jt3Ot/06M6782w+Rr1D/38qx/Tozrn3H+odQ/NZ9h8pfb/4iYH3/+Efqf8n9Kvp1r/XtiXP+2GSa/pBX/QHl+aj7D5Je04p+Sb+da/50Y139thsmv6Pk/5fmp+QyTX9Hzf0K+nWv9dWJcf7UZJr+m5f9XlOen5jNMfk3L/yn5dq71z4lx/dNmmHxLy/+blOen5jNMvqXl/5T8+PkDjd/Qe/5F42/qPf+i8bf0vv9FqP+4/kLIj7//SGl/aj7D5G9p5Z//y5+2SvpaTdeXxWxuOj+/j4p8/9XO7PpVOf64nXQ1rqXjaPvv8/5LfpSRj9LxqvJqPDKQjxbwTeRvM/K3K5x/tAY/Kz8y5EcL+CbyU3uvys/Kq/Gd4fmjNfY/WrD/G0P9RWvYP1qw/xtD/8vyTfV3swY/Kz8y5EcL+Kb7v1sin81neY2nebcuuZ/T8SPZLTn+Uk36d9l/VGd7nm/1ub/Ve404z/9sQ1/2uWZprptesyT/W1aVv3Yoy2xekzMWtN0ATt0+D0PedkIHHp91+QD2h27vzPW6x94bH946vSGHEz44Pwyc/nm8rM17PORP+esQjrueH/BE7tTvve/63kDxGvHvLAqiKCqiJMqiKmqiLizREM9C56L/kgcD1/ekyAAOXxy3oTt0z+DAv+j3+OWTdx4P5Nwf6IE/9EK19sSNRU6cS3ju9ngyz9j+PrQDp6s2dMC9kAepztUPO3YB+ruJfn7d39//BkPUag542gMAAAAAAQgyAAA=",
-            "IconGUID": 3188,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Pileus x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVs1OwkAQHqTQUkz0FXgLb6VQQzgQiX83D42spUlpm3ZRvO3BBzHxBeAJxAfg4NGrHnwHjcHZ/kjTECgJ2Ekn25l+M9/OTNMuAMAeqoBaYKiwkGK0cp/EcSwwp3g9QxTDpZTABT4W5lwlHFdEHN0PbZ5fYMuxKf56vvySmoUfMvK/yyl+TKLWVvK/IL+yK/7CWv5g/krO88+RP+j/1ub/sXH/x9Oc+eu75Ids9Ss516/kV3/w/flX/ljK0SpG+BJb+GJ/ch9lfH5VW+QX0X46CJXbEtqzyE7XmzWe3082iJ8t4Z9syD9ZE5/ux7bseG4V5D2K7ENUGe1XMdRP1DdxseekVBL3/FmVz5t9a/D4pSVxckZcnFPAr62Ip4USvg0SemTQTA+6pksoJZpOdTjuGcSHxtC0eqZttO0bB251a0igQ/x+y9PdfgDTiEUoOSXXFNqG7XgkjOs61r3h2D7nqwbnlD1WZGUmsBITmcQqTGZVdkb1gXtJPN90bAzxoXXR1sAYmj1oOgPXIqOTO5t46PsjbTpDm3JsxwxCOvoIzk2LhH5VbTRA83SDb6hJbEq8sOYH/hPCxoylsD8/8/n8F7KHrqV42gMAAAAAAUgJAAA=",
-            "IconGUID": 3188,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Pileus x8",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFlz9P21AQwI/8c+Kg0KU7fAO+QZzEKMoQNYK2WyUs8jCWHDuyX9p0ex+h36ETQoxMHZyFvR06dYlg6YTYEQp3tkOsCOpEivtOOtl3vns/3/O9Zz0AgBxqAXVLoMJC8vGVfGWKE2R9mwD8nECcQ1JMxIU+AalCcXmM49uRTeMXXslb4mty+ffIFhvj36hLfByksfcvPsnuxvh369evZVn/Vmr91H+TQG7/yeRT/2laVvOfW2n+jzV59dPcS+XX5fKp/2Tyaf1n13/51P6j/p9ubP+5XXv/pf6Tyq9nyU/ff+n7S+XT/zeQN//h/y+QW/9Uy4q/2v4vkx+uP5n8epb89P2P9n+Z/Pv/zp9LKb4qcXxRLHxzf/I9Svj8095ifAXt8x2Ai53ILqN9GdvL9b6W/2MpP1gz/zvGXiXyr2P7JVE2bM/nvYLct7H9BlVF+xcG/0a9Rf2jLN45KZXEPT2r0nfWHnTYR02IumLcfMwCnkAVPG0W8WuW0aOCbnnQs4aMc6Yb3ICDvsl8aI4su285Zsc5deGzYY8YdJl/1vaM4VkYpjObcXbITjh0TMf1WJTXc+2vpuv4xKuG59ycyIuSKIiiUERZVIQqquKIG4PhR+b5lutgig/tDx0dzJHVh5Y7GNps/O6Lwzz0PUNb7sjhFNu1wpSuMYb3ls0if6PRbILuGSa9UIs5nHlRzX9pidRwJdWi+XmczWZPCp717njaAwAAAAABiA8AAA==",
-            "IconGUID": 3188,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Porridge x1",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNqtVM1u00AQHhondn6d9syBvgE3jjSJUZRD1Yrwc0LCbRZ3JXcdrTdtepvH4FiJK4dKvED7CHADCQleA4TMjL2p3aq0HDrSt+uZ/WZndnbWAABrBIfwAAlQSs3ObPOYh6ydPwU43QLrw1Kv8HIbwp3CvBrx3nuFzpODxSaDzavcq/HhHODs3uLvd67Fv0UadnYtv46lbWWv5tGg9Teb5f4u6R98gAu/0D3SP1n9JnHvWV+du4lFfJY+oUX6ZyL/IHwj/HTLnKvSrHzzWpvrdfYrgEe/gyqvda0OXOePlc3a1r9D9i9uEZvFXgV0rV+X1h9W8u5hyXlM8EnPssz/b/j/vlvOp5/f/1vqL7i4qR97lutb/nqlX7iOG5XzfCV8d+/uw9vquIrp0At16TXWqds8it6kCrepEl1aDaSGXTkXxoggNCE8m0UiheFCxjOpool6l8BRGC8EbIv0YKzD+UFOC0QsjHgu9g3kwyRSiRaF824Sn0SJSmG62HshYzHWcgb5EPEw0iK0rnzm/L+xhjVsoIN1dLGDHjaxhT1sYxd97OM6buDUhIfzV0KnMlEUIYXxy0kA0YI3TA7nsVjuHCuhyXaZ6ChZKMPcbany+DtaRlK9nua2cAmcXEEaDIZDOIFAhxEnNhLKCA1L2JMmpQPGoZFHgqNKNRNLW5FLeUI4pZ/dllPcx58sy/4CfzC6YHjaAwAAAAABGAUAAA==",
-            "IconGUID": 3171,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Porridge x4 v2",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFV71P21AQP0hCvjEwd2Hv0G5sTSAVYkCgph9TpRryap5k7MhxIGz3JzB279oFtR2rhD+gqtj6wdAtnarsVZXeOc+xawViFygn3Xu59+7e7+6X87MMADBLmiadQVIIJKVmXsuxH3pmD+C4ByqGJRPy89YQpgr7pcjvVW5k85TG0SHV5b99I/iVm8SfmYrf64bPuCr+bilS/wSJ4D+4ZXyqv1K53fpvE59lcG34P5PXT72fq95U/89O7//KTeKnJuD7MqfmrPLPYLDmr4fzmKP958vB+VmyTzSA99rIzpH9VtnReuPGs/0pQfyHSHw3IX53QnwS/NfK/1/zP4nEJ8XvRuI/ToiP/p/XZft9lyfc+8peIC2QfUbOX0n7pD+yQc5hyYd+816R+xx/1eCYNCSFCA/c529ChxVVfEnhnik8dRVAWcWVaf9uKO95DM7eJtXIHrJosWaP5ehMd9mY/YF28fPK+S54z/W9U4CV00nv63nlqyn/xdA9wDwvheo9J/2WvfyOiMPf+X/i72IGhxCMcfhjCfibScifX2//mvjjs75cwt+dCH9+jitj/jSPianKXIY0Xp+96E16L8XtM67rs+Lqqjx9vyJPEIejYZSli5kKeMJKmKdUQp78uvoxeJp27/mYafqiyNLXQ4bezjlCz9NTVyTWyrRbkw5sy6ZwXVHTXR0eNgzRgtW2NBvSMjaslzYc6GZbwKZo7a07enPPc6sJU7jikdh1wRs2DMt2xCh42zaPDNtqQb2981iaYt2RDfAGg4c1R+gqlGv2vnNmMYVzmMYMZrGEOcxjAeexiGXUcAEXcQnrrr7ffCqclrQtQmjB+pONGhhtPtDeb5qis3VoCYfWxomu2W3LZd9NaXn4W440pPWs7q3pHeDkRk7V6uoqHEHN0Q1ObE1YrnCgAzvSbVGBpu7KA8Go0mqIjmJkLO/4/qImHJRG/8fv4XD4B7UUjpl42gMAAAAAAcgNAAA=",
-            "IconGUID": 3171,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Porridge x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVs1O20AQnpCEJCTBkFMPvfAE7RtgwBXlgEBNf06VMGRrVjJ25Dg03OYROPZYqVcq+gIV4ZxTLuXUH4lTLr1xaqt01t6QJQ3YCaGMNHZmd2a/nc+fvQEAmCJPkSeQHPqWlHcxlhV5KCK9CfC+CbJGWFrJC8YQIk3kJSnvXTaMxS2F4SJLC1dzr+Lj4l3iJyLxD3XyieHvFAb6H2JX8bcIu3lyf/i6rq5xW/yf4/W/eI/9C/3rd6W/qXj6vzP8ZDz96/+T/55Ny3tG5qexP9YbV/cxTfOvF/rrZyj+rAF80MI4K+OO9m+/19V/pNxTpf5YxuPWi7g1Qv3xEPzWiPitiPpBPicV9557jnAfyXiOfIbiL5TcJv9OfpHp71m1nPJbzOUDvfwyYOu3oebNDPAgdHakLJaX9QUMMdsST0oRirKuSPMPlH3PUlyS8VNyjeJutxvfqeY6v87EPueCPn/Qd+fwdNg5OStzNZk/r7xHgt+S0ucZ+Xnm5vcsDm9nEbw9HOCtl/O4z5sW1ylbi+YHT1R+EiPy0+vnG/nXCfDTVngeS1c3aGUUzcXT1fDzJ66uzqWuLiakq84tdCW0Mpq24uiqqQ87H+PqqiN1FcVP1Heth5mif+wZ+neeptMvS+g5+uLliYkizRrcg01eZb7PDNM34UnFYjVYrnO7wh1rzXnjwr5p1xmss9ruqmdWd4M0g9nMZ8/Yjg/BZc1yXI+FxZuufWC5Tg3K9e3n3GarHq9AcLHEZcVjpiyFUMcJnMIkTmMK05jBAmYxhzM4i3ksooZzOI8lLPvmXvUl82rcdQihBqsv1gyw6mJBd69qs8bGW4d5NHa50RW37vgid507Af6Gxy3uvCoHY2YDxObCpKWl5WU4AMMzLbGxFeb4zIMGbHO/Rg3aps/3mUDlToU1JCOXdkT+iUS5WQifx59ut/sX9U+QZ3jaAwAAAAABKA0AAA==",
-            "IconGUID": 3171,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Porridge x8",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFWD9P20AUP/I/hGCgAx06wDfgGzQBVwipCNT0z9TBkKuxFJzIcWjY7mOwd22lLsxNFDFlSFnKVMQAXVArNoa2ct/ZZ+xeTW3HTnLKs/PO793v3u9e7uWMEEIJkBTIFAFBTkuyO+3LUTtiqh34dBDzoS3tsjP7CPJt1C4Jdkc5S6e3FLEGKS//bcvhl0aJP+WL/7FjSTz4uzNc/B6Nwy9NFn+pa+XAaPhP+PK/VB4lfjLQ+nc+jZv/uPB+DJVv44+Xy7fSqNY7FWy9H0/29z5JfPP3NjL+08H229Lk4jfr3cjizwSrdyPDz/rzXxo3/3bLsHuW2aeJ02f3u+eRgeevl53xs6B/EBB6J1h6juld4d947/Pvc/79kP42nu1/HNGf6ich/I85/15I/GOP+Q9C+Pc4/7D89TzmPwi5fjz+SUj++xz/YfH7HP4gJP4gAv+8P9W/h1z/QQT+e5x/fwj+eH9+/vx+EJdu71t5wG0wfQ5kGvQvYHwK8g3kNuvM2d3yru/0WYHud52fIiK/RLfdNMcD3SffuwYrMP8Z6D9juLSxrRQVmV8Rnj9yzXuWODYrIALohmEIgUW4f2+m85kz9+8LqI9HXa/z2yyzFZj9vGu/pzwuuOI5B/ma/X89CMLP+Rj5AWvBnx/aHH6mQvJjx3MVEz+nPvw85Ph5wPSnd/wIQ4vAYrXk5r+xOPxtd938JULyZ8dL8+wyBv6uIvJ3YxhDCzI5syQ4fxclN3/JkPzZ8V7HxN+pa5xh+BPM2J08ipKPwfPP+7wYNP8uWf7dxpR/Uflz51G0fAyaf97nvaD5d8nyLw7+zthYQ9cHIWyNCFI/L0pe58Gg9fOa1c/bmOpnFH4oQ/HyY+WQ13k1aP28ZvXTjx+//2k2ZgremGfh7XgaTqM5QM/DP7gCMFGEp6KioW2lgXUdi5IuoSdVGTfRakupVRVV3lDf1NGBVGthtImbe+ua1NgzzURcwzp+hnd1ZF42ZLWuYct5u147lOtqE1VaO8+VGl7XlCoyLzK9rGlYYq40ZvM9foIkSYakSJpkyQzJkTyZJrOkQIpEIHNkniyQii7tN15iranUVUBoovUXGyKSW3TA+n6jhttbb1WsQd/dRNfqLVWntpuKauJvaYqsqK8qZp/URnRyllG5vLqKDpGoSTKd2BpWdayhNtpR9CYEWJN05QBTVEWt4jZj5K5VYI1XFhH6vGitx2/DMP4ADJu/WXjaAwAAAAABqBgAAA==",
-            "IconGUID": 3171,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Tunics x1",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNq1VM1OwzAMNuynHduAI1duHOEJ+FnRtAMaYvycCzMlUkmnNIMhcfCj8CbsEeDEgQvPAULFaTNWKjR2wZIT2fnsL7bTAgAsspZZF4gVplKyu/G5BkfGGj8CPOyAjTFSyeFSH2U5Z4nBlRhXvc9sk79MWZLd9Z/YAv/2PPwwJ3/cKPDPkKrdHYuv0NQ38cM/2hNxC3atcFY1ddC7B/Dh5XFLhT6Z+p376Xndxjvsf3YyNWJbBE0b5/L5Wq6PNZrm3jA8bCdJMpfCjBrr6Tx2xgBv49/ex7LFrlh8Ize/VXPfXB0vrK/O3+9iVv8mnGV+3Q5/HRWevsvsNa6+zl1q8qknFByKAWqNnq992O8HGMPeUIR9IYOOvIzgxg+HCAcYX7WVP7hKYR6GqPEILzSkSyeQkcIs+DAK74JIxtAbnh+LENtK9CFdArO0FPo21M5ogRapRGWqkEM1qpJLS1SnBjWpp/3rwSmqWESS88bQPul40IquByGOurcSFZvfN2tFQ6lTpq4SgZBnPbgDT/mBIWuh1KhgBOdCx3zp0NfiBk1OIfs4slWmssW6yT+Tp1LW388kSb4Ao/2eXXjaAwAAAAABeAQAAA==",
-            "IconGUID": 3187,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Tunics x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVztv2zAQPj/lZ+TkFzRAx/6H+lUYHoIYdR9TB6VmFQKKZEhy6gAZ+F8ydulSFJ5qI7/Ao7sla4Gie1G4R4mKBNW25ERuDjjSR97xO34+UhIAQBo1i5piqOBLRvR8rMD9GLem31CnIGK45AJ+zhiDSOF+GfSzKq7N18+uiQvhP39c/M8cOxI/HRM/fxnCx0Uahxvx67vET63BT4rvn/fju76r/abj8b0z/EwkvnPe6o983v4rvid50UvCP8f8MW88mEce598d+utLaH+RAa5k1y4I+5P8737XxV+H4q+3jPfwkorn9mTL/MP4ky3xJwnGc3u2Zf5h/HB8uB6Ssr26LSLuM2HXUEtof0fnOeot6o3k5xyUYuA3nyvzep/+bsMT1ICUQjzwcyJd+vNlEV9hLuZc4ImjBFURV8X5p4G895ifEz/AMtpLFE7fht7xX9evE45Tc85zb4bNbNXzbE/4ysJ/P3D+Oa8Hgf1xfhfS5vshDl+3O+YLfkX0kXyxepCv1JZ8efv7kRBf88A69+RrY/1E8hmvvlY+v+PW10LU101C9fUQvqLq5+F8OfW18n0jbn0tRH1F8RV1z3mYWXxbkvDrIodP8wKiF/EGLCN7VZxtUxN6dEhsm7QVW4EXA5VY0BxRbUB1tat/MOBc0UYEjoh12jGV4anj1iYasclL8t4Gp+mqumESN7hnaBeqoVvQH528ohrpmHQATqPypmUSRYTyPTvfQWmWYXmWZTkmsQorsCIrsT1WZlUmsxrbZwesbytnwzfEtKihI4IFndfdNqgjvqBxNtTI+PijTkwcu0u0ZYx0m/seUd3BPzapSvW3fWdMGQNPznVqNJpNuIC2qag8sRbRbWLCGE6obeEGNcWm54SjUn1AxoKRO/mKOsRirFXd/+PPcrn8C7q7dfh42gMAAAAAAegNAAA=",
-            "IconGUID": 3187,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Amphorae x6",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVctOwlAQHXmVh4n+gn5JgRrCgkh87Uxs5FqalLZpi+LK+Rc/AFyyIGHDB/gFLtwb98bgDG1tJUQoEplk0p7pOXPuHXopAECKMkO5g5QQRTq4ci3PPGQ0GAPgGAINRzbGm9XQ7/lbMC9NvIddH3P/DC7m/vTnkJf6w4r+b4n9B/J29z8Yx3tswV/erj/Hlbyp3/+wt878Ud7u/P/XP4xccJUCfhajWliPryNHzy8Pov4S4cc9PxnnCU8CPL/fVfV8P0qgnyzwT6LvE/cpph8GeF19P6H/cIH/KOH8Rn/w78/ph2usf7Rk/vPv06Zw+N4XyLcR4H3KIuFnyc9XyhcpWnM8CrF7flbi8yJ/KACcURRX5IU9M3RaJfraZuk05alSBEV3oKnbwvOEonoqHLU04UKlqxst3dTq5o0Ft6rRFdAQbrvmqHZ7RlOEITxxIq49qGum5Qhf17SMe80yXfYrzb7zKUxjDjOYRQnzWMAilvDUUzv2hXBc3TJJ4kLtvK6A1tVbULU6tiF6x3emcKj2bVq1uqbH3IY+kzTUHpzphvDr5XKlAoqjarygqjA94fh75r9cpBm/S/58PqfT6Ree+aw+eNoDAAAAAAGICAAA",
-            "IconGUID": 3199,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Bread x2",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVktv00AQnrzfcVrxA+iNf0EeRlEOVSvC44SES7buSq4drZ2S3vbS/4HEFan8gUjtEXGh50rcyhFxRyjM2OvYsvIsQR1pPJndb/abndl1DACQRs2ipiQqRJJRlsaKhJO+exXOZ5XNxXD+mISVQrgM4o6rgU/rZxfEJfibD8v/Gfd/9XQVf3pN/otygh8Xae0t5W/+T/7USn6Sb81t1f/nGvUPJa9sQeFzMhoLx+N55HH+zV60fgH9Sw1gogV+UQa/SZP7XTee/K8bxE/m8G8S/1Hh78t/mYif3CP/ePyXOfHJfmzLD89NCXmfKL+BWkb/BsHfUe9QfxSinONSiv2muQqdt7e/dRiixqScqAOd00/laL6i4quK90bxqaMMNRVXi+VJfh39R8r/gKqhPyWBf7L+ejOrerHQJvEr7CKh/Tf8+/r4Gnd5Pe/9VVdYTeF3Yveb+rYbq9+t6t0yWacftw/cjzkV/LXcbqcjUT9Ion6kNuxHWL+7Nfqx6h6FnFn8Nyrg10QO39ZFZC/hDatgd2o4q3MBh3zIPI/phmfAs4HJXGiPuDXgttmzjx04M6wRg33mnnSFMTzxYTqzmMees3ce+I+eaTuCBcGHjnVuOrYL/dHRC26xruAD8B8mPTqCGSqU9ux/96RlRuZlVuZkQVZlUZZkWdZlRdakJhtyR+7KvmecDl8x4XLHRgYXui97OpgjWtA5HVpsfPDeZgLHZol2nJHtEXaf2z7/geAmt1/3/TFjDJRcAGq12m04B10YJiXWYbbHBIzhiHsubtAyPH7GiJXbAzZWFZmJoPIXgxccmT/T6fQvno5X/njaAwAAAAAB2AkAAA==",
-            "IconGUID": 3174,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Bread x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFV0tv00AQ3rzfr/4CypVL/0GT1ijKoWpFeJyQcMnWXcm1I8cp6W0PIPEzkLhyQOoJCYnk0GMleqcXekC9oIgrIDNjr2tjkjhuEzrSeD27M/vtfjO214QQEgdNgsY4KPEkIVrsy6Ift80h6IiIGJSUz8/u4yRU0C8BfntFx8b5k1PiAvj128V/D/v/PAzDj8+J/yofwIdJGqsz8evLxI+F4qPcGS6K/+/R8/8J8OuL2v/dwbXyX18W//H58r80/ER4/jH3jVt+/v8rvitp0WaEf4p7fW6/fx1pGH+66s2fAfu4QsiHimNnhX1S+Xe/0+JHgfhRxPi3wv+6+McT4k8jrt8ff3aN/Z8E9n8acf2nIfHBfC7KdusuB7j3hF0FzSMP4PwF9BL0W8Zbs19yvnscK2C9vvkpkbVfkt8vH+AB6/xd3hsviPiiwD0TeOJRICURV4LxNd+6y2DXhP0atIL4Y8uysMOy7JuxaK0ZrevutA7509ug/+R2muA+q/ZzXYczw8vRpO9sWfhWhH/N9x7A/Kz4eDoH/ZqZ/Z6Yh/fzm/JuOQyNBQFWCO8TGBvPbm/GvMc7isd7LCLvLk+XC+Id57qIwLv7ahgI3qezEb2Ow56Tv/M3T30P1yedI+at7wtR3z8WVN834XlGvUWq28XzbB+B1iedl+at5wtRz2E8h73nXcwknPYy8LeWgtNIFtBz8AUoAOslGJWYQXZYl5omlWRTJvc7Cu2RjT5TO0xTWtqeTg5ltU/JFu3tNw25u2+7SVSlJn1An5vEvrQUTTeoE7yjq0eKrvVIu7/7kKm0abAOsS8KXjYNKotQ3LP9XxnnCZ7mSZ7iGV7kWZ7jeV7mBV7iFV7lNb7C26Z80H1MjR7TNUDokeajlkSUPk6oH3RVOth+oVED+q4Wuqn3NRN9t5hm428bTGHak7bdJw8ILs5xajQ2NsgRkQxZwYVtUs2kBtTaLjN7sEFVNtkhRVSmdehAMHIlHzHjULzPyk4+fluW9QdTAhgKeNoDAAAAAAE4DwAA",
-            "IconGUID": 3174,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Garum x3",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVMtKw0AUvbZJk6aC/oL/4Af0ESldFMXXTjDYazqQTmIeWnfzKYI/YL/Abrt06c6NWz9AkXonDxOL0hRELxxmzp1z58yLAQCoEBTCmiBAHtW0lTld6oRk02k2rqStWtDFOQFLQ+qqpHtZT7icX/mh7qu/uC/jXynpf7Gyf7P5v/5Pf+6fRS1ttVSvijyX5YvrqNH4yVY+v0b8diOB5DrxWcoX91u2XvYnK9TPvvGfrOg/WVK/eB6/xbN7q5Pvdso3CQbxBy3BM+FRy9dcjHqhL8ca8r5P30y4eTWLOqOkLptTodem0W+h0mvQKWOAyXzYYx6GIZpWaMHOwMYA2hFzBozbPX7uwqXlRAh9DIZd3/KGscxEB0Pcx7MQejZ3fUzq9lzn2nZ5IP0a8T9VEVVRE4pQhSZ0UReGaIiD0Bp5x+gHzOVUEkD3qGeCHbEBdNyR5+B494qjT7lP044b8VBq+ywu6VtjOGQOJvlWq90G07dsuaAO8hD9ZM/yEJp0EXdKcj7v8/n8AwB3fxt42gMAAAAAAUgFAAA=",
-            "IconGUID": 3185,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Leather x8 (Lard)",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFmMtu00AUhk+uzqWSkWDJgj4HC+zEqMoiouK2Y2GRwbXk2pHtQJFYzCP0ESJ1xaKCsomqLmIWfQCeATZsUPcIhTmecWNCW9vIZkYaJWd8/vn8j8+MJQMA1Flvsl6jrMO6NcQvjnUwjyZXLiIQGmytVF48RvmcNzXMa7C8T30e4/xNenXun3zK2Iel8b/3NvhsEn37Jj48yMOHnPytd0X9H2p8Dcrhb/qvXeO/LN6PraJ+ea2VxS9eb/GzXsp73heaZP8ar3lp9c7Wn2pV1Xs9e78vxRpI8o/es/n/et41sv1f1qCc8z7e/5/LWv9vhc/7eVTm+644X5PMx/qrjl/L5EeS+aDL5SM7iuTVP+79eWX8fP6pZP+aZP+aVhW/nss/rYzfyOV/Ltl/JNE/vvvKe/8W949nj0w+lczHvVcdP/v5zyXzY7b+P+s/aW3xq4j8Fl2PJePp+2iz6y+21/MrLD5VAY5UHndEfKz+7fc6/QnLfZ/SnxTUI/tDSn8s4rz6M5UzE/1SxHn1eO+LDf6iIP80pT8XcV49ej1L6TE+L6BfbOgxXqpX14tScpzUbZdx74r4Fus9Fn9ReP8qenLP6dZN/cdrfdwn2k8j7qnWy5mXzNlku11hX+dabDd02EgPDNuHXXtKwpAYZmjCw4lFAhjMbGdiu9bIfeXBa9OZERiTYG/HN6d7cZpBHBKSx+RlCCPL9XzCdbue89by3AB5/fi7YJ02aJs2aYsqtEO7tEf79Elo7k+fEz+wPZdJAth5NjLAmtkTGHr7U4ccPHrjEp+NXUKH3swNMXdsx5KxeQBPbYfwcV0fDMDwTQtvaEjckPjc831WIB9vA9y7w9fn12q1+g3uVTQ5eNoDAAAAAAG4FAAA",
-            "IconGUID": 2994,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Olive Oil x3 v1",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrNV81u00AQnjRJ89c0aZ6AvkEPiHPSGlU5VI0oPycOLlnclVw7cpyS3vaIxKWPgMSFV+BQKT1x6KU9IHGiUhEcQEKRcgQUZux17VqWExdXMNJ6dnZn9tudb38SAIAFLDksGYEFfMlKTW1F8hNez50myBiSfMDPaRPumHFCfln0u2i4No2fE9G+1/FfjwCaM/FhTvxX5RA+DtJajcVv3iZ+Zib+Ga6/3koLP3n+SdLD/7GUFP+s+W/Xv3aC+791W/wvzOR/rXWb+NkIfE8WpS5I/7zw27z24DwWsf/pqj9+Ae3jGsD7mmsX0T6Vdni988aT/SFB/GkEfpL4N9L/pvjHofjTG8w/GP8lIj7MR1q2t29KiHvPuwmwlNE+R+fPWCZYvhf8OQelFKhTX4X2afOXAqOfStCvHMoD7dN3Zb+/IuOXJO65xJNXCVRlXBX7lcC8l9FelvZbLDW0p1IohanVCWDs1uHv67HnmPJQd877S7yXOidR75i35pr0XwncD8RfI5DHSywXhfi7Yx5eLv9HXqYuM4G6I0nrszi5zguJz0smIS9eHicp8UJjfYzh5W6IF/k8wpHkBWQypzfRMEOjozQD2st/tJ7vXIxGUe/rvOeC8vUJy7cU8v81pfwnJmAcr/1TMg5pqsXr+PyLZjD/2YT59/I1mSP/s94VDzOH/04K+O8mj79eiohewhengmxUsVfhFnR4j9k2U1RbhftdjfVhfcD1Lje0tvHchANVHzDYYv29TUvt7TluCtOZzR6wZzY4n7ZmmBZzgzumfqiZRh92BrsPuc42Ld4F56PRZ8NiqgwFl++MWBBZsShyIi8KYkkURUmUxbKoiKqoibpYEQ2xY6v7vcfM6nPTQIQ+bD5qK6ANaEBzv6ez4fYLg1nYdjXRDXNg2OS7xQ0Hf9viGjee7Dht6hBocq5Tq7W+DoegWKpGE9tghs0sGMIut/u4QF21+QEjVG502VBm5EroDh/j5j6qunz8nk6nfwBj4i86eNoDAAAAAAFoDgAA",
-            "IconGUID": 4831,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Olive Oil x3 v2",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFV81u2kAQHv7CPyY8AXmS8uMKcYgSlf5dKtUpW2clx0a2Sclt77n0ESq1L1HlEDhya54gcK+q5txWdNZex44FGBIQI3aH2Z3Zb/bbsRcAAOLYkthiDBv4khCaj2W4H/NmqkMQMVxSAT9njEGkcL8E+v0quDZfP7kg7iF+dYRdJH58Rfzbytr49d3if0Hs4fWm+L/MhfBxkfrBUvzaNvFjkfgOQG23/H+ubWv/8ZX43x5+Yg6+J3tCp4V/ivlj3ngwjz2cf3fgr59G+6sEcC25dgbtK2GH97so/ioUP35iPLdHa8SPQ/HTNfHHc/IP44f53JTtnXsWcb0jLmPLoX2DzrfY7rBN037OQckGvvO5PK+z6l8ZfvyRg365EA+8zr7n/Pm8iC8I3BuBJ64CKIq4Is7XAnmX0C4Ju4dNQnu2EZEAP/BbaC6L9CLh+yk7zx3D++ntaN771MtdEv77geeUn0MlwMdUnMcyWYXf6Y75RVI97TDsrh6ll/HLxec3tia/Hh93G+KXrzVZg1/P5/0Dfl3N816mH8X/SvU6fDbv/lm1XieiXn9uqF6fwqfPqFt5i/T2+OTi85l4RH1ORH1G8Rn1HvYwk/hrKI2/5lN4W2cQPYtv6DwyV8RZmZpwTHvEtoms2Ao876rEgkafal2qq239owHnitYncEis05ap9E4dN5loxCYvyAcbnK6t6oZJ3OBjQ7tQDd2CTv/kJdVIy6RdcDqVd02TKCKU79n53xFnCbbHkizF0qzAMizLcqzE8qzIJFZm+6zCOrZy1ntNTIsaOiJY0HrVlkHt8wWNs55GBkefdGLi2H2iTaOv29z3kOoO/pFJVaq/6ThjygB4cq5Tvd5owAXIpqLyxJpEt4kJAzihtoUb1BSbnhOOSvUuGQhG7uUbtgkWMSu45/FvNpv9B3hKNoh42gMAAAAAAVgNAAA=",
-            "IconGUID": 4831,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Sandals x12",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFmE2L02AQgGf7lX4Ielo8ur+kSRtZeiguft0Eg33NBrJJSdJ1BQ/vT/A/+AcWoedGetqb0j/gQQ96kNxF6kyS2lgW0yyJMzAkM5l5nzfzfoUAANRQG6gHEhW2Uk+v5GtTnCQrCgHufoA0h6SZiYt9MmnzX0JxdYw7v5XY1H5DXh/7N/8tMz9cMPP7zPVXefkRNx/n32XIO/85+TT/Wfl95vqrvPyImf8Z2XJRFv99ryhfZebLPi8/xPGHfh4f9uT/uNH4g8o7/px8Gn9OPu3/H9Wyxv9bd4ePjWhHeftvdfyDXD7tf9Xxa/l8On9L438pXv9Flfz8+sfnX2X8/eofMdc/Yq5/xFh/wG/ve1pZ+98N6h/y8iUzHyrl588/Ela+ysuXlfLz11/IzAftf/M30kqvShrflFvfxp/tRwufPzvatq+g/e52omS30b5K7d333Tef7ucF8q+u4c8L8ucl5pO9LNj/Xf6yIH9ZYj7Zq4L93+WvCvJXOfm787Ese7NuOsh9k9p3ULtof1IS/Yr6Xdn2OSudzD0969F6fv5Th0vUjHT3jNu02cDVruDf4iauxjZ6uqBbHpxYUxEEQjcCA+5PTOHDYGbZE8sxR85LF84NeyZgLPzTY8+YnsZhurBFIB6KFwGMTMf1RJJ34tqvTdfxideL/1PXZF22ZEM2pSLbsiO7sicfBcbZ9KnwfMt1MMWH4ycjHcyZNYGheza1xcWDV47w0PcHOnRnTkCxYytOGRsX8NiyReLXtMEAdM8wqUND4QTCS955ghNEPcSv4MOkPr/W6/VvCK1MpXjaAwAAAAABSBcAAA==",
-            "IconGUID": 3190,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Soap x2",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFWM1u00AQnjZJnd8m7RPQIzwDUt3WKESiakT5OSHhksVdybUjxympxGEPnDhx4AGQeAG4cWsqzkjk1htFqoRQJcSpF0Bh1l4nrut0HclVRhrvzu7Mfjvf7nqdAADMo2ZR5xgqjCUjSt6W536MW2/6AL/7IGK45EJ+Xhvzx7xKuF8G/V4XfZuPn2X+IGsrF30v4n9QrxN/TorfX00T/2cEf16KD6t8EjJ8SIj/qxzhP0Yu4p8gNjtMK//u1Phsxvhf1ST4Sfm/1ZsW/x3PX00LP7r/M9L9x3N/mhp++eW0+YM6W/y+ep38ZxPxrx6lhX86/ftHnS0+z//GjPOfJX7/MM37Jwl+IAuiVIR/jo3bgvbwPBaw/8nKeHwF7c9VgI9V386j/UXY0Xwnxb9H38NQ/Jmw40RJ2Q54KyDuTWHXUItoD9D5GPUc9UQZzzkshVCd95X4erb/atD/o4X9ihEe+Dp9Ko77SyK+LHAHAk9cZVARcRXmbdbRvBfRXhR2G7WK9vBKCfpl5aUwmFROEp5Pzdvfb/FsNY/ivgeDuVeF/1LonPF1WA7x8R31m3L1GUjC7w8Jv7eT8VuNlqJHWl6OA1kp4ZffnWN+56bkN+DjPCV+B6HzEsfvvQi/JWG/CvMrspbVR6yGGU6hDon3Nahx31lJ9zXn6RT1LAXeTyW835XwDpEzHVcf8QQhvlKsJ+Pd+72kxn1fJeE94Ok8Ae+y93qAmcXbWcFf1zm8PfOIXsA3fglXoYK9GnWgSdvEdYmmuzrcaRmkA+tdaraoZTSs5zbs62aXwCbp7NYdvb3ruWnEJC65T5654D0ahmU7xA9u2uaBYVsd2O7uPKAmqTu0Bd7D4I8Nh+gilOfs/Q8wzzJsgWVZjimszPKswIpskZVYhVVZjS2xZbbt6nvtR8TpUNtChA7UHzY0MLp8QHuvbZLe1guLONg2muiG3bVc7rtJLQ9/y6EGtR5ve216D/jkfKe1tfV1OADN0Q0+sQ1iucSBHuxQt4MJmrpL9wlHpVaL9AQjIznm9OOi1mr+evwbDof/AaFgYuV42gMAAAAAAegQAAA=",
-            "IconGUID": 3189,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Soap x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFWr9v20YUPtv6LdtUPGVMOvYv6GbKVmEYSJCgbtMOKRCmvioEFEqgqNQBMtyQKVPHjgW6ZOyYTqKBAoGHAgkKQwmcpYDbxnBRGB26pAb7HnkUKYISedYxPOB098j3+N193x3veDYhhCxCLkBeYJBJkJZ4idcq6MfQYuuEfLRPeAymYsjPvca8Z85K6LcEfic1z8bnF5j3kObVSd9J/O9tQi5Lw38SwV9IxlezxF9MxGdD+EnEJynxP9yL8B+TJvFt4P9bWxb+YFkUH5MqDf9vYXxbzbf/T0H7K3ZW428pcfw9bWaJX0jEx/FnD/PjH/XPE/8F9F9VZeFH+S8m8w99vyINf/mRMP/r+eK/ULPkv5SK/x9z5j9PfFz/Ljez2n+UE/nH+XenmZX+lWR8NUv8aqrxx6TtP46F9384/nLFh/7fybn/eeITW+b+/wL4qsz5fyw8/1F/tZkV/+VU+ueKP5T5/rlY/98vvp9KvCxz/yILrvnXw+0owf0vrwbPL4P9q0LIT4pnV8A+5Ha0v2nj0R4KxB/G4IvEP+f+fvyBYPxBTPwvgv0fztH+w0j8SDB+FIl/PWf8SLD/P3D/i/J3EIkfzRmP9pFg/8Px54L4o5j2Hwm2/0hiPNqngu2P4p8K4p8mxEffR7Js/71ZBVyT2w3INbBfgvMbyA7kf8tBm8OpGqrjvbr7nj5vEfu/VtivFuEB39PPasH9Oo9fxvkMWCOOxz+lyQqPW2HuZmHc7lWwfarw2Evh64QzNfn3kkrHKxWSupyWsF8Nt13fwR6rtx93LrnKfRXufym03qEeayFefof8R3n2WpiG59M5efbYmixFGB4TTc4EyySe8Vs+4HlRkGefl3eSeMZ59HIGz7cjPDe4bYd45kkRq4djA/Y9rYK2Zl1P1uvZPp6Bxp1XptHL5/ct5N8k6HWSoNcXCXqFST+bUndmixQWKr6eg3CBXvj3okCvgqBePr+OJL3wWX/O0OtaRK86tx9Pzq/wuuHWz2bX3Xe+rHr6ecLW4851084T5OkY8j8SeP9rTt7HDChT6hHmwzNDVj0d70wN814S5N3nyZHEO+p4IrCerHH7Fec9PNyyrk+bWwn1C6x102fR5PxR1bhz2bTz54SvM+8k6Ph2Th3fo4xKitk6Uc9WR2+PF3e+nUZHn3cnhY5J3zU+ZgFOJ8vw3xVFOD2qAHoVvnjqoOoK3G3pJrmp96hl0ZZmaeTj3Tbtk42B3tnVjfa28XWXPNA6A0qu0/69LVPr3XPdWrRDLfoJ/coi7s922+ia1Au+2e08bHeNPtkZ3P1U79AtU98l7k8bfzZNqvFQ4o2bBbbIlliJFViRldkyq7Aqq7FVVmcrTGENdomtsR1Lu9+7Rc2+3jUAoU+2PttukfYAH9i93+vQvRvfGNSEa+OGbnYHhoW+13XDxb9h6m3d+HzHvabtEWyc59RsbmyQh6Rlam1s2CY1LGrCt8Rd3epDBzuapT+giKobu3SPMzJOP4PGPdC48YGnx7njOP8DVh6x/njaAwAAAAAB6CIAAA==",
-            "IconGUID": 3189,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Fine Glass x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVstOwlAQHXkVCgl+grr3F0yFGsKCaHztXDRyrU1KS9qiuLtx62ewNtG4NAQ2LE30D0xcuDPsjcG5tLW1onKxwUkm5UznzJkZepsCACTQU+gLFB0CS3pXFsuyPMrQsA/Q74PHYZYO5Y1j1K35k7G8JOadF1zM6qfo5NzP+szuY9NfbfPqD6X/nX/YD9eYl/5vejCl3kthln3Pf95A/xH3fS/FpS/O9rxLce1/hft5f5TmPb9vGe8qePlpGsT8eLiPDN4/WA7qC4iviwCdoouzHr4sfp33O34vwu9x8n29uPgM33L2H9Xn4Xe8/Fn1ryP8G07+TYTf/SOf4QEHvxvh8+6vO6H/Aef/F+bfTdCPnoe4sH9uc6i75uFFdBHxg+D6M/qTEPQctlzoN7uXZ+edvsogoYdMnDLPr5nCt42AXydpfBtkMSKCrFmwpTWJ4xBZcRTYqKvEhlJL0+uaoVaNIxNOFL1FoEbs44qlNI/HaTLRiUO2yaEDVdUwLeLytkz9TDUNm+nlx99FCZqkGZqiaSrQLM1RkebpjqM0mvvEsjXTQIoNlb2qDGpLq0PZbDR10t48NYiFsQ/RstkyHJZb08aUmtKGXU0nbnx9vVQC2VJU1lCZGA6x3Jkv0K9wMUs5dz9vo9HoHQX2wcJ42gMAAAAAAbgJAAA=",
-            "IconGUID": 3202,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Honeycombs x4 (Flax)",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFV0tP20AQHkiC8yAkcOqVf9BjjwmkQhwQqPRxqoRptmYlY0eOQwOnPfbQQ39CpZ77EyLgnAOUW05USJz6EGqvrdIZe4Mdy2A7JMpIk83szuw382W83gAAzKKmUWcEKniSkiPNZclPkPXtBODJKcgYkozPz5kT7p73Cfml0G8/79q0f1q4m1SXh32H8cUxwONIfIiJ/2s+gB8iw/ifKpOsfyay/vMTV8dT//d80vo/VqaLT9iUwzTrnyY+9X+5Or3+p+f/UXVS/T8b2f/0/E0OPxWCP5A5OSrSPyO8ucG8P485XH+97O2voP255CrZWbQ70g7WGzeevvcSxHcC8d2E+J2Q/L8kiO8G4q8T4ndD8k+Cfx2Cn5S/s0D9vYT5nwXy7yX8/XsPwO8E4rsj5N+L4C/4PIzLHjy3OcT9IO0yah7tr4qrf1B/Kl7Ofsn5vtNagc6Tnb81AFJP8gEe6Jw4ynvrBRk/j/MXiqsk8iiFoowr4nrFl/eCcNdI9lBLaPdRyE423vTvG8PkrnOQ6ig75+p7vNPsnIbdwxakb0n6L/reE8T/ko+HK9RL5f6zNw6vVw/kNSmn/VLEODKv9L72eJ1JyOuAh99j4vXCt8+o/Xo3FzcRY/zfJF6/iuOwe0Pcfr2U/fpjTP06EV4j+jL52RGnXz1eUyP066Xs1yheo87hAWYab3MK/hvN4G0ri+g5PKELyHIRV2vcgi3eYLbNaqqtwtO6xpqw0uJ6nRvauvHWhANVbzHYYM29NUtt7DluNaYzmz1jb2xwPtY1w7SYG7xl6oeaaTRhu7X7nOtszeJ1cD40+li1mCpDqWbnf/OsSIk5kRYZoYh5kRU5kRcLoiCKoiTKYlEsiW1b3W+8ZFaTmwYiNGHtxXoNtBZtaO43dNbefGcwC+duE101W4ZNvhvccPA3La5x49W2M6e2gZJznarVlRU4hJqlapTYKjNsZkEbdrndxAJ11eYHjFC5UWdtycitnNOtGomuyPf6v36//x8JfEL8eNoDAAAAAAEYEAAA",
-            "IconGUID": 2795,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Honeycombs x4 (Lavender)",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFV81O20AQHkiC80Mw8ATwBn2EBFIhpCKi0p9TD6bZGkvGjhyHhtuee+qhD4DUSy+VeuylAtQXaMmhJyQunCrRcGulVu6MvY43VsAxCcpIY8/szvjbmdlZ2wAAs8hZ5BmODBFlxJ3G8mTHSft2AlA/BeFDlJPs/DEOiUR2GbR7Uwx0en6WBw+prg7aDuLzY4DKxPCv5mP4Q2gQ/23lPuOfSYyf8t87mRT+z+Jd4p8mPsX/qTLd+KeJT/t/pTq9/U/5f1C9r/0/m7j/Kf/3h58Zgh/SnLgrwj7Ho7FwXF7HHM6/WI2er6D+Xg2Y9Dzq10KPxzuqP8nnKfyvh+Cn8f+Cth8l/69CH9X/e8z/R0p/wu/G8Lsp8bsx/G7K/J8n5C++Hyalh/u2gLjvhL6IXKS4lID/IP9SojXLVJBkmitRn5z8rcEKskTFWB6oTz4Xo/mS8J/H8TMlYCJxlEBZ+JVx/pG07gXUF4T+AVlF3SMS+RtZ9kazVyXZk2XknieobyTkcEJCU285RygPi/55c4TfBM3TYd8xYcyqsF+Szieq37KUx0vkC+X2s2uUulyOWZdU9QjkXqKNGsk9dbAefdmL8j9GWaS60PsyqstMyrqEefw9obqcSc+5W12k4OWkSMmS9/bQHN/QI+P0WlwerV/48bD3/qj9ciH65WpC/TJWXZLLMri3b+gFuUfG6rWUtRnsl6gumTv0y4Xol6S6JL2HQsws/qEq+Deaw6+tPKIX8A1VwiqVcbZmOFA3msx1WU1zNXjY0FkL1tqG2TAsfdN6ZcOBZrYZbLHW3oajNfd8sxozmcses5cu+JdN3bIdFjjXbfNQt60W7LR3nxgm23CMBvgXnS7rDtOEK8Xs/zfP8gyf41me4wqf53le4EW+wEu8zFW+yJf4Mt9xtf3mM+a0DNtChBZsPN2sgd6mB9r7TZN1tl9bzMGx/kLX7bblku2WYfn4246hG9bzHX9M6wAtLjCqVtfW4BBqjqbTwtaZ5TIHOrBruC0M0NRc44ARqmE1WEdkpE/0M3eEia6I75p/nuf9B2hmbUR42gMAAAAAARgQAAA=",
-            "IconGUID": 2795,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Togas x2",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFWD9P21AQPwLB+YsD34ANdWLo3hhcRQwIVPpnqoRpXo0lY0eOA6HTG/oB+h06V2JDnSAzE0PVpaJdOoGqqmtbpXfOM3l1DYlTtz7p+XHv3fl39/O9swMAQA7HDI4pjgOGMi1mWiuQHQ93Cj0QPiR5yS5Y4zBSyG4a7b5UxB1p7Qa/3/GXEHv7NC38vVIEH2+iLd6GT5Ie/p1u4vy1f5n/1Mj8iX9+Ly3843LS/I9Os8UPAFLDP0hc/0f1bPOn+ssUH+vva30Ufm5MfKUySf1liU/yqZ5t/WWZP9Vf1vzXtbTwo/03F9N/Q5kVsyLs83y4Fq7Lcczi/tPF4f0VOm8qwFt1oBeEfqL+me9N/r2Ify+h/xthPyn+cYz/WcL4Zf+zCfI/ieSfBP+1sJ80/uOIf+8v/Ul/nzB/2f/dBPxH44/iR+s5LT08d0XE1YRew1FC/RyNP+C4xHGlDGOWpSj9TXtl6gen33VY/qHLdqUID3TOX5SG+2XhXxG45wJPtCKoCr8q7t+V4p5DfU7oLRwq6v1A1PFmgLFn7LE3zPFC+dSC/riJ7+eXvbjv6TB2VdjPS/2WnsOCxMcFjo/K7T10HH4v/hO/RE/SOQG9Er8kQ36nEvIb8nGZEr/n0nmJ43c3wm/4vtqW+VUHrFzXX1I9lBh9vHpd0uLev+PW65Xg85sy+rvrtr4RYs7g14OCv77zyFYB0YvYUcrIbhV3dcuDTavFfJ/phm/A/abJ2rDSseym5ZhrznMX9g27w2CdtXcbntHaDcx0ZjOfPWDPfAgua6bjemzgvOnah6brtGGrs/PQslnDs5oQXEy6rHrMEK6Uc/B/ghyf5rN8hue5wiu8wIu8xOd4mVe5ymt8ni/wLd/Yaz1mXttyHURoQ+PRmg5mh27o7rVs1t04cJiHa9eBrrodxyfbdcsJ8Dc8y7ScJ1vBmtEFCm5gpGkrK3AIumeYFNgqc3zmQRd2LL+NCdqGb+0zQrWcJusKRq7lM45X+FCXa4Pn8bPf7/8CJ9Dx7HjaAwAAAAABCBEAAA==",
-            "IconGUID": 3191,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Wine x2",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrNV0tP20AQnjydByHAuRf+RW9NQqqIAwKVPk6VMM3WrGTsyHFouO2p6v+o+gty6LFB6jVC7QVxQIp6QagS5dJbq3TGXmPLSnFWDZSRZu3Zndlv5tv12gYASKNmUVMCFULJyCv1FchPkDUeYvMJZAxJLuLn9Ql/zpuE/DLoxxd8m+bPium+Mfza/8WvHQEMH80L/20pho+T1FdvwofhbeKnkvFrt4mfTsSv1W8TP5NcP0k9CR9mxL9U3n9XuP4P54b/vaSMX7tr/EDy8qpJ/5wI+4L+aB55HH+5Gs6vof2+6ivZBbTPpB2vd9Z4uj9WiD+bgn+siH8ciR/8YzzZFwrxg1j8SBF/MCX/E4X4USxelb/RlPxPFNcvjn+hyP9FQnx8P8/LDp67IuJ+kPYSagntL5qvP1B/amHOUSlG7mms7D2vv5qwgxqRUowHes4/lsLxsoxfwP6vmq8k8iiEioyr4PiDSN6Lws9XvoSgivZkMqmqKcWE+jeh/Ja8+nbwff/uaNr7eVH6VqX/cuT8ojxXIvWdon7Tbj7fZuHr9I75gquYJvJF34chXylFvoL6xnPia3zv9xdJyFdaka+gvvM58XV+//dXLcpXRpGvoL7LGfhKOucCzCx+bWr4t5TDr5ECohfxBCwjexUcbXIHtniHuS5r6q4Oj9sG60Kjx802t4x167UNB7rZY7DBunstR+/seW5NZjKXPWGvXPCadcOyHeYHb9nmoWFbXdju7T7lJms5vA1eY1Cz5jBdhlLN3n9dWmREXmRFTmhiQRREUZTEoiiLiqiKJbEsVsS2q+93njOny20LEbrQerbeBKNHE9r7HZP1N99YzMG+60TX7J7lku8Gtzz8TYcb3Hqx7fXpfaDkfKd6vdGAQ2g6ukGJrTHLZQ70YZe7XSzQ1F1+wAiVW23Wl4xcy2faX7gJxxV/PX5PJpM/a17O23jaAwAAAAABuA4AAA==",
-            "IconGUID": 3177,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Writing Tablets x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFV81u00AQnjZJnZ8mTitunCouHDjwCEnrquqhakX5uyDhksVdybUjxynpbREvEokDz1BVSMmBE+JQLtBDL0ggUCTUC6eCwqy9braWm9jUtCONx7M7n7/ZGe1qDQAwjZpFnWKoMJKMsHwsz+NYMPO0BwLDJSfFeWPM/+Y44XEZjHu14Pv8+1nmf6S+cD72PP8Jctcm8sM/8k9N5q/9T/7pifzVPvLX0uJ/ORuqf4Sc5+/2rpefS3r8P5Ovv3a966/Wr5ef7/3H9bT4B8XE/LWr5g9kRlhFxOfYaCwYl/OYwfkn0v5W0H+t+sr9PPqHwg+vNy6evx8lwB9G8CfBv8HY9xL+g/CT5H8k4fcT8ofx3P+VAL8fwh8k5N+PyH+QAH8Qwiet/0FE/oOE/Q/zJ63f4BL8Qb/G8Yf3U1p+sO8LyPtW+FXUIs9D8fUH6qkyylmWgvTO50r8vOieatD7rclxxVAd+Dlz89ZoviTwszj+Gbk+CT5xFENZ4Mo4f1vKu4J+RfhNVBX9IRdIwapwEsdeJHw91bP7QbMfdZ8LcldF/Jx03vI+zEv1+IL6VRl/Hsep70fF14vqeydU3xvC78r1VWNZD5eWVaVajbOT+3EX74vdftT9Nk4/gvodo35LoR/HV9QPvKenbC/XlFE/vNX0o+77cfoR1O97jH5MOqcCziz+rSn4t5fD20we2Qt4gpWwO2Wc1agDG7RJXJdouqvDcsMgLVhsU7NBLWPVem7Drm62CayR1vaKoze3vTCNmMQl98gzF7zHqmHZDvHBG7a5Z9hWCzbbW/epSVYc2gDvYfDHkkN0AeVr9v5Lp1mGzbAsyzGFzbI8K7Aiq7ASKzOVVdkcm2ebrr7TfEicFrUtZGjByoNVDYw2/6C90zRJZ/2FRRwcO0t0yW5bLo9do5bHv+5Qg1qPNr0xvQM8OT+oXl9chD3QHN3giS0RyyUOdGCLui1coKm7dJdwVmo1SEdU5EzeiUJ3K34//gyHw7/lesd0eNoDAAAAAAF4DwAA",
-            "IconGUID": 3201,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Loungers x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFWctu00AUneZR59m0ZVOJTVs2iC9gmbRBpYuqUctjxcIlQ7CUOpHjlJQFGokf6Ccg8QPsukJNJKKqOyDKAglFlegmIKFuWKEq3LHHzcQ4sScxZKSx547v9Zk5c3ztSRBCKAA1BHWGQEX9EmRn2hehfoRauQZCyw3EYmgJc35GH0GuhfoFwe/1imnT+4eIeZPMyqDvIP55HaHbvuEfr9rwHcogPjkByxU/4BH/VUIYPz1d/OWMn+u/HxvEn/G0/pf16a0/xU77hv8zMY7+6ifT1d808XMN/h5+55+Aq/6o/v3Dt+s/6Ir/kWov7Rf+ndo4+jvyDf84Po7+polP88952i/9r47F/1JmuvxPE9/4/sj8q+c/5On59w/f/vyHvX3/ZP7n+88qs+wsMf8w6fdZ/fw4ZuH6E45fCey3KbNSOwJ2i9n2+XqNp+22QHzLFt8VxG85jL8pEN+1xd+YF8PvOoxfZP4WHo8vEn8Kvu+5+DNmjxt/KsjfmQN+UxC/6WM8tU8Fx9+cQD8th/i24PPTniC+ZYsX1V/XFu+kP3s+8cu28l4UcC+YDfAoBvYnyawxGNgPqT9mvkS5Nr0Wp/ny3VUW1X9neb+YjQeaZ2/e6l+Ps/gE9H+WzEoL+xRGSRaXhOv3uXHPkb7PEdQU2D2jwK4EibQN07FNl6LHrYdoe1ih85033i9f4f2dbjjt9+eYb4r5L3DvI7pOixxfF1A70mhMnv+XMWf+f7nwn3PhH1jtk+ih3eNIH9a+5nWC9nD+L9M8/zOC/Ft8RSNi/A/Tfxvu8WUE/3dt/FvLmBvQf8/xnGK6HnZ2inPn7wPo903dab/ohT9rvt9Y9UO/o/hLe+Pvr2Jpdth5eJwX/fX5C46hPzrfcESMv1H5tzNJ/p0gVw7k3JF52Xt+95Z/nfc7XvNvh+Xf7z7ptzNR/h0/V3rLxZeCbS/6d97vedV/h+VfN/7dvlMszBD8WiHBr/1h2M1FAD0KWSIOTCfhalbRUE4pY13HWVmX0b18AVfQWlUp5hW1sKk+K6EDuVjFaAtXnm9ocvm54ZbFRazjHfxUR8Zhs6CWNGwG50rFw0JJraDd6t4DpYg3NCWPjEOBHtY1LLNQOmfjf4kACZJZEiJhIpEEiZAoiZE5EidJkiLzZIEskl1d3i8/wlpFKamAUEEbDzezqFClNyztl4u4tv1CxRr0XQ90vVRVdeq7pagG/ramFBT18a7RJ9cQHZzplMmsraFDlNXkAh3YOlZ1rKEa2lP0CkywKOvKAaaoiprHNcbIddmhD8ISZL0lcz2uer3eH9rAElt42gMAAAAAAXgZAAA=",
-            "IconGUID": 3198,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Standing Lyres x2",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrNWEtv00AQnjZJnUfzaCWkSpwKF4499sAhbo1KD1UryuuCVJcsriVjR45TUonDSvwBfkIl/kD5BbTqGVWUY1UpgLgWOAMKM340juXGdmQII43Xszuz385jd50AAEwiZ5EnODL0KeO21JcnPW6L7wAWj8C1Icr59Ow+7sw5jEgvg3qv5h2Z5s9yZxJxflB3EP+WCLAQiQ8x8S+mA/ghNIhfrwPMpYb/uTiIPxHp/z7iHxymhd+dTer/gjhefPKfajAd/ELi/FP98dTwSy+T4jvYaeEH999kZP1R/rfq44v/AWLz+vjib9efmBa+em2U/TdOfPv8F//W+Z+Jdf7VU8O/0Rkl/vUxxp/un7up3T9fEt8/h/8B/tw/xfdoym0FVz/H+31ev38dUzj+xFffAspvqg6TnEf5zJWD/sa1p/fzBPZnIfhJ7I9R963P/jih/QnqvvfZnyS09/wdFf84YH8ywvrPI+IXrIe0ZK9uC4j72pVryEWUPwgOXyB/E/pr9lPB905jJdon339KAL8kv14xEAfaJ9dv9sdLrv009p8KDhO5VzmUXbsyjt/2rbuCcsWVm8hVlHtE1Zgtvl3VeimIaq8i8qdmnxuP8WzZOgr7PVLxzUXjM75zhvIw64vHJ+SuMBwzTnw/4hxnQ+K7GIivl7sNf3x7vdCW/BjWhtlFx4/uhv3DsO/JOPHz/KX4fU0hfqe+PIxSn3HrKqo+49Z5vPoM/16KW59dN74XQvQ9Oeyc8DCz+LUl4L8FObwN84hewCosYbTLOCqpJmyoTWZZTJItGe40FNaCpbaqNVRdWdWfGbAra20Ga6y1s2LKzR1bTWIas9g99tQC+7Gq6IbJHOMNQ9tTDL0Fm+3t+6rGVky1AfZDoceyyWTXlHy2/9eY5Bk+xbM8xwU+zfO8wIu8wku8zKu8xmf4LN+05OfNh8xsqYaOCC1YebAqgdKmCY3nTY111l/ozMS+y4UuG23dIt01Vbfx101VUfVHm3af3AFanKMkiktLsAeSKSu0sGWmW8yEDmyrVgsd1GRL3WWEquoN1nEjckk/6KsPE9itOfn43ev1/gBLd8i/eNoDAAAAAAG4EQAA",
-            "IconGUID": 4832,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Necklaces x3",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFVctOg0AUvbZQaDHRT1C/hLaYhkVj42tnIrEjJaFAeCgmLuZTTFy7cNVVk/YT/ALjD/gDxtQ7PASbmoJt7E1uhnM5554ZZgAAgAomh7lFMSGLajKymsh4lCE6AXiYQKJhwed4UY3C0mC8KvLC7Riz/twvup/+LDbpT+XN+suTfI9V/d9L+1/KRfwrBf0Pwr+s/0Fe1/ql+9L+8n/7p1FLRiHh8zSrpfX8PGp4/2I/6y8gftyJk2ER8TjB8+stqmfX0xL68QL/pxL654S/Lj3Do5Lzn/cflfQfraAfL9BPS+7fdIl+/jytC6fnvo6+aoJ3MRuIX4Q4XzHfhGzO+ajnrtk9KXpfPhTYw8xFoyAv7cnh10rAvx2Pb5OIlQYohgs9wyG+TxTN1+CwrxMPWoFh9g1LV61rG240MyDQJd6g42rOIKIpxCQ+OSZXPqi6Zbsk1vVs8063LY/5SdF/tkKrtEY5ylOBirROG1SiJ742dM6J6xm2hRIPOmeqAnpg9KFtDx2ThEe3FnGx9m3atgPLZ9yuEUm6WginhknierPZaoHiajqbUJtYPnHjNTvJ5jhC/Hw+Z7PZFwkbpi542gMAAAAAAQgIAAA=",
-            "IconGUID": 3192,
-            "CreationTime": 1794018291
-        },
-        {
-            "Name": "Oysters with Caviar x4",
-            "FolderName": "Latium",
-            "RegionGUID": 3225,
-            "PipetteData": "eNrFlk1OwlAQx0egtBQTXbrVvWeQjxrCgkj82mls5FmalLZ5LYq7t/AA3sEDlAuQ4IIDmB7AvQsvYAzOa4vUBiMVkk4yaWc6//ebeeGRBwCQQy+gbzB0mFs+evKcxOsYj9gYYOcZIg03IVYX5Bj8abwuj3WjvTDm6xd+0f3kc8uSzyrZ8iu4/4/jdfHpZmp+JWM+sscH2c6fJf8K55eq6+LvD/4z//r470vMP7Ni9BSjeoHNc7N8vI8ifr/Yna8vYvy0FTqPJX7+ojg577J6/j5JoR8t4E9S8icxvbeinsd+Cr2X0Kft31vQv59y/5J8P+X8/gp8L6FfxE/+HtcVz85NCbmXUbyNLmP8Iob+iv4mznuOWyn2zr+Vg/P2ocAQPWbyknWzNQt4gxDxtiDgaZQwI4OiU2jrNnFdoqiuCocdjThQ6+tGRze1pnljwa1q9Am0iNNtUNXuBmUKMYhLjsm1C03NtCgJdW3LuNcs0+G8cnBPybE8K7ICE5jIJFZiMiuzE1ft2eeEOrplosSBxllTAa2vd6Bu9WyDDI7uTEIx9w2tW33T5bUtPZC01AGc6gYJ89VqrQYKVTXeUJ2YLqHhzA/8XxA3ZiiF+/M5nU6/ADovt9942gMAAAAAAUgJAAA=",
-            "IconGUID": 3186,
-            "CreationTime": 1794018291
-        }
-    ]
+  "Version": 1,
+  "Stamps": [
+    {
+      "Name": "Latium",
+      "FolderName": "",
+      "RegionGUID": 3225,
+      "PipetteData": "",
+      "IconGUID": 2880,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Coal x12",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFV71O40AQHsiP83Mo9wh31590jxAnPqEU0aH7666wLnvGkrEj2zlCt49ASUlBQcMzQCqKNEjIQu7yBFBSAAqz3g2xTAgxDuxKI2fG37ffzMSzlgEAVtHyaCsUDaYrJ64sVmI4yryzE4C9AQgOW4UYLopRvue8xXA5xNWr3Gf75+lsbEK/LlcfjgF2l6b/qZ+6fuz/6ERu/2XqHw54D+brw+vpq3L1DwbxPbLqf17w+VuW3uW71PWqMupNPG91ef93NO/P6r/yvEvUj+ZNcv/3VHn1R++bpem/4H1Tf+v6J6sororAF+g0NonH8yji/T8fp/sr6A9rAEc17peEf1p7XO9T/IsEPxT+ovxwBj+N/pHAvzT/YYIfZuQzP0hZf5x/nVI/nJF/kLJ/QYb8hwl+mJHP/KuU9QeJ/gUZ+GFK/QuBn8dPzuOy/Mm5UUbdkRj892gV9M8VbmO0G2Wac3yVY7/ZvSry4MOdBqNbLY6rLIib7JnH007Br6MCnkYljFRAM13YMLvE94mm+zp87RjEg0bPtDqmbbTsfw78160egTbxNtddvbsZwTRiEZ98J399aBm24xLO23CsHcOxPabHjssVukpztEjztEAVWqJlWqFV+sPXt7q/ieuZjo0UD9Z/tTQwemYHms5W1yL9b9s2cTH2INp0erbPsG0zorT1Pvw0LcLjqtpogObqBkuoSWyfuLzmc7QvawD7a7w/d+Px+B6JbPs0",
+      "IconGUID": 2880,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Concrete x9",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVs1OwkAQHuWnpZjoI+hjeJKfGsKBSBS9mdjIWjYpLWkXxXjZd/EB6guYcOHA0WcwXn0BY3CGtlIbIlSNnWTSftPv229nMy0AAGxi5jE3JCYsIhdeqaYSTxIajwEexhBqKAox3rwmgzW/C+LlkLe/FWBaPy+Xc7/6U2TpP65k4b/KD9b0e03fL/V6kO15Z+pP817JeN4rGc/7v/pHUQyvSsgvyEUtqsf3UcTn53uL9RXE99tBElYRT0Oc7HddPd37KfTTJf5+Sn8/pvd/qSc8SaF/TOinP+g/qZ+k3P9khT45D3+Fo7ktoW8nxDuYGuInJcgXzGdlsed4lGL39KxM837xpkMFMxbamrxozTy+bQr+OhfwbVCxooHOXWjzAROC6YYw4LBrMg9qQ251uW027SsHrg1ryKDFvF7DNQa9OU1nFhPsmF0KaJq247JA13asW9OxPfIrz/8XbMqcLMq8LEhFqrIkNVmWJ8LoD86Y63HHRokHjdOmDuaQd6Hu9AcWGx3d2MzF2qdp3RnagrgtPpe0jBF0uMWCerVaq4HuGiZtqM5swdyg5zv6AuIZ76rB+bzPZrMPiwmpeXjaAwAAAAABuAgAAA==",
+      "IconGUID": 3129,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Mosaics x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFlc1OwkAQx0e+CsVEH0G9e/dmgRrCgUj8unloZC1NSkvaonibxBcx8QV8A/DAA/gAnLyrdzU40xZpCBFKGtlk0v6n/9nfbjvZAgCkKDIUG0gB05EOr5zLsw9Z4QDg4BnCGh7ZiM/PYTDnX4N9afLJm4Hm+TM43zvDV9bMp/0/DBbxYUn+/Ur7Xyef2YqSFP8tNh8Ok+Tv9+Lyn5itJNV/e71V+m+ntN7++1/+ZOTCqxT6szjNTfLRdeTo+eXudH6J9ONWEKzzpIehnt3vsvV8349RP5zD78fk9xOsZz2Kuf5Z/igmf7SgfvZ7JqUnfVcgbjvU2xQy6RcpiFeKd2m65ugoRO75WZH7VflUAb7UqE9e0jeZM0OnhUR/2yx1c54yMqiGAw2jIzxPqJqnwVFTFy6Uu4bZNCy9Zl3bcKOZXQF14baqjtZp+TZVmMITJ+LKg5pu2Y4I6hq2eafblsu8ov+fT2Eac5jBLEqYxwLKWMRTT2t3LoTjGrZFJS5Uz2sq6F2jCRW73TFF7/jWEg7lfqEVu2t57K0bfkld68GZYYogXyqVy6A6ms4LqgjLE06wZz7ykN7xhxS8n+/xePwDsFKnFHjaAwAAAAABiAgAAA==",
+      "IconGUID": 3203,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Tiles x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVV1Kw0AQHtuk6Y+g4AWqF2naRqRCsfj3JhjsmgbSpCQbrW97BI8geICapz70pR7BCwheQHxWpM42iY2h0qYEHRg23+x8+81sshsAgAy6gL7G0GFm2WDksTzPYxyVxwBsDAGHmxjJm8YYLDSel8W813Uf8/WFX3g/9c9lgNvU9Hf6q+hDZZF+Zkn9rcT9y3z/K2n1v5r+nfyP+vJf64eWC0YpyBfZLBbGo3XkcP5se7a+hPh+w3eO84i9AMf7XZbPnx8T8L0Yf5RQ35tTv5eAP5qjn6T+QaC3qn6cz/EwYf9x/WFC/WGK/EHC/Qu/l1X5gxh/3vuLn4e0cHhuC6i7H+BN9CLiJ8n3Z/QXaVZz1AqRZz5X4uf97V2B8ocSzSsumReuKeBtL+HfUsTbII+RIii6DS29RyglikpV2G1rxIGaqxtt3dQa5qUFV6rhEmgSp7Nnq73ONE0hBqHkkFxQaGimZROf17KMG80yHa5Xmv6nMyzLckxgIpNYnhVYkZXYEVW7vVNiO7plIsWBvZOGApqrt6FudXsG6R9cm8TG2Ldo3XJNynOb+pTSVPtwrBvEj1ertRootqrxgurEpMT2e6b8FsY9fpD8/fmcTCZfd/ayZnjaAwAAAAABSAgAAA==",
+      "IconGUID": 3091,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Timber x12",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFWM1O20AQnubPSVyJ8gbwItU6cYVyiIrawo2D1WyNJWNHttPCbY88QB+ANyCPEB4g5x72HXrnEIXZtd1YKxCYpMxII3vG8+23M94drwwA0EBtob4TqLCRZnFVvq6KE9pcAMzvoMAoaVfitE/As6Limhi3/z631fitJ3AGP6PlX2D+Nzvj/2jX5me0/Equn+Vv/Lf6q9zVOyCr/4KYn9Hy3zi0/HrvL+jW39yh5c/33lv3v13x/a2fr0ORr7HeGPF6Y8T9lhH3W0bcbxlxv2XE33uHbv3p85ZDfN4i5NfnbYf4vP2m/KV0iqtVxLfFxlf6q/Po4POzw834FtrLPYDbvdzuFrZSM9+n8NLAy5r42yL+tfxLAy+3xKt7WTP/Kv7+FfUz5y9r1k9uMf+lgZdb4pV9XzN/adRPboGXj/Cb+2FXdrlve8j7u7A/oPbR/mPluiq0nHNVepV79cxW+52tXK0V6b8wrhyzhV8bC/9OtLEbdNHTBzdI4DiY8izjrpd58Gni8xQGsyCcBJE/in7E8NMLZxzGPD0/SrzpuQ5zecgz/oV/z2DkR3HCc9xxHF75cZQqPlv/F2mIpuiIlmgLS3RFT/SFLb5m3sX0lCdpEEcISeHoZOSCPwsmMIwvpiG//Pwr4gn6/pEO41mUqdhxoCFj7xK+BSHP/Y4zGICbeL6a0JBHGU/ynG1cIHMs/MF+Xp/Ver1+AJwzCTt42gMAAAAAAbgRAAA=",
+      "IconGUID": 3089,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Timber x4 v2",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVctKw0AUvbZJkyaF6t5F/RFJ20jpoii+doLBjmkwnYQ8tO7mU9y70G0Xhf6EuBL9An9ApN7Jw4SitJViLhySc3PunJmbGQYAoIQQEBsMAVmUkyfPyVzHOLubAkynkNTwEHO6KMdgYXBdGXW7asz5+MIvdXP+WrH+b9x7oX9pSf+t2sr+WhH+6+r3e+1P/dYK7neB/tF50wo+b//qn0YleUqJXmRZLs3n51HB72c72fgS8oc6wH095jLyScLn17tsPefjFeonP/iPV/QfL6if78e6ePrfqui7nfBNhIL8GcVPiFfEi5TNOR/V3Dv/pvL/ff6hQwORC2VJXTqmgKdNwttJxN0gY0YB3fLgwHJJEBDdCAzY65vEh1Zo2X2Lml166cC1YYcEesQfdDzDHUQyndgkIIfkIoCuSR2PxHUHjn1rOtTnfmp0L5ZYmVWYwEQmMZlVmcJUdhQYQ/eUeL7lUCzxoXPS1cEMrT60naFrk9H+DSUe5r5N205IA67tWVFJzxjBsWWTON9stlqge4bJJ9QmNCBevOYrxCNu/IYU9+dzNpt9Adt4lW942gMAAAAAAbgHAAA=",
+      "IconGUID": 3089,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Timber x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVb1OwzAQPtqkSRMkYGcoL4LSNqjqUIH42xgiatKI1InyA2Xzo3RnYc2Wl2DkFXgBhMo5TmioQE2kip70yf7Od/589kkGAGggJMQOQ8DSmvnIfSqPY5zNU4A0hTyHm1yKy3wM1hqPa2LcsS4431/6I++nPrf1+o2K+ge7dfXnxnbrF9qb0q9a/6b03mvfd2pso96Vfje23O/Glvv9X+svrJWPSh4vs6Wv8JfP0cL1m6Pl/gry5z0BzlXkSc5X662az+dJjfzkF/2kpn6yJn/1PjbFi3dro+5hzvcRGvJXReAtR3HmsrVLc76m8/fufJgZSqZVjCv2lLDbFfydZOwGFT0amE4AZ45PooiYVmTBydgmIfRixx071B7SOw8eLDcmMCLhZBBY/iQLM4lLInJObiMY2tQLiMg789wn26Mh19Ozf7HBmqzFJCYzhamszTSms4vImvrXJAgdj2JKCIOroQl27Iyh7019l8xOHykJ0Pct2vdiGvHYkZOljKwZXDouEf5ut9cDM7BsfqA+oREJRM33iBds/I4i7udzsVh8AfSHkkd42gMAAAAAAbgHAAA=",
+      "IconGUID": 3089,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Timber x8",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFV8tOwlAQHXm1PBL0D/BHDI8awoJIfK00sZFraVJa0hbF3f0EPsGEpRu3xA2EL2Dh0l8wcWnU4FzaSm1EKRDuJJN2pufcM3N7mVAAgAh6DH2LosPMou6V5USGoyzqDgEGA3A5zOI+3DRH4V9juCji9tJOzNaPzeH91GfaPPW9Gv7Wjyyov5MJ3X+eb//dAmf9oX+NVfXD7/8FZ31n7zetvy69l6XOO9f3XeCr3+WtP/TeAcd5n+c87/Oc532e87zfqL5nCfcquPg4neW8vL+OBD4/352tL2DcywLcZ51YxHjkxsF+5/FHAf54RT6L+yH44wD/NaT++Jf6w+j3XPyy9Y8C/PES/fcD/Qf5wfOwrtg7t0nUPXPjbfQUqwvBT+hv6M/CrGa/JX337Fmanfe7Dwly75Ifl1oQ560Zw2kj4L/zOP4aRMykQFJNqKktYttEkm0Z9usKsaDYVrW6qisV/cqAa1lrE6gSq1E25VZjCpOIRmxySC5tqCi6YRKHVzO0W8XQLaaXnn4XRGiUJmiMxqlARZqkKZqmR7bcbJ0S01INHSkWlE8qEihttQ4lo9nSSOfgRicm5r5FS0Zbtxm2qk4pVbkDx6pGnHyhUCyCZMoKK6hEdJuYTs+P6A9YSC7j7M/nZDL5Aqftyst42gMAAAAAAbgMAAA=",
+      "IconGUID": 3089,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Pileus x28",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFm71u2zAQgC/+t5wgHbXmDZwniJm4SDIEDfq3FbDQsI4ARzJkuU03jn2MAH0KT3UmoWOHjFnqMUC7dWqRkpJcO6oLk7auR4BwSPP0kfdn6WIDABRkL8m+IWSHWSumr2quptYJNTq6BvhwDamMauW5dfGcgKVNrSvKdV+tZKyuXxLJRdjOw7UP+eOxDr+gyQ83M/wFLcNv0fKPGKb+N5br/5MEoPELWvbvENufkq/ir4mm/6KW/pvE+m8Sxx+e/kta8Wfnxl9B/3vEfOl/QOx/QBz/V2Ms/ytrxf9yPt75Vevkdv5vK9mf8vwq/+DZv6JlfxgTx9+YNv6ghaX/qp7+W8Tx16KNP8rzq/jDs39NL/+2aOOPkh/HH8PSf10v/hhx/mPE/o+mf0vv/pcR3/8y2vvfJrH/kfKl/U/R/K+x1P9U/umg8Tf16h/E9u8Q5x88/W/p1R+J9U/Jt3Ot/06M6782w+Rr1D/38qx/Tozrn3H+odQ/NZ9h8pfb/4iYH3/+Efqf8n9Kvp1r/XtiXP+2GSa/pBX/QHl+aj7D5Je04p+Sb+da/50Y139thsmv6Pk/5fmp+QyTX9Hzf0K+nWv9dWJcf7UZJr+m5f9XlOen5jNMfk3L/yn5dq71z4lx/dNmmHxLy/+blOen5jNMvqXl/5T8+PkDjd/Qe/5F42/qPf+i8bf0vv9FqP+4/kLIj7//SGl/aj7D5G9p5Z//y5+2SvpaTdeXxWxuOj+/j4p8/9XO7PpVOf64nXQ1rqXjaPvv8/5LfpSRj9LxqvJqPDKQjxbwTeRvM/K3K5x/tAY/Kz8y5EcL+CbyU3uvys/Kq/Gd4fmjNfY/WrD/G0P9RWvYP1qw/xtD/8vyTfV3swY/Kz8y5EcL+Kb7v1sin81neY2nebcuuZ/T8SPZLTn+Uk36d9l/VGd7nm/1ub/Ve404z/9sQ1/2uWZprptesyT/W1aVv3Yoy2xekzMWtN0ATt0+D0PedkIHHp91+QD2h27vzPW6x94bH946vSGHEz44Pwyc/nm8rM17PORP+esQjrueH/BE7tTvve/63kDxGvHvLAqiKCqiJMqiKmqiLizREM9C56L/kgcD1/ekyAAOXxy3oTt0z+DAv+j3+OWTdx4P5Nwf6IE/9EK19sSNRU6cS3ju9ngyz9j+PrQDp6s2dMC9kAepztUPO3YB+ruJfn7d39//BkPUag542gMAAAAAAQgyAAA=",
+      "IconGUID": 3188,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Pileus x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVs1OwkAQHqTQUkz0FXgLb6VQQzgQiX83D42spUlpm3ZRvO3BBzHxBeAJxAfg4NGrHnwHjcHZ/kjTECgJ2Ekn25l+M9/OTNMuAMAeqoBaYKiwkGK0cp/EcSwwp3g9QxTDpZTABT4W5lwlHFdEHN0PbZ5fYMuxKf56vvySmoUfMvK/yyl+TKLWVvK/IL+yK/7CWv5g/krO88+RP+j/1ub/sXH/x9Oc+eu75Ids9Ss516/kV3/w/flX/ljK0SpG+BJb+GJ/ch9lfH5VW+QX0X46CJXbEtqzyE7XmzWe3082iJ8t4Z9syD9ZE5/ux7bseG4V5D2K7ENUGe1XMdRP1DdxseekVBL3/FmVz5t9a/D4pSVxckZcnFPAr62Ip4USvg0SemTQTA+6pksoJZpOdTjuGcSHxtC0eqZttO0bB251a0igQ/x+y9PdfgDTiEUoOSXXFNqG7XgkjOs61r3h2D7nqwbnlD1WZGUmsBITmcQqTGZVdkb1gXtJPN90bAzxoXXR1sAYmj1oOgPXIqOTO5t46PsjbTpDm3JsxwxCOvoIzk2LhH5VbTRA83SDb6hJbEq8sOYH/hPCxoylsD8/8/n8F7KHrqV42gMAAAAAAUgJAAA=",
+      "IconGUID": 3188,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Pileus x8",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFlz9P21AQwI/8c+Kg0KU7fAO+QZzEKMoQNYK2WyUs8jCWHDuyX9p0ex+h36ETQoxMHZyFvR06dYlg6YTYEQp3tkOsCOpEivtOOtl3vns/3/O9Zz0AgBxqAXVLoMJC8vGVfGWKE2R9mwD8nECcQ1JMxIU+AalCcXmM49uRTeMXXslb4mty+ffIFhvj36hLfByksfcvPsnuxvh369evZVn/Vmr91H+TQG7/yeRT/2laVvOfW2n+jzV59dPcS+XX5fKp/2Tyaf1n13/51P6j/p9ubP+5XXv/pf6Tyq9nyU/ff+n7S+XT/zeQN//h/y+QW/9Uy4q/2v4vkx+uP5n8epb89P2P9n+Z/Pv/zp9LKb4qcXxRLHxzf/I9Svj8095ifAXt8x2Ai53ILqN9GdvL9b6W/2MpP1gz/zvGXiXyr2P7JVE2bM/nvYLct7H9BlVF+xcG/0a9Rf2jLN45KZXEPT2r0nfWHnTYR02IumLcfMwCnkAVPG0W8WuW0aOCbnnQs4aMc6Yb3ICDvsl8aI4su285Zsc5deGzYY8YdJl/1vaM4VkYpjObcXbITjh0TMf1WJTXc+2vpuv4xKuG59ycyIuSKIiiUERZVIQqquKIG4PhR+b5lutgig/tDx0dzJHVh5Y7GNps/O6Lwzz0PUNb7sjhFNu1wpSuMYb3ls0if6PRbILuGSa9UIs5nHlRzX9pidRwJdWi+XmczWZPCp717njaAwAAAAABiA8AAA==",
+      "IconGUID": 3188,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Porridge x1",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNqtVM1u00AQHhondn6d9syBvgE3jjSJUZRD1Yrwc0LCbRZ3JXcdrTdtepvH4FiJK4dKvED7CHADCQleA4TMjL2p3aq0HDrSt+uZ/WZndnbWAABrBIfwAAlQSs3ObPOYh6ydPwU43QLrw1Kv8HIbwp3CvBrx3nuFzpODxSaDzavcq/HhHODs3uLvd67Fv0UadnYtv46lbWWv5tGg9Teb5f4u6R98gAu/0D3SP1n9JnHvWV+du4lFfJY+oUX6ZyL/IHwj/HTLnKvSrHzzWpvrdfYrgEe/gyqvda0OXOePlc3a1r9D9i9uEZvFXgV0rV+X1h9W8u5hyXlM8EnPssz/b/j/vlvOp5/f/1vqL7i4qR97lutb/nqlX7iOG5XzfCV8d+/uw9vquIrp0At16TXWqds8it6kCrepEl1aDaSGXTkXxoggNCE8m0UiheFCxjOpool6l8BRGC8EbIv0YKzD+UFOC0QsjHgu9g3kwyRSiRaF824Sn0SJSmG62HshYzHWcgb5EPEw0iK0rnzm/L+xhjVsoIN1dLGDHjaxhT1sYxd97OM6buDUhIfzV0KnMlEUIYXxy0kA0YI3TA7nsVjuHCuhyXaZ6ChZKMPcbany+DtaRlK9nua2cAmcXEEaDIZDOIFAhxEnNhLKCA1L2JMmpQPGoZFHgqNKNRNLW5FLeUI4pZ/dllPcx58sy/4CfzC6YHjaAwAAAAABGAUAAA==",
+      "IconGUID": 3171,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Porridge x4 v2",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFV71P21AQP0hCvjEwd2Hv0G5sTSAVYkCgph9TpRryap5k7MhxIGz3JzB279oFtR2rhD+gqtj6wdAtnarsVZXeOc+xawViFygn3Xu59+7e7+6X87MMADBLmiadQVIIJKVmXsuxH3pmD+C4ByqGJRPy89YQpgr7pcjvVW5k85TG0SHV5b99I/iVm8SfmYrf64bPuCr+bilS/wSJ4D+4ZXyqv1K53fpvE59lcG34P5PXT72fq95U/89O7//KTeKnJuD7MqfmrPLPYLDmr4fzmKP958vB+VmyTzSA99rIzpH9VtnReuPGs/0pQfyHSHw3IX53QnwS/NfK/1/zP4nEJ8XvRuI/ToiP/p/XZft9lyfc+8peIC2QfUbOX0n7pD+yQc5hyYd+816R+xx/1eCYNCSFCA/c529ChxVVfEnhnik8dRVAWcWVaf9uKO95DM7eJtXIHrJosWaP5ehMd9mY/YF28fPK+S54z/W9U4CV00nv63nlqyn/xdA9wDwvheo9J/2WvfyOiMPf+X/i72IGhxCMcfhjCfibScifX2//mvjjs75cwt+dCH9+jitj/jSPianKXIY0Xp+96E16L8XtM67rs+Lqqjx9vyJPEIejYZSli5kKeMJKmKdUQp78uvoxeJp27/mYafqiyNLXQ4bezjlCz9NTVyTWyrRbkw5sy6ZwXVHTXR0eNgzRgtW2NBvSMjaslzYc6GZbwKZo7a07enPPc6sJU7jikdh1wRs2DMt2xCh42zaPDNtqQb2981iaYt2RDfAGg4c1R+gqlGv2vnNmMYVzmMYMZrGEOcxjAeexiGXUcAEXcQnrrr7ffCqclrQtQmjB+pONGhhtPtDeb5qis3VoCYfWxomu2W3LZd9NaXn4W440pPWs7q3pHeDkRk7V6uoqHEHN0Q1ObE1YrnCgAzvSbVGBpu7KA8Go0mqIjmJkLO/4/qImHJRG/8fv4XD4B7UUjpl42gMAAAAAAcgNAAA=",
+      "IconGUID": 3171,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Porridge x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVs1O20AQnpCEJCTBkFMPvfAE7RtgwBXlgEBNf06VMGRrVjJ25Dg03OYROPZYqVcq+gIV4ZxTLuXUH4lTLr1xaqt01t6QJQ3YCaGMNHZmd2a/nc+fvQEAmCJPkSeQHPqWlHcxlhV5KCK9CfC+CbJGWFrJC8YQIk3kJSnvXTaMxS2F4SJLC1dzr+Lj4l3iJyLxD3XyieHvFAb6H2JX8bcIu3lyf/i6rq5xW/yf4/W/eI/9C/3rd6W/qXj6vzP8ZDz96/+T/55Ny3tG5qexP9YbV/cxTfOvF/rrZyj+rAF80MI4K+OO9m+/19V/pNxTpf5YxuPWi7g1Qv3xEPzWiPitiPpBPicV9557jnAfyXiOfIbiL5TcJv9OfpHp71m1nPJbzOUDvfwyYOu3oebNDPAgdHakLJaX9QUMMdsST0oRirKuSPMPlH3PUlyS8VNyjeJutxvfqeY6v87EPueCPn/Qd+fwdNg5OStzNZk/r7xHgt+S0ucZ+Xnm5vcsDm9nEbw9HOCtl/O4z5sW1ylbi+YHT1R+EiPy0+vnG/nXCfDTVngeS1c3aGUUzcXT1fDzJ66uzqWuLiakq84tdCW0Mpq24uiqqQ87H+PqqiN1FcVP1Heth5mif+wZ+neeptMvS+g5+uLliYkizRrcg01eZb7PDNM34UnFYjVYrnO7wh1rzXnjwr5p1xmss9ruqmdWd4M0g9nMZ8/Yjg/BZc1yXI+FxZuufWC5Tg3K9e3n3GarHq9AcLHEZcVjpiyFUMcJnMIkTmMK05jBAmYxhzM4i3ksooZzOI8lLPvmXvUl82rcdQihBqsv1gyw6mJBd69qs8bGW4d5NHa50RW37vgid507Af6Gxy3uvCoHY2YDxObCpKWl5WU4AMMzLbGxFeb4zIMGbHO/Rg3aps/3mUDlToU1JCOXdkT+iUS5WQifx59ut/sX9U+QZ3jaAwAAAAABKA0AAA==",
+      "IconGUID": 3171,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Porridge x8",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFWD9P20AUP/I/hGCgAx06wDfgGzQBVwipCNT0z9TBkKuxFJzIcWjY7mOwd22lLsxNFDFlSFnKVMQAXVArNoa2ct/ZZ+xeTW3HTnLKs/PO793v3u9e7uWMEEIJkBTIFAFBTkuyO+3LUTtiqh34dBDzoS3tsjP7CPJt1C4Jdkc5S6e3FLEGKS//bcvhl0aJP+WL/7FjSTz4uzNc/B6Nwy9NFn+pa+XAaPhP+PK/VB4lfjLQ+nc+jZv/uPB+DJVv44+Xy7fSqNY7FWy9H0/29z5JfPP3NjL+08H229Lk4jfr3cjizwSrdyPDz/rzXxo3/3bLsHuW2aeJ02f3u+eRgeevl53xs6B/EBB6J1h6juld4d947/Pvc/79kP42nu1/HNGf6ich/I85/15I/GOP+Q9C+Pc4/7D89TzmPwi5fjz+SUj++xz/YfH7HP4gJP4gAv+8P9W/h1z/QQT+e5x/fwj+eH9+/vx+EJdu71t5wG0wfQ5kGvQvYHwK8g3kNuvM2d3yru/0WYHud52fIiK/RLfdNMcD3SffuwYrMP8Z6D9juLSxrRQVmV8Rnj9yzXuWODYrIALohmEIgUW4f2+m85kz9+8LqI9HXa/z2yyzFZj9vGu/pzwuuOI5B/ma/X89CMLP+Rj5AWvBnx/aHH6mQvJjx3MVEz+nPvw85Ph5wPSnd/wIQ4vAYrXk5r+xOPxtd938JULyZ8dL8+wyBv6uIvJ3YxhDCzI5syQ4fxclN3/JkPzZ8V7HxN+pa5xh+BPM2J08ipKPwfPP+7wYNP8uWf7dxpR/Uflz51G0fAyaf97nvaD5d8nyLw7+zthYQ9cHIWyNCFI/L0pe58Gg9fOa1c/bmOpnFH4oQ/HyY+WQ13k1aP28ZvXTjx+//2k2ZgremGfh7XgaTqM5QM/DP7gCMFGEp6KioW2lgXUdi5IuoSdVGTfRakupVRVV3lDf1NGBVGthtImbe+ua1NgzzURcwzp+hnd1ZF42ZLWuYct5u147lOtqE1VaO8+VGl7XlCoyLzK9rGlYYq40ZvM9foIkSYakSJpkyQzJkTyZJrOkQIpEIHNkniyQii7tN15iranUVUBoovUXGyKSW3TA+n6jhttbb1WsQd/dRNfqLVWntpuKauJvaYqsqK8qZp/URnRyllG5vLqKDpGoSTKd2BpWdayhNtpR9CYEWJN05QBTVEWt4jZj5K5VYI1XFhH6vGitx2/DMP4ADJu/WXjaAwAAAAABqBgAAA==",
+      "IconGUID": 3171,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Tunics x1",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNq1VM1OwzAMNuynHduAI1duHOEJ+FnRtAMaYvycCzMlUkmnNIMhcfCj8CbsEeDEgQvPAULFaTNWKjR2wZIT2fnsL7bTAgAsspZZF4gVplKyu/G5BkfGGj8CPOyAjTFSyeFSH2U5Z4nBlRhXvc9sk79MWZLd9Z/YAv/2PPwwJ3/cKPDPkKrdHYuv0NQ38cM/2hNxC3atcFY1ddC7B/Dh5XFLhT6Z+p376Xndxjvsf3YyNWJbBE0b5/L5Wq6PNZrm3jA8bCdJMpfCjBrr6Tx2xgBv49/ex7LFrlh8Ize/VXPfXB0vrK/O3+9iVv8mnGV+3Q5/HRWevsvsNa6+zl1q8qknFByKAWqNnq992O8HGMPeUIR9IYOOvIzgxg+HCAcYX7WVP7hKYR6GqPEILzSkSyeQkcIs+DAK74JIxtAbnh+LENtK9CFdArO0FPo21M5ogRapRGWqkEM1qpJLS1SnBjWpp/3rwSmqWESS88bQPul40IquByGOurcSFZvfN2tFQ6lTpq4SgZBnPbgDT/mBIWuh1KhgBOdCx3zp0NfiBk1OIfs4slWmssW6yT+Tp1LW388kSb4Ao/2eXXjaAwAAAAABeAQAAA==",
+      "IconGUID": 3187,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Tunics x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVztv2zAQPj/lZ+TkFzRAx/6H+lUYHoIYdR9TB6VmFQKKZEhy6gAZ+F8ydulSFJ5qI7/Ao7sla4Gie1G4R4mKBNW25ERuDjjSR97xO34+UhIAQBo1i5piqOBLRvR8rMD9GLem31CnIGK45AJ+zhiDSOF+GfSzKq7N18+uiQvhP39c/M8cOxI/HRM/fxnCx0Uahxvx67vET63BT4rvn/fju76r/abj8b0z/EwkvnPe6o983v4rvid50UvCP8f8MW88mEce598d+utLaH+RAa5k1y4I+5P8737XxV+H4q+3jPfwkorn9mTL/MP4ky3xJwnGc3u2Zf5h/HB8uB6Ssr26LSLuM2HXUEtof0fnOeot6o3k5xyUYuA3nyvzep/+bsMT1ICUQjzwcyJd+vNlEV9hLuZc4ImjBFURV8X5p4G895ifEz/AMtpLFE7fht7xX9evE45Tc85zb4bNbNXzbE/4ysJ/P3D+Oa8Hgf1xfhfS5vshDl+3O+YLfkX0kXyxepCv1JZ8efv7kRBf88A69+RrY/1E8hmvvlY+v+PW10LU101C9fUQvqLq5+F8OfW18n0jbn0tRH1F8RV1z3mYWXxbkvDrIodP8wKiF/EGLCN7VZxtUxN6dEhsm7QVW4EXA5VY0BxRbUB1tat/MOBc0UYEjoh12jGV4anj1iYasclL8t4Gp+mqumESN7hnaBeqoVvQH528ohrpmHQATqPypmUSRYTyPTvfQWmWYXmWZTkmsQorsCIrsT1WZlUmsxrbZwesbytnwzfEtKihI4IFndfdNqgjvqBxNtTI+PijTkwcu0u0ZYx0m/seUd3BPzapSvW3fWdMGQNPznVqNJpNuIC2qag8sRbRbWLCGE6obeEGNcWm54SjUn1AxoKRO/mKOsRirFXd/+PPcrn8C7q7dfh42gMAAAAAAegNAAA=",
+      "IconGUID": 3187,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Amphorae x6",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVctOwlAQHXmVh4n+gn5JgRrCgkh87Uxs5FqalLZpi+LK+Rc/AFyyIGHDB/gFLtwb98bgDG1tJUQoEplk0p7pOXPuHXopAECKMkO5g5QQRTq4ci3PPGQ0GAPgGAINRzbGm9XQ7/lbMC9NvIddH3P/DC7m/vTnkJf6w4r+b4n9B/J29z8Yx3tswV/erj/Hlbyp3/+wt878Ud7u/P/XP4xccJUCfhajWliPryNHzy8Pov4S4cc9PxnnCU8CPL/fVfV8P0qgnyzwT6LvE/cpph8GeF19P6H/cIH/KOH8Rn/w78/ph2usf7Rk/vPv06Zw+N4XyLcR4H3KIuFnyc9XyhcpWnM8CrF7flbi8yJ/KACcURRX5IU9M3RaJfraZuk05alSBEV3oKnbwvOEonoqHLU04UKlqxst3dTq5o0Ft6rRFdAQbrvmqHZ7RlOEITxxIq49qGum5Qhf17SMe80yXfYrzb7zKUxjDjOYRQnzWMAilvDUUzv2hXBc3TJJ4kLtvK6A1tVbULU6tiF6x3emcKj2bVq1uqbH3IY+kzTUHpzphvDr5XKlAoqjarygqjA94fh75r9cpBm/S/58PqfT6Ree+aw+eNoDAAAAAAGICAAA",
+      "IconGUID": 3199,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Bread x2",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVktv00AQnrzfcVrxA+iNf0EeRlEOVSvC44SES7buSq4drZ2S3vbS/4HEFan8gUjtEXGh50rcyhFxRyjM2OvYsvIsQR1pPJndb/abndl1DACQRs2ipiQqRJJRlsaKhJO+exXOZ5XNxXD+mISVQrgM4o6rgU/rZxfEJfibD8v/Gfd/9XQVf3pN/otygh8Xae0t5W/+T/7USn6Sb81t1f/nGvUPJa9sQeFzMhoLx+N55HH+zV60fgH9Sw1gogV+UQa/SZP7XTee/K8bxE/m8G8S/1Hh78t/mYif3CP/ePyXOfHJfmzLD89NCXmfKL+BWkb/BsHfUe9QfxSinONSiv2muQqdt7e/dRiixqScqAOd00/laL6i4quK90bxqaMMNRVXi+VJfh39R8r/gKqhPyWBf7L+ejOrerHQJvEr7CKh/Tf8+/r4Gnd5Pe/9VVdYTeF3Yveb+rYbq9+t6t0yWacftw/cjzkV/LXcbqcjUT9Ion6kNuxHWL+7Nfqx6h6FnFn8Nyrg10QO39ZFZC/hDatgd2o4q3MBh3zIPI/phmfAs4HJXGiPuDXgttmzjx04M6wRg33mnnSFMTzxYTqzmMees3ce+I+eaTuCBcGHjnVuOrYL/dHRC26xruAD8B8mPTqCGSqU9ux/96RlRuZlVuZkQVZlUZZkWdZlRdakJhtyR+7KvmecDl8x4XLHRgYXui97OpgjWtA5HVpsfPDeZgLHZol2nJHtEXaf2z7/geAmt1/3/TFjDJRcAGq12m04B10YJiXWYbbHBIzhiHsubtAyPH7GiJXbAzZWFZmJoPIXgxccmT/T6fQvno5X/njaAwAAAAAB2AkAAA==",
+      "IconGUID": 3174,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Bread x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFV0tv00AQ3rzfr/4CypVL/0GT1ijKoWpFeJyQcMnWXcm1I8cp6W0PIPEzkLhyQOoJCYnk0GMleqcXekC9oIgrIDNjr2tjkjhuEzrSeD27M/vtfjO214QQEgdNgsY4KPEkIVrsy6Ift80h6IiIGJSUz8/u4yRU0C8BfntFx8b5k1PiAvj128V/D/v/PAzDj8+J/yofwIdJGqsz8evLxI+F4qPcGS6K/+/R8/8J8OuL2v/dwbXyX18W//H58r80/ER4/jH3jVt+/v8rvitp0WaEf4p7fW6/fx1pGH+66s2fAfu4QsiHimNnhX1S+Xe/0+JHgfhRxPi3wv+6+McT4k8jrt8ff3aN/Z8E9n8acf2nIfHBfC7KdusuB7j3hF0FzSMP4PwF9BL0W8Zbs19yvnscK2C9vvkpkbVfkt8vH+AB6/xd3hsviPiiwD0TeOJRICURV4LxNd+6y2DXhP0atIL4Y8uysMOy7JuxaK0ZrevutA7509ug/+R2muA+q/ZzXYczw8vRpO9sWfhWhH/N9x7A/Kz4eDoH/ZqZ/Z6Yh/fzm/JuOQyNBQFWCO8TGBvPbm/GvMc7isd7LCLvLk+XC+Id57qIwLv7ahgI3qezEb2Ow56Tv/M3T30P1yedI+at7wtR3z8WVN834XlGvUWq28XzbB+B1iedl+at5wtRz2E8h73nXcwknPYy8LeWgtNIFtBz8AUoAOslGJWYQXZYl5omlWRTJvc7Cu2RjT5TO0xTWtqeTg5ltU/JFu3tNw25u2+7SVSlJn1An5vEvrQUTTeoE7yjq0eKrvVIu7/7kKm0abAOsS8KXjYNKotQ3LP9XxnnCZ7mSZ7iGV7kWZ7jeV7mBV7iFV7lNb7C26Z80H1MjR7TNUDokeajlkSUPk6oH3RVOth+oVED+q4Wuqn3NRN9t5hm428bTGHak7bdJw8ILs5xajQ2NsgRkQxZwYVtUs2kBtTaLjN7sEFVNtkhRVSmdehAMHIlHzHjULzPyk4+fluW9QdTAhgKeNoDAAAAAAE4DwAA",
+      "IconGUID": 3174,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Garum x3",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVMtKw0AUvbZJk6aC/oL/4Af0ESldFMXXTjDYazqQTmIeWnfzKYI/YL/Abrt06c6NWz9AkXonDxOL0hRELxxmzp1z58yLAQCoEBTCmiBAHtW0lTld6oRk02k2rqStWtDFOQFLQ+qqpHtZT7icX/mh7qu/uC/jXynpf7Gyf7P5v/5Pf+6fRS1ttVSvijyX5YvrqNH4yVY+v0b8diOB5DrxWcoX91u2XvYnK9TPvvGfrOg/WVK/eB6/xbN7q5Pvdso3CQbxBy3BM+FRy9dcjHqhL8ca8r5P30y4eTWLOqOkLptTodem0W+h0mvQKWOAyXzYYx6GIZpWaMHOwMYA2hFzBozbPX7uwqXlRAh9DIZd3/KGscxEB0Pcx7MQejZ3fUzq9lzn2nZ5IP0a8T9VEVVRE4pQhSZ0UReGaIiD0Bp5x+gHzOVUEkD3qGeCHbEBdNyR5+B494qjT7lP044b8VBq+ywu6VtjOGQOJvlWq90G07dsuaAO8hD9ZM/yEJp0EXdKcj7v8/n8AwB3fxt42gMAAAAAAUgFAAA=",
+      "IconGUID": 3185,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Leather x8 (Lard)",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFmMtu00AUhk+uzqWSkWDJgj4HC+zEqMoiouK2Y2GRwbXk2pHtQJFYzCP0ESJ1xaKCsomqLmIWfQCeATZsUPcIhTmecWNCW9vIZkYaJWd8/vn8j8+MJQMA1Flvsl6jrMO6NcQvjnUwjyZXLiIQGmytVF48RvmcNzXMa7C8T30e4/xNenXun3zK2Iel8b/3NvhsEn37Jj48yMOHnPytd0X9H2p8Dcrhb/qvXeO/LN6PraJ+ea2VxS9eb/GzXsp73heaZP8ar3lp9c7Wn2pV1Xs9e78vxRpI8o/es/n/et41sv1f1qCc8z7e/5/LWv9vhc/7eVTm+644X5PMx/qrjl/L5EeS+aDL5SM7iuTVP+79eWX8fP6pZP+aZP+aVhW/nss/rYzfyOV/Ltl/JNE/vvvKe/8W949nj0w+lczHvVcdP/v5zyXzY7b+P+s/aW3xq4j8Fl2PJePp+2iz6y+21/MrLD5VAY5UHndEfKz+7fc6/QnLfZ/SnxTUI/tDSn8s4rz6M5UzE/1SxHn1eO+LDf6iIP80pT8XcV49ej1L6TE+L6BfbOgxXqpX14tScpzUbZdx74r4Fus9Fn9ReP8qenLP6dZN/cdrfdwn2k8j7qnWy5mXzNlku11hX+dabDd02EgPDNuHXXtKwpAYZmjCw4lFAhjMbGdiu9bIfeXBa9OZERiTYG/HN6d7cZpBHBKSx+RlCCPL9XzCdbue89by3AB5/fi7YJ02aJs2aYsqtEO7tEf79Elo7k+fEz+wPZdJAth5NjLAmtkTGHr7U4ccPHrjEp+NXUKH3swNMXdsx5KxeQBPbYfwcV0fDMDwTQtvaEjckPjc831WIB9vA9y7w9fn12q1+g3uVTQ5eNoDAAAAAAG4FAAA",
+      "IconGUID": 2994,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Olive Oil x3 v1",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrNV81u00AQnjRJ89c0aZ6AvkEPiHPSGlU5VI0oPycOLlnclVw7cpyS3vaIxKWPgMSFV+BQKT1x6KU9IHGiUhEcQEKRcgQUZux17VqWExdXMNJ6dnZn9tudb38SAIAFLDksGYEFfMlKTW1F8hNez50myBiSfMDPaRPumHFCfln0u2i4No2fE9G+1/FfjwCaM/FhTvxX5RA+DtJajcVv3iZ+Zib+Ga6/3koLP3n+SdLD/7GUFP+s+W/Xv3aC+791W/wvzOR/rXWb+NkIfE8WpS5I/7zw27z24DwWsf/pqj9+Ae3jGsD7mmsX0T6Vdni988aT/SFB/GkEfpL4N9L/pvjHofjTG8w/GP8lIj7MR1q2t29KiHvPuwmwlNE+R+fPWCZYvhf8OQelFKhTX4X2afOXAqOfStCvHMoD7dN3Zb+/IuOXJO65xJNXCVRlXBX7lcC8l9FelvZbLDW0p1IohanVCWDs1uHv67HnmPJQd877S7yXOidR75i35pr0XwncD8RfI5DHSywXhfi7Yx5eLv9HXqYuM4G6I0nrszi5zguJz0smIS9eHicp8UJjfYzh5W6IF/k8wpHkBWQypzfRMEOjozQD2st/tJ7vXIxGUe/rvOeC8vUJy7cU8v81pfwnJmAcr/1TMg5pqsXr+PyLZjD/2YT59/I1mSP/s94VDzOH/04K+O8mj79eiohewhengmxUsVfhFnR4j9k2U1RbhftdjfVhfcD1Lje0tvHchANVHzDYYv29TUvt7TluCtOZzR6wZzY4n7ZmmBZzgzumfqiZRh92BrsPuc42Ld4F56PRZ8NiqgwFl++MWBBZsShyIi8KYkkURUmUxbKoiKqoibpYEQ2xY6v7vcfM6nPTQIQ+bD5qK6ANaEBzv6ez4fYLg1nYdjXRDXNg2OS7xQ0Hf9viGjee7Dht6hBocq5Tq7W+DoegWKpGE9tghs0sGMIut/u4QF21+QEjVG502VBm5EroDh/j5j6qunz8nk6nfwBj4i86eNoDAAAAAAFoDgAA",
+      "IconGUID": 4831,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Olive Oil x3 v2",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFV81u2kAQHv7CPyY8AXmS8uMKcYgSlf5dKtUpW2clx0a2Sclt77n0ESq1L1HlEDhya54gcK+q5txWdNZex44FGBIQI3aH2Z3Zb/bbsRcAAOLYkthiDBv4khCaj2W4H/NmqkMQMVxSAT9njEGkcL8E+v0quDZfP7kg7iF+dYRdJH58Rfzbytr49d3if0Hs4fWm+L/MhfBxkfrBUvzaNvFjkfgOQG23/H+ubWv/8ZX43x5+Yg6+J3tCp4V/ivlj3ngwjz2cf3fgr59G+6sEcC25dgbtK2GH97so/ioUP35iPLdHa8SPQ/HTNfHHc/IP44f53JTtnXsWcb0jLmPLoX2DzrfY7rBN037OQckGvvO5PK+z6l8ZfvyRg365EA+8zr7n/Pm8iC8I3BuBJ64CKIq4Is7XAnmX0C4Ju4dNQnu2EZEAP/BbaC6L9CLh+yk7zx3D++ntaN771MtdEv77geeUn0MlwMdUnMcyWYXf6Y75RVI97TDsrh6ll/HLxec3tia/Hh93G+KXrzVZg1/P5/0Dfl3N816mH8X/SvU6fDbv/lm1XieiXn9uqF6fwqfPqFt5i/T2+OTi85l4RH1ORH1G8Rn1HvYwk/hrKI2/5lN4W2cQPYtv6DwyV8RZmZpwTHvEtoms2Ao876rEgkafal2qq239owHnitYncEis05ap9E4dN5loxCYvyAcbnK6t6oZJ3OBjQ7tQDd2CTv/kJdVIy6RdcDqVd02TKCKU79n53xFnCbbHkizF0qzAMizLcqzE8qzIJFZm+6zCOrZy1ntNTIsaOiJY0HrVlkHt8wWNs55GBkefdGLi2H2iTaOv29z3kOoO/pFJVaq/6ThjygB4cq5Tvd5owAXIpqLyxJpEt4kJAzihtoUb1BSbnhOOSvUuGQhG7uUbtgkWMSu45/FvNpv9B3hKNoh42gMAAAAAAVgNAAA=",
+      "IconGUID": 4831,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Sandals x12",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFmE2L02AQgGf7lX4Ielo8ur+kSRtZeiguft0Eg33NBrJJSdJ1BQ/vT/A/+AcWoedGetqb0j/gQQ96kNxF6kyS2lgW0yyJMzAkM5l5nzfzfoUAANRQG6gHEhW2Uk+v5GtTnCQrCgHufoA0h6SZiYt9MmnzX0JxdYw7v5XY1H5DXh/7N/8tMz9cMPP7zPVXefkRNx/n32XIO/85+TT/Wfl95vqrvPyImf8Z2XJRFv99ryhfZebLPi8/xPGHfh4f9uT/uNH4g8o7/px8Gn9OPu3/H9Wyxv9bd4ePjWhHeftvdfyDXD7tf9Xxa/l8On9L438pXv9Flfz8+sfnX2X8/eofMdc/Yq5/xFh/wG/ve1pZ+98N6h/y8iUzHyrl588/Ela+ysuXlfLz11/IzAftf/M30kqvShrflFvfxp/tRwufPzvatq+g/e52omS30b5K7d333Tef7ucF8q+u4c8L8ucl5pO9LNj/Xf6yIH9ZYj7Zq4L93+WvCvJXOfm787Ese7NuOsh9k9p3ULtof1IS/Yr6Xdn2OSudzD0969F6fv5Th0vUjHT3jNu02cDVruDf4iauxjZ6uqBbHpxYUxEEQjcCA+5PTOHDYGbZE8sxR85LF84NeyZgLPzTY8+YnsZhurBFIB6KFwGMTMf1RJJ34tqvTdfxideL/1PXZF22ZEM2pSLbsiO7sicfBcbZ9KnwfMt1MMWH4ycjHcyZNYGheza1xcWDV47w0PcHOnRnTkCxYytOGRsX8NiyReLXtMEAdM8wqUND4QTCS955ghNEPcSv4MOkPr/W6/VvCK1MpXjaAwAAAAABSBcAAA==",
+      "IconGUID": 3190,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Soap x2",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFWM1u00AQnjZJnd8m7RPQIzwDUt3WKESiakT5OSHhksVdybUjxympxGEPnDhx4AGQeAG4cWsqzkjk1htFqoRQJcSpF0Bh1l4nrut0HclVRhrvzu7Mfjvf7nqdAADMo2ZR5xgqjCUjSt6W536MW2/6AL/7IGK45EJ+Xhvzx7xKuF8G/V4XfZuPn2X+IGsrF30v4n9QrxN/TorfX00T/2cEf16KD6t8EjJ8SIj/qxzhP0Yu4p8gNjtMK//u1Phsxvhf1ST4Sfm/1ZsW/x3PX00LP7r/M9L9x3N/mhp++eW0+YM6W/y+ep38ZxPxrx6lhX86/ftHnS0+z//GjPOfJX7/MM37Jwl+IAuiVIR/jo3bgvbwPBaw/8nKeHwF7c9VgI9V386j/UXY0Xwnxb9H38NQ/Jmw40RJ2Q54KyDuTWHXUItoD9D5GPUc9UQZzzkshVCd95X4erb/atD/o4X9ihEe+Dp9Ko77SyK+LHAHAk9cZVARcRXmbdbRvBfRXhR2G7WK9vBKCfpl5aUwmFROEp5Pzdvfb/FsNY/ivgeDuVeF/1LonPF1WA7x8R31m3L1GUjC7w8Jv7eT8VuNlqJHWl6OA1kp4ZffnWN+56bkN+DjPCV+B6HzEsfvvQi/JWG/CvMrspbVR6yGGU6hDon3Nahx31lJ9zXn6RT1LAXeTyW835XwDpEzHVcf8QQhvlKsJ+Pd+72kxn1fJeE94Ok8Ae+y93qAmcXbWcFf1zm8PfOIXsA3fglXoYK9GnWgSdvEdYmmuzrcaRmkA+tdaraoZTSs5zbs62aXwCbp7NYdvb3ruWnEJC65T5654D0ahmU7xA9u2uaBYVsd2O7uPKAmqTu0Bd7D4I8Nh+gilOfs/Q8wzzJsgWVZjimszPKswIpskZVYhVVZjS2xZbbt6nvtR8TpUNtChA7UHzY0MLp8QHuvbZLe1guLONg2muiG3bVc7rtJLQ9/y6EGtR5ve216D/jkfKe1tfV1OADN0Q0+sQ1iucSBHuxQt4MJmrpL9wlHpVaL9AQjIznm9OOi1mr+evwbDof/AaFgYuV42gMAAAAAAegQAAA=",
+      "IconGUID": 3189,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Soap x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFWr9v20YUPtv6LdtUPGVMOvYv6GbKVmEYSJCgbtMOKRCmvioEFEqgqNQBMtyQKVPHjgW6ZOyYTqKBAoGHAgkKQwmcpYDbxnBRGB26pAb7HnkUKYISedYxPOB098j3+N193x3veDYhhCxCLkBeYJBJkJZ4idcq6MfQYuuEfLRPeAymYsjPvca8Z85K6LcEfic1z8bnF5j3kObVSd9J/O9tQi5Lw38SwV9IxlezxF9MxGdD+EnEJynxP9yL8B+TJvFt4P9bWxb+YFkUH5MqDf9vYXxbzbf/T0H7K3ZW428pcfw9bWaJX0jEx/FnD/PjH/XPE/8F9F9VZeFH+S8m8w99vyINf/mRMP/r+eK/ULPkv5SK/x9z5j9PfFz/Ljez2n+UE/nH+XenmZX+lWR8NUv8aqrxx6TtP46F9384/nLFh/7fybn/eeITW+b+/wL4qsz5fyw8/1F/tZkV/+VU+ueKP5T5/rlY/98vvp9KvCxz/yILrvnXw+0owf0vrwbPL4P9q0LIT4pnV8A+5Ha0v2nj0R4KxB/G4IvEP+f+fvyBYPxBTPwvgv0fztH+w0j8SDB+FIl/PWf8SLD/P3D/i/J3EIkfzRmP9pFg/8Px54L4o5j2Hwm2/0hiPNqngu2P4p8K4p8mxEffR7Js/71ZBVyT2w3INbBfgvMbyA7kf8tBm8OpGqrjvbr7nj5vEfu/VtivFuEB39PPasH9Oo9fxvkMWCOOxz+lyQqPW2HuZmHc7lWwfarw2Evh64QzNfn3kkrHKxWSupyWsF8Nt13fwR6rtx93LrnKfRXufym03qEeayFefof8R3n2WpiG59M5efbYmixFGB4TTc4EyySe8Vs+4HlRkGefl3eSeMZ59HIGz7cjPDe4bYd45kkRq4djA/Y9rYK2Zl1P1uvZPp6Bxp1XptHL5/ct5N8k6HWSoNcXCXqFST+bUndmixQWKr6eg3CBXvj3okCvgqBePr+OJL3wWX/O0OtaRK86tx9Pzq/wuuHWz2bX3Xe+rHr6ecLW4851084T5OkY8j8SeP9rTt7HDChT6hHmwzNDVj0d70wN814S5N3nyZHEO+p4IrCerHH7Fec9PNyyrk+bWwn1C6x102fR5PxR1bhz2bTz54SvM+8k6Ph2Th3fo4xKitk6Uc9WR2+PF3e+nUZHn3cnhY5J3zU+ZgFOJ8vw3xVFOD2qAHoVvnjqoOoK3G3pJrmp96hl0ZZmaeTj3Tbtk42B3tnVjfa28XWXPNA6A0qu0/69LVPr3XPdWrRDLfoJ/coi7s922+ia1Au+2e08bHeNPtkZ3P1U79AtU98l7k8bfzZNqvFQ4o2bBbbIlliJFViRldkyq7Aqq7FVVmcrTGENdomtsR1Lu9+7Rc2+3jUAoU+2PttukfYAH9i93+vQvRvfGNSEa+OGbnYHhoW+13XDxb9h6m3d+HzHvabtEWyc59RsbmyQh6Rlam1s2CY1LGrCt8Rd3epDBzuapT+giKobu3SPMzJOP4PGPdC48YGnx7njOP8DVh6x/njaAwAAAAAB6CIAAA==",
+      "IconGUID": 3189,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Fine Glass x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVstOwlAQHXkVCgl+grr3F0yFGsKCaHztXDRyrU1KS9qiuLtx62ewNtG4NAQ2LE30D0xcuDPsjcG5tLW1onKxwUkm5UznzJkZepsCACTQU+gLFB0CS3pXFsuyPMrQsA/Q74PHYZYO5Y1j1K35k7G8JOadF1zM6qfo5NzP+szuY9NfbfPqD6X/nX/YD9eYl/5vejCl3kthln3Pf95A/xH3fS/FpS/O9rxLce1/hft5f5TmPb9vGe8qePlpGsT8eLiPDN4/WA7qC4iviwCdoouzHr4sfp33O34vwu9x8n29uPgM33L2H9Xn4Xe8/Fn1ryP8G07+TYTf/SOf4QEHvxvh8+6vO6H/Aef/F+bfTdCPnoe4sH9uc6i75uFFdBHxg+D6M/qTEPQctlzoN7uXZ+edvsogoYdMnDLPr5nCt42AXydpfBtkMSKCrFmwpTWJ4xBZcRTYqKvEhlJL0+uaoVaNIxNOFL1FoEbs44qlNI/HaTLRiUO2yaEDVdUwLeLytkz9TDUNm+nlx99FCZqkGZqiaSrQLM1RkebpjqM0mvvEsjXTQIoNlb2qDGpLq0PZbDR10t48NYiFsQ/RstkyHJZb08aUmtKGXU0nbnx9vVQC2VJU1lCZGA6x3Jkv0K9wMUs5dz9vo9HoHQX2wcJ42gMAAAAAAbgJAAA=",
+      "IconGUID": 3202,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Honeycombs x4 (Flax)",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFV0tP20AQHkiC8yAkcOqVf9BjjwmkQhwQqPRxqoRptmYlY0eOQwOnPfbQQ39CpZ77EyLgnAOUW05USJz6EGqvrdIZe4Mdy2A7JMpIk83szuw382W83gAAzKKmUWcEKniSkiPNZclPkPXtBODJKcgYkozPz5kT7p73Cfml0G8/79q0f1q4m1SXh32H8cUxwONIfIiJ/2s+gB8iw/ifKpOsfyay/vMTV8dT//d80vo/VqaLT9iUwzTrnyY+9X+5Or3+p+f/UXVS/T8b2f/0/E0OPxWCP5A5OSrSPyO8ucG8P485XH+97O2voP255CrZWbQ70g7WGzeevvcSxHcC8d2E+J2Q/L8kiO8G4q8T4ndD8k+Cfx2Cn5S/s0D9vYT5nwXy7yX8/XsPwO8E4rsj5N+L4C/4PIzLHjy3OcT9IO0yah7tr4qrf1B/Kl7Ofsn5vtNagc6Tnb81AFJP8gEe6Jw4ynvrBRk/j/MXiqsk8iiFoowr4nrFl/eCcNdI9lBLaPdRyE423vTvG8PkrnOQ6ig75+p7vNPsnIbdwxakb0n6L/reE8T/ko+HK9RL5f6zNw6vVw/kNSmn/VLEODKv9L72eJ1JyOuAh99j4vXCt8+o/Xo3FzcRY/zfJF6/iuOwe0Pcfr2U/fpjTP06EV4j+jL52RGnXz1eUyP066Xs1yheo87hAWYab3MK/hvN4G0ri+g5PKELyHIRV2vcgi3eYLbNaqqtwtO6xpqw0uJ6nRvauvHWhANVbzHYYM29NUtt7DluNaYzmz1jb2xwPtY1w7SYG7xl6oeaaTRhu7X7nOtszeJ1cD40+li1mCpDqWbnf/OsSIk5kRYZoYh5kRU5kRcLoiCKoiTKYlEsiW1b3W+8ZFaTmwYiNGHtxXoNtBZtaO43dNbefGcwC+duE101W4ZNvhvccPA3La5x49W2M6e2gZJznarVlRU4hJqlapTYKjNsZkEbdrndxAJ11eYHjFC5UWdtycitnNOtGomuyPf6v36//x8JfEL8eNoDAAAAAAEYEAAA",
+      "IconGUID": 2795,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Honeycombs x4 (Lavender)",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFV81O20AQHkiC80Mw8ATwBn2EBFIhpCKi0p9TD6bZGkvGjhyHhtuee+qhD4DUSy+VeuylAtQXaMmhJyQunCrRcGulVu6MvY43VsAxCcpIY8/szvjbmdlZ2wAAs8hZ5BmODBFlxJ3G8mTHSft2AlA/BeFDlJPs/DEOiUR2GbR7Uwx0en6WBw+prg7aDuLzY4DKxPCv5mP4Q2gQ/23lPuOfSYyf8t87mRT+z+Jd4p8mPsX/qTLd+KeJT/t/pTq9/U/5f1C9r/0/m7j/Kf/3h58Zgh/SnLgrwj7Ho7FwXF7HHM6/WI2er6D+Xg2Y9Dzq10KPxzuqP8nnKfyvh+Cn8f+Cth8l/69CH9X/e8z/R0p/wu/G8Lsp8bsx/G7K/J8n5C++Hyalh/u2gLjvhL6IXKS4lID/IP9SojXLVJBkmitRn5z8rcEKskTFWB6oTz4Xo/mS8J/H8TMlYCJxlEBZ+JVx/pG07gXUF4T+AVlF3SMS+RtZ9kazVyXZk2XknieobyTkcEJCU285RygPi/55c4TfBM3TYd8xYcyqsF+Szieq37KUx0vkC+X2s2uUulyOWZdU9QjkXqKNGsk9dbAefdmL8j9GWaS60PsyqstMyrqEefw9obqcSc+5W12k4OWkSMmS9/bQHN/QI+P0WlwerV/48bD3/qj9ciH65WpC/TJWXZLLMri3b+gFuUfG6rWUtRnsl6gumTv0y4Xol6S6JL2HQsws/qEq+Deaw6+tPKIX8A1VwiqVcbZmOFA3msx1WU1zNXjY0FkL1tqG2TAsfdN6ZcOBZrYZbLHW3oajNfd8sxozmcses5cu+JdN3bIdFjjXbfNQt60W7LR3nxgm23CMBvgXnS7rDtOEK8Xs/zfP8gyf41me4wqf53le4EW+wEu8zFW+yJf4Mt9xtf3mM+a0DNtChBZsPN2sgd6mB9r7TZN1tl9bzMGx/kLX7bblku2WYfn4246hG9bzHX9M6wAtLjCqVtfW4BBqjqbTwtaZ5TIHOrBruC0M0NRc44ARqmE1WEdkpE/0M3eEia6I75p/nuf9B2hmbUR42gMAAAAAARgQAAA=",
+      "IconGUID": 2795,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Togas x2",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFWD9P21AQPwLB+YsD34ANdWLo3hhcRQwIVPpnqoRpXo0lY0eOA6HTG/oB+h06V2JDnSAzE0PVpaJdOoGqqmtbpXfOM3l1DYlTtz7p+XHv3fl39/O9swMAQA7HDI4pjgOGMi1mWiuQHQ93Cj0QPiR5yS5Y4zBSyG4a7b5UxB1p7Qa/3/GXEHv7NC38vVIEH2+iLd6GT5Ie/p1u4vy1f5n/1Mj8iX9+Ly3843LS/I9Os8UPAFLDP0hc/0f1bPOn+ssUH+vva30Ufm5MfKUySf1liU/yqZ5t/WWZP9Vf1vzXtbTwo/03F9N/Q5kVsyLs83y4Fq7Lcczi/tPF4f0VOm8qwFt1oBeEfqL+me9N/r2Ify+h/xthPyn+cYz/WcL4Zf+zCfI/ieSfBP+1sJ80/uOIf+8v/Ul/nzB/2f/dBPxH44/iR+s5LT08d0XE1YRew1FC/RyNP+C4xHGlDGOWpSj9TXtl6gen33VY/qHLdqUID3TOX5SG+2XhXxG45wJPtCKoCr8q7t+V4p5DfU7oLRwq6v1A1PFmgLFn7LE3zPFC+dSC/riJ7+eXvbjv6TB2VdjPS/2WnsOCxMcFjo/K7T10HH4v/hO/RE/SOQG9Er8kQ36nEvIb8nGZEr/n0nmJ43c3wm/4vtqW+VUHrFzXX1I9lBh9vHpd0uLev+PW65Xg85sy+rvrtr4RYs7g14OCv77zyFYB0YvYUcrIbhV3dcuDTavFfJ/phm/A/abJ2rDSseym5ZhrznMX9g27w2CdtXcbntHaDcx0ZjOfPWDPfAgua6bjemzgvOnah6brtGGrs/PQslnDs5oQXEy6rHrMEK6Uc/B/ghyf5rN8hue5wiu8wIu8xOd4mVe5ymt8ni/wLd/Yaz1mXttyHURoQ+PRmg5mh27o7rVs1t04cJiHa9eBrrodxyfbdcsJ8Dc8y7ScJ1vBmtEFCm5gpGkrK3AIumeYFNgqc3zmQRd2LL+NCdqGb+0zQrWcJusKRq7lM45X+FCXa4Pn8bPf7/8CJ9Dx7HjaAwAAAAABCBEAAA==",
+      "IconGUID": 3191,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Wine x2",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrNV0tP20AQnjydByHAuRf+RW9NQqqIAwKVPk6VMM3WrGTsyHFouO2p6v+o+gty6LFB6jVC7QVxQIp6QagS5dJbq3TGXmPLSnFWDZSRZu3Zndlv5tv12gYASKNmUVMCFULJyCv1FchPkDUeYvMJZAxJLuLn9Ql/zpuE/DLoxxd8m+bPium+Mfza/8WvHQEMH80L/20pho+T1FdvwofhbeKnkvFrt4mfTsSv1W8TP5NcP0k9CR9mxL9U3n9XuP4P54b/vaSMX7tr/EDy8qpJ/5wI+4L+aB55HH+5Gs6vof2+6ivZBbTPpB2vd9Z4uj9WiD+bgn+siH8ciR/8YzzZFwrxg1j8SBF/MCX/E4X4USxelb/RlPxPFNcvjn+hyP9FQnx8P8/LDp67IuJ+kPYSagntL5qvP1B/amHOUSlG7mms7D2vv5qwgxqRUowHes4/lsLxsoxfwP6vmq8k8iiEioyr4PiDSN6Lws9XvoSgivZkMqmqKcWE+jeh/Ja8+nbwff/uaNr7eVH6VqX/cuT8ojxXIvWdon7Tbj7fZuHr9I75gquYJvJF34chXylFvoL6xnPia3zv9xdJyFdaka+gvvM58XV+//dXLcpXRpGvoL7LGfhKOucCzCx+bWr4t5TDr5ECohfxBCwjexUcbXIHtniHuS5r6q4Oj9sG60Kjx802t4x167UNB7rZY7DBunstR+/seW5NZjKXPWGvXPCadcOyHeYHb9nmoWFbXdju7T7lJms5vA1eY1Cz5jBdhlLN3n9dWmREXmRFTmhiQRREUZTEoiiLiqiKJbEsVsS2q+93njOny20LEbrQerbeBKNHE9r7HZP1N99YzMG+60TX7J7lku8Gtzz8TYcb3Hqx7fXpfaDkfKd6vdGAQ2g6ukGJrTHLZQ70YZe7XSzQ1F1+wAiVW23Wl4xcy2faX7gJxxV/PX5PJpM/a17O23jaAwAAAAABuA4AAA==",
+      "IconGUID": 3177,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Writing Tablets x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFV81u00AQnjZJnZ8mTitunCouHDjwCEnrquqhakX5uyDhksVdybUjxynpbREvEokDz1BVSMmBE+JQLtBDL0ggUCTUC6eCwqy9braWm9jUtCONx7M7n7/ZGe1qDQAwjZpFnWKoMJKMsHwsz+NYMPO0BwLDJSfFeWPM/+Y44XEZjHu14Pv8+1nmf6S+cD72PP8Jctcm8sM/8k9N5q/9T/7pifzVPvLX0uJ/ORuqf4Sc5+/2rpefS3r8P5Ovv3a966/Wr5ef7/3H9bT4B8XE/LWr5g9kRlhFxOfYaCwYl/OYwfkn0v5W0H+t+sr9PPqHwg+vNy6evx8lwB9G8CfBv8HY9xL+g/CT5H8k4fcT8ofx3P+VAL8fwh8k5N+PyH+QAH8Qwiet/0FE/oOE/Q/zJ63f4BL8Qb/G8Yf3U1p+sO8LyPtW+FXUIs9D8fUH6qkyylmWgvTO50r8vOieatD7rclxxVAd+Dlz89ZoviTwszj+Gbk+CT5xFENZ4Mo4f1vKu4J+RfhNVBX9IRdIwapwEsdeJHw91bP7QbMfdZ8LcldF/Jx03vI+zEv1+IL6VRl/Hsep70fF14vqeydU3xvC78r1VWNZD5eWVaVajbOT+3EX74vdftT9Nk4/gvodo35LoR/HV9QPvKenbC/XlFE/vNX0o+77cfoR1O97jH5MOqcCziz+rSn4t5fD20we2Qt4gpWwO2Wc1agDG7RJXJdouqvDcsMgLVhsU7NBLWPVem7Drm62CayR1vaKoze3vTCNmMQl98gzF7zHqmHZDvHBG7a5Z9hWCzbbW/epSVYc2gDvYfDHkkN0AeVr9v5Lp1mGzbAsyzGFzbI8K7Aiq7ASKzOVVdkcm2ebrr7TfEicFrUtZGjByoNVDYw2/6C90zRJZ/2FRRwcO0t0yW5bLo9do5bHv+5Qg1qPNr0xvQM8OT+oXl9chD3QHN3giS0RyyUOdGCLui1coKm7dJdwVmo1SEdU5EzeiUJ3K34//gyHw7/lesd0eNoDAAAAAAF4DwAA",
+      "IconGUID": 3201,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Loungers x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFWctu00AUneZR59m0ZVOJTVs2iC9gmbRBpYuqUctjxcIlQ7CUOpHjlJQFGokf6Ccg8QPsukJNJKKqOyDKAglFlegmIKFuWKEq3LHHzcQ4sScxZKSx547v9Zk5c3ztSRBCKAA1BHWGQEX9EmRn2hehfoRauQZCyw3EYmgJc35GH0GuhfoFwe/1imnT+4eIeZPMyqDvIP55HaHbvuEfr9rwHcogPjkByxU/4BH/VUIYPz1d/OWMn+u/HxvEn/G0/pf16a0/xU77hv8zMY7+6ifT1d808XMN/h5+55+Aq/6o/v3Dt+s/6Ir/kWov7Rf+ndo4+jvyDf84Po7+polP88952i/9r47F/1JmuvxPE9/4/sj8q+c/5On59w/f/vyHvX3/ZP7n+88qs+wsMf8w6fdZ/fw4ZuH6E45fCey3KbNSOwJ2i9n2+XqNp+22QHzLFt8VxG85jL8pEN+1xd+YF8PvOoxfZP4WHo8vEn8Kvu+5+DNmjxt/KsjfmQN+UxC/6WM8tU8Fx9+cQD8th/i24PPTniC+ZYsX1V/XFu+kP3s+8cu28l4UcC+YDfAoBvYnyawxGNgPqT9mvkS5Nr0Wp/ny3VUW1X9neb+YjQeaZ2/e6l+Ps/gE9H+WzEoL+xRGSRaXhOv3uXHPkb7PEdQU2D2jwK4EibQN07FNl6LHrYdoe1ih85033i9f4f2dbjjt9+eYb4r5L3DvI7pOixxfF1A70mhMnv+XMWf+f7nwn3PhH1jtk+ih3eNIH9a+5nWC9nD+L9M8/zOC/Ft8RSNi/A/Tfxvu8WUE/3dt/FvLmBvQf8/xnGK6HnZ2inPn7wPo903dab/ohT9rvt9Y9UO/o/hLe+Pvr2Jpdth5eJwX/fX5C46hPzrfcESMv1H5tzNJ/p0gVw7k3JF52Xt+95Z/nfc7XvNvh+Xf7z7ptzNR/h0/V3rLxZeCbS/6d97vedV/h+VfN/7dvlMszBD8WiHBr/1h2M1FAD0KWSIOTCfhalbRUE4pY13HWVmX0b18AVfQWlUp5hW1sKk+K6EDuVjFaAtXnm9ocvm54ZbFRazjHfxUR8Zhs6CWNGwG50rFw0JJraDd6t4DpYg3NCWPjEOBHtY1LLNQOmfjf4kACZJZEiJhIpEEiZAoiZE5EidJkiLzZIEskl1d3i8/wlpFKamAUEEbDzezqFClNyztl4u4tv1CxRr0XQ90vVRVdeq7pagG/ramFBT18a7RJ9cQHZzplMmsraFDlNXkAh3YOlZ1rKEa2lP0CkywKOvKAaaoiprHNcbIddmhD8ISZL0lcz2uer3eH9rAElt42gMAAAAAAXgZAAA=",
+      "IconGUID": 3198,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Standing Lyres x2",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrNWEtv00AQnjZJnUfzaCWkSpwKF4499sAhbo1KD1UryuuCVJcsriVjR45TUonDSvwBfkIl/kD5BbTqGVWUY1UpgLgWOAMKM340juXGdmQII43Xszuz385jd50AAEwiZ5EnODL0KeO21JcnPW6L7wAWj8C1Icr59Ow+7sw5jEgvg3qv5h2Z5s9yZxJxflB3EP+WCLAQiQ8x8S+mA/ghNIhfrwPMpYb/uTiIPxHp/z7iHxymhd+dTer/gjhefPKfajAd/ELi/FP98dTwSy+T4jvYaeEH999kZP1R/rfq44v/AWLz+vjib9efmBa+em2U/TdOfPv8F//W+Z+Jdf7VU8O/0Rkl/vUxxp/un7up3T9fEt8/h/8B/tw/xfdoym0FVz/H+31ev38dUzj+xFffAspvqg6TnEf5zJWD/sa1p/fzBPZnIfhJ7I9R963P/jih/QnqvvfZnyS09/wdFf84YH8ywvrPI+IXrIe0ZK9uC4j72pVryEWUPwgOXyB/E/pr9lPB905jJdon339KAL8kv14xEAfaJ9dv9sdLrv009p8KDhO5VzmUXbsyjt/2rbuCcsWVm8hVlHtE1Zgtvl3VeimIaq8i8qdmnxuP8WzZOgr7PVLxzUXjM75zhvIw64vHJ+SuMBwzTnw/4hxnQ+K7GIivl7sNf3x7vdCW/BjWhtlFx4/uhv3DsO/JOPHz/KX4fU0hfqe+PIxSn3HrKqo+49Z5vPoM/16KW59dN74XQvQ9Oeyc8DCz+LUl4L8FObwN84hewCosYbTLOCqpJmyoTWZZTJItGe40FNaCpbaqNVRdWdWfGbAra20Ga6y1s2LKzR1bTWIas9g99tQC+7Gq6IbJHOMNQ9tTDL0Fm+3t+6rGVky1AfZDoceyyWTXlHy2/9eY5Bk+xbM8xwU+zfO8wIu8wku8zKu8xmf4LN+05OfNh8xsqYaOCC1YebAqgdKmCY3nTY111l/ozMS+y4UuG23dIt01Vbfx101VUfVHm3af3AFanKMkiktLsAeSKSu0sGWmW8yEDmyrVgsd1GRL3WWEquoN1nEjckk/6KsPE9itOfn43ev1/gBLd8i/eNoDAAAAAAG4EQAA",
+      "IconGUID": 4832,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Necklaces x3",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFVctOg0AUvbZQaDHRT1C/hLaYhkVj42tnIrEjJaFAeCgmLuZTTFy7cNVVk/YT/ALjD/gDxtQ7PASbmoJt7E1uhnM5554ZZgAAgAomh7lFMSGLajKymsh4lCE6AXiYQKJhwed4UY3C0mC8KvLC7Riz/twvup/+LDbpT+XN+suTfI9V/d9L+1/KRfwrBf0Pwr+s/0Fe1/ql+9L+8n/7p1FLRiHh8zSrpfX8PGp4/2I/6y8gftyJk2ER8TjB8+stqmfX0xL68QL/pxL654S/Lj3Do5Lzn/cflfQfraAfL9BPS+7fdIl+/jytC6fnvo6+aoJ3MRuIX4Q4XzHfhGzO+ajnrtk9KXpfPhTYw8xFoyAv7cnh10rAvx2Pb5OIlQYohgs9wyG+TxTN1+CwrxMPWoFh9g1LV61rG240MyDQJd6g42rOIKIpxCQ+OSZXPqi6Zbsk1vVs8063LY/5SdF/tkKrtEY5ylOBirROG1SiJ742dM6J6xm2hRIPOmeqAnpg9KFtDx2ThEe3FnGx9m3atgPLZ9yuEUm6WginhknierPZaoHiajqbUJtYPnHjNTvJ5jhC/Hw+Z7PZFwkbpi542gMAAAAAAQgIAAA=",
+      "IconGUID": 3192,
+      "CreationTime": 1794018291
+    },
+    {
+      "Name": "Oysters with Caviar x4",
+      "FolderName": "Latium",
+      "RegionGUID": 3225,
+      "PipetteData": "eNrFlk1OwlAQx0egtBQTXbrVvWeQjxrCgkj82mls5FmalLZ5LYq7t/AA3sEDlAuQ4IIDmB7AvQsvYAzOa4vUBiMVkk4yaWc6//ebeeGRBwCQQy+gbzB0mFs+evKcxOsYj9gYYOcZIg03IVYX5Bj8abwuj3WjvTDm6xd+0f3kc8uSzyrZ8iu4/4/jdfHpZmp+JWM+sscH2c6fJf8K55eq6+LvD/4z//r470vMP7Ni9BSjeoHNc7N8vI8ifr/Yna8vYvy0FTqPJX7+ojg577J6/j5JoR8t4E9S8icxvbeinsd+Cr2X0Kft31vQv59y/5J8P+X8/gp8L6FfxE/+HtcVz85NCbmXUbyNLmP8Iob+iv4mznuOWyn2zr+Vg/P2ocAQPWbyknWzNQt4gxDxtiDgaZQwI4OiU2jrNnFdoqiuCocdjThQ6+tGRze1pnljwa1q9Am0iNNtUNXuBmUKMYhLjsm1C03NtCgJdW3LuNcs0+G8cnBPybE8K7ICE5jIJFZiMiuzE1ft2eeEOrplosSBxllTAa2vd6Bu9WyDDI7uTEIx9w2tW33T5bUtPZC01AGc6gYJ89VqrQYKVTXeUJ2YLqHhzA/8XxA3ZiiF+/M5nU6/ADovt9942gMAAAAAAUgJAAA=",
+      "IconGUID": 3186,
+      "CreationTime": 1794018291
+    }
+  ]
 }

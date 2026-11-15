@@ -22,12 +22,36 @@ pub struct EditorConfig {
     /// shipped with the editor — users link their own game copy.
     #[serde(default)]
     pub game_install: Option<PathBuf>,
+    /// Live Ubisoft stamps folder (`Documents\Anno 117 - Pax Romana\stamps`).
+    /// Editor library must stay outside this path — the game wipe-syncs it on start.
+    #[serde(default = "EditorConfig::default_game_stamps_root")]
+    pub game_stamps_root: PathBuf,
+    /// After each library save, also copy the pack into `game_stamps_root`
+    /// (same relative path) so stamps can appear in-game. Library remains the
+    /// durable copy if Ubisoft wipe-sync deletes the Documents folder.
+    #[serde(default = "default_true")]
+    pub mirror_to_game: bool,
+    /// UI language: `"de"` | `"en"`.
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_language() -> String {
+    "en".into()
 }
 
 impl EditorConfig {
     pub fn default_root() -> PathBuf {
         // Outside Ubisoft stamps sync — game may wipe Documents\...\stamps on start.
         PathBuf::from(r"C:\Users\fabi_\Projects\anno117-stamp-editor\library")
+    }
+
+    pub fn default_game_stamps_root() -> PathBuf {
+        PathBuf::from(r"C:\Users\fabi_\Documents\Anno 117 - Pax Romana\stamps")
     }
 
     pub fn config_path() -> PathBuf {
@@ -41,10 +65,24 @@ impl EditorConfig {
                 if !cfg.library_root.is_dir() {
                     cfg.library_root = Self::default_root();
                 }
+                if cfg.game_stamps_root.as_os_str().is_empty() || !cfg.game_stamps_root.is_dir() {
+                    let fallback = Self::default_game_stamps_root();
+                    if fallback.is_dir() {
+                        cfg.game_stamps_root = fallback;
+                    }
+                }
                 if let Some(g) = &cfg.game_install {
                     if !g.is_dir() {
                         cfg.game_install = None;
                     }
+                }
+                // Auto-migrate: never keep the live sync folder as library_root.
+                if Self::is_game_stamps_path(&cfg.library_root, &cfg.game_stamps_root) {
+                    let safe = Self::default_root();
+                    let _ = fs::create_dir_all(&safe);
+                    let _ = seed_library_from_game(&safe, &cfg.game_stamps_root);
+                    cfg.library_root = safe;
+                    let _ = cfg.save();
                 }
                 return cfg;
             }
@@ -52,6 +90,9 @@ impl EditorConfig {
         Self {
             library_root: Self::default_root(),
             game_install: None,
+            game_stamps_root: Self::default_game_stamps_root(),
+            mirror_to_game: true,
+            language: default_language(),
         }
     }
 
@@ -68,6 +109,129 @@ impl EditorConfig {
     pub fn looks_like_anno_install(game_install: &Path) -> bool {
         Self::ui_rda_path(game_install).is_file()
     }
+
+    /// True if `path` is the live stamps folder or a subfolder of it.
+    pub fn is_game_stamps_path(path: &Path, game_stamps_root: &Path) -> bool {
+        let Ok(path) = path.canonicalize() else {
+            return path_looks_like_documents_stamps(path);
+        };
+        let Ok(root) = game_stamps_root.canonicalize() else {
+            return path_looks_like_documents_stamps(&path);
+        };
+        path == root || path.starts_with(&root)
+    }
+}
+
+fn path_looks_like_documents_stamps(path: &Path) -> bool {
+    let s = path.to_string_lossy().to_lowercase();
+    s.contains("anno 117") && s.contains("stamps") && s.contains("documents")
+}
+
+/// Copy pack JSON files from the live game stamps folder into `library_root`.
+/// - Always copies files that are missing in the library.
+/// - If `overwrite_newer`, also replaces library files when the game copy is newer (mtime).
+pub fn seed_library_from_game(library_root: &Path, game_stamps_root: &Path) -> Result<usize, String> {
+    import_packs_from_game(library_root, game_stamps_root, false)
+}
+
+pub fn import_packs_from_game(
+    library_root: &Path,
+    game_stamps_root: &Path,
+    overwrite_newer: bool,
+) -> Result<usize, String> {
+    if !game_stamps_root.is_dir() {
+        return Ok(0);
+    }
+    fs::create_dir_all(library_root).map_err(|e| e.to_string())?;
+    let mut copied = 0usize;
+    let packs = scan_library(game_stamps_root);
+    for pack in packs {
+        let rel = pack
+            .path
+            .strip_prefix(game_stamps_root)
+            .unwrap_or(Path::new(&pack.file_name));
+        let dest = library_root.join(rel);
+        if dest.exists() {
+            if !overwrite_newer {
+                continue;
+            }
+            let src_meta = fs::metadata(&pack.path).map_err(|e| e.to_string())?;
+            let dst_meta = fs::metadata(&dest).map_err(|e| e.to_string())?;
+            let src_mtime = src_meta.modified().ok();
+            let dst_mtime = dst_meta.modified().ok();
+            match (src_mtime, dst_mtime) {
+                (Some(s), Some(d)) if s <= d => continue,
+                _ => {}
+            }
+        }
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::copy(&pack.path, &dest).map_err(|e| e.to_string())?;
+        copied += 1;
+    }
+    Ok(copied)
+}
+
+/// Copy one library pack file into the live game stamps folder (same relative path).
+pub fn mirror_pack_to_game(
+    library_root: &Path,
+    game_stamps_root: &Path,
+    pack_path: &Path,
+) -> Result<PathBuf, String> {
+    if !pack_path.is_file() {
+        return Err("Pack-Datei fehlt".into());
+    }
+    let rel = pack_path
+        .strip_prefix(library_root)
+        .map(|p| p.to_path_buf())
+        .map_err(|_| {
+            format!(
+                "Pack liegt nicht unter der Bibliothek: {}",
+                pack_path.display()
+            )
+        })?;
+    let dest = game_stamps_root.join(&rel);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(pack_path, &dest).map_err(|e| e.to_string())?;
+    Ok(dest)
+}
+
+/// Overwrite-copy library packs into the live game stamps folder (same relative paths).
+/// Call while the game is closed. Ubisoft sync may still wipe unknown stamps on next start —
+/// prefer creating a stamp in-game first, then editing it here.
+pub fn export_packs_to_game(
+    library_root: &Path,
+    game_stamps_root: &Path,
+    packs: &[LibraryPack],
+) -> Result<usize, String> {
+    if packs.is_empty() {
+        return Ok(0);
+    }
+    fs::create_dir_all(game_stamps_root).map_err(|e| e.to_string())?;
+    let mut exported = 0usize;
+    for pack in packs {
+        let rel = pack
+            .path
+            .strip_prefix(library_root)
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|_| {
+                PathBuf::from(if pack.folder.is_empty() {
+                    pack.file_name.clone()
+                } else {
+                    format!("{}/{}", pack.folder, pack.file_name)
+                })
+            });
+        let dest = game_stamps_root.join(&rel);
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::copy(&pack.path, &dest).map_err(|e| e.to_string())?;
+        exported += 1;
+    }
+    Ok(exported)
 }
 
 #[derive(Debug, Clone)]
@@ -284,6 +448,54 @@ pub fn create_library_folder(parent: &Path, name: &str) -> Result<PathBuf, Strin
     Ok(dir)
 }
 
+const REGION_LIBRARY_FOLDERS: &[&str] = &[
+    "Region Roman",
+    "Region Celtic",
+    "Region Egyptian",
+];
+
+fn is_allowed_region_folder(name: &str) -> bool {
+    REGION_LIBRARY_FOLDERS
+        .iter()
+        .any(|r| r.eq_ignore_ascii_case(name))
+}
+
+/// Ensure only Anno region folders exist at library root.
+/// Creates the three region dirs; moves stray packs into region folders;
+/// removes empty leftovers like `unsorted` (game wipe-syncs those anyway).
+pub fn ensure_region_library_layout(library_root: &Path) {
+    if !library_root.is_dir() {
+        let _ = fs::create_dir_all(library_root);
+    }
+    for name in REGION_LIBRARY_FOLDERS {
+        let _ = fs::create_dir_all(library_root.join(name));
+    }
+    let packs = scan_library(library_root);
+    let _ = sort_packs_by_region(library_root, &packs);
+    let Ok(entries) = fs::read_dir(library_root) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let Ok(ft) = entry.file_type() else { continue };
+        if !ft.is_dir() {
+            continue;
+        }
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if is_allowed_region_folder(&name) {
+            continue;
+        }
+        // Only remove if empty after sort (don't nuke unknown nested work).
+        let path = entry.path();
+        let empty = fs::read_dir(&path)
+            .map(|mut it| it.next().is_none())
+            .unwrap_or(false);
+        if empty {
+            let _ = fs::remove_dir(&path);
+        }
+    }
+}
+
 pub fn delete_pack_file(path: &Path) -> Result<(), String> {
     fs::remove_file(path).map_err(|e| e.to_string())
 }
@@ -333,15 +545,13 @@ pub fn copy_pack_file(src: &Path, dest_dir: &Path) -> Result<PathBuf, String> {
     Ok(dest)
 }
 
-/// Move packs into region folders under root. Returns number moved.
+/// Move packs into Anno's region folders (`Region Roman` / `Region Celtic` / …).
+/// The game wipe-syncs `stamps/` on startup and drops anything outside these dirs.
 pub fn sort_packs_by_region(root: &Path, packs: &[LibraryPack]) -> Result<usize, String> {
+    use crate::catalog::RegionFilter;
     let mut moved = 0usize;
     for pack in packs {
-        let region_folder = match pack.region_hint {
-            6626 => "Albion",
-            3225 => "Latium",
-            _ => "unsorted",
-        };
+        let region_folder = RegionFilter::game_stamp_folder_for_guid(pack.region_hint);
         let dest_dir = root.join(region_folder);
         fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
         let dest = dest_dir.join(&pack.file_name);

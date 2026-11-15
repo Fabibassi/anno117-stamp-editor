@@ -58,7 +58,7 @@ fn main() {
             .map(|d| (d.size[0], d.size[1]))
             .unwrap_or((2.0, 2.0));
         *size_counts.entry((w as i32, h as i32)).or_default() += 1;
-        let label = catalog.label(b.guid);
+        let label = catalog.label(b.guid, stamp_editor::i18n::Language::En);
         let cells = footprint_cells(b, def);
         let minx = cells.iter().map(|c| c.x).min().unwrap_or(0);
         let maxx = cells.iter().map(|c| c.x).max().unwrap_or(0);

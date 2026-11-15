@@ -10,6 +10,8 @@ ASSETS = ROOT / "_gamedata" / "assets.xml"
 OUT = ROOT / "_gamedata" / "editor_catalog.json"
 CFG_SIZES = ROOT / "_gamedata" / "cfg_build_sizes.json"
 CFG_BLOCKER_MINS = ROOT / "_gamedata" / "cfg_blocker_mins.json"
+TEXTS_EN = ROOT / "_gamedata" / "texts_english.json"
+TEXTS_DE = ROOT / "_gamedata" / "texts_german.json"
 
 PREFIX_RES = [
     re.compile(r"^Production Construction\s+", re.I),
@@ -57,6 +59,8 @@ def short_name(name: str) -> str:
 def classify_road(name: str, template: str, speed: float | None, tileset: str | None) -> str | None:
     n = name.lower()
     t = (tileset or "").lower()
+    if "AqueductConnector" in template or ("aqueduct" in n and "minground" in n):
+        return "aqueduct"
     is_street = template == "Street" or "street" in n or "road" in n or "quay street" in n
     if not is_street:
         return None
@@ -176,6 +180,12 @@ def guess_size(
 
     if category == "street" or template == "Street":
         return [1.0, 1.0]
+    if "AqueductConnector" in template or (
+        "Aqueduct" in name and "MinGround" in name
+    ):
+        return [1.0, 1.0]
+    if "Aqueduct" in template or name.startswith("Aqueduct "):
+        return [3.0, 3.0]
     if category == "warehouse" or "warehouse" in t:
         return [4.0, 4.0]
     if category == "ornament":
@@ -430,14 +440,77 @@ def is_palette_noise(name: str, template: str) -> bool:
     return False
 
 
+def load_text_table(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        print(f"warning: missing {path} — run extract_game_texts.py first")
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def loca_names(
+    oasis_id: str | None, texts_en: dict[str, str], texts_de: dict[str, str]
+) -> tuple[str | None, str | None]:
+    if not oasis_id:
+        return None, None
+    return texts_en.get(oasis_id), texts_de.get(oasis_id)
+
+
+def classify_need_kind(need_name: str, product_name: str | None) -> str:
+    """service = public coverage need; goods = food/fashion/etc. consumption."""
+    pn = (product_name or "").lower()
+    nn = need_name.lower()
+    if pn.startswith("service ") or " public " in nn or nn.startswith("need ") and "public" in nn:
+        return "service"
+    if pn.startswith("good ") or "food" in nn or "fashion" in nn or "tech need" in nn:
+        return "goods"
+    if "service" in pn:
+        return "service"
+    return "goods"
+
+
+def parse_residence_needs(chunk: str) -> list[dict]:
+    out: list[dict] = []
+    m = re.search(r"<NeedsList>(.*?)</NeedsList>", chunk, re.S)
+    if not m:
+        return out
+    for item in re.finditer(r"<Item>(.*?)</Item>", m.group(1), re.S):
+        body = item.group(1)
+        nm = re.search(r"<Need>(\d+)</Need>", body)
+        if not nm:
+            continue
+        rate_m = re.search(r"<NeedConsumptionRate>([^<]+)</NeedConsumptionRate>", body)
+        buff_only = "<IsOnlyAvailableThroughBuff>1</IsOnlyAvailableThroughBuff>" in body
+        entry: dict = {"need_guid": int(nm.group(1))}
+        if rate_m:
+            try:
+                entry["consumption_rate"] = float(rate_m.group(1))
+            except ValueError:
+                pass
+        if buff_only:
+            entry["buff_only"] = True
+        out.append(entry)
+    return out
+
+
+def parse_upgrade_guids(chunk: str) -> list[int]:
+    m = re.search(r"<PossibleUpgrades>(.*?)</PossibleUpgrades>", chunk, re.S)
+    if not m:
+        return []
+    return [int(x) for x in re.findall(r"<UpgradeGUID>(\d+)</UpgradeGUID>", m.group(1))]
+
+
 def main() -> None:
     text = ASSETS.read_text(encoding="utf-8", errors="replace")
     buildings: dict[str, dict] = {}
     products: dict[str, dict] = {}
+    needs: dict[str, dict] = {}
     cfg_sizes = load_cfg_sizes()
     cfg_mins = load_cfg_blocker_mins()
+    texts_en = load_text_table(TEXTS_EN)
+    texts_de = load_text_table(TEXTS_DE)
     print(f"cfg size entries: {len(cfg_sizes)}")
     print(f"cfg blocker_min entries: {len(cfg_mins)}")
+    print(f"loca EN={len(texts_en)} DE={len(texts_de)}")
     print("indexing effects/buffs…")
     effects = index_effect_assets(text)
     print(f"effect assets: {len(effects)}")
@@ -455,8 +528,38 @@ def main() -> None:
         else:
             guid, name = int(g.group(1)), g.group(2)
 
+        oasis = re.search(r"<Text>\s*<OasisId>([^<]+)</OasisId>", chunk, re.S)
+        oasis_id = oasis.group(1).strip() if oasis else None
+        icon_m = re.search(r"<IconFilename>([^<]+)</IconFilename>", chunk)
+        icon = icon_m.group(1).strip() if icon_m else None
+
         if tmpl in ("Product", "ProductItem") or tmpl.endswith("Product"):
-            products[str(guid)] = {"guid": guid, "name": name, "template": tmpl}
+            name_en, name_de = loca_names(oasis_id, texts_en, texts_de)
+            products[str(guid)] = {
+                "guid": guid,
+                "name": name,
+                "template": tmpl,
+                "oasis_id": oasis_id,
+                "name_en": name_en,
+                "name_de": name_de,
+                "icon": icon,
+            }
+
+        if tmpl == "Need":
+            np_m = re.search(r"<NeedProduct>(\d+)</NeedProduct>", chunk)
+            need_product = int(np_m.group(1)) if np_m else None
+            name_en, name_de = loca_names(oasis_id, texts_en, texts_de)
+            needs[str(guid)] = {
+                "guid": guid,
+                "name": name,
+                "need_product": need_product,
+                "icon": icon,
+                "oasis_id": oasis_id,
+                "name_en": name_en,
+                "name_de": name_de,
+                # kind filled after products pass (second pass below)
+                "kind": "goods",
+            }
 
         factory = re.search(r"<FactoryBase>(.*?)</FactoryBase>", chunk, re.S)
         outputs = []
@@ -504,8 +607,6 @@ def main() -> None:
         tileset_m = re.search(r"<TileSetCfgFolder>([^<]+)</TileSetCfgFolder>", chunk)
         tileset = tileset_m.group(1) if tileset_m else None
         has_street_node = bool(re.search(r"<Street\b", chunk))
-        oasis = re.search(r"<Text>\s*<OasisId>([^<]+)</OasisId>", chunk, re.S)
-        oasis_id = oasis.group(1).strip() if oasis else None
         constructable = "<Constructable" in chunk
         regions = parse_regions(chunk, name)
         radius_distance, street_distance = parse_effect_source(chunk)
@@ -536,8 +637,21 @@ def main() -> None:
             category = "ornament"
         elif "Residence" in name or "House" in tmpl:
             category = "residence"
+        elif "AqueductConnector" in tmpl or (
+            "Aqueduct" in name and ("MinGround" in name or "MaxGround" in name)
+        ):
+            # MeshGraph brush (like roads) — MinGround ground span, MaxGround raised.
+            category = "street"
+        elif "Aqueduct" in tmpl or name.startswith("Aqueduct "):
+            # Basin / Cistern buildings.
+            category = "public"
 
         road_kind = classify_road(name, tmpl, speed, tileset)
+        if category == "street" and (
+            "AqueductConnector" in tmpl
+            or ("Aqueduct" in name and ("MinGround" in name or "MaxGround" in name))
+        ):
+            road_kind = "aqueduct"
         if category != "street" and road_kind:
             category = "street"
 
@@ -574,6 +688,9 @@ def main() -> None:
                 continue
 
         size = guess_size(name, tmpl, category, chunk, cfg_sizes)
+        if category == "street" and "MaxGround" in name:
+            # Brush cell is 1×1 like MinGround; asset AABB is often 3×3.
+            size = [1.0, 1.0]
         _default_sz, marsh_sz = sizes_from_cfg(chunk, cfg_sizes)
         # If only marsh exists, size already is marsh; don't duplicate.
         if marsh_sz == size:
@@ -583,10 +700,16 @@ def main() -> None:
         if category == "production" and outputs and cycle is None:
             cycle = 30.0
 
+        name_en, name_de = loca_names(oasis_id, texts_en, texts_de)
+        pop_m = re.search(r"<PopulationLevel>(\d+)</PopulationLevel>", chunk)
+        residence_needs = parse_residence_needs(chunk) if category == "residence" else []
+        upgrade_guids = parse_upgrade_guids(chunk) if category == "residence" else []
         buildings[str(guid)] = {
             "guid": guid,
             "name": name,
             "short_name": short_name(name),
+            "name_en": name_en,
+            "name_de": name_de,
             "template": tmpl,
             "category": category,
             "size": size,
@@ -611,10 +734,87 @@ def main() -> None:
             "oasis_id": oasis_id,
             "constructable": constructable,
             "regions": regions,
+            "icon": icon,
+            "population_level": int(pop_m.group(1)) if pop_m else None,
+            "residence_needs": residence_needs,
+            "upgrade_guids": upgrade_guids,
         }
 
+    # PopulationLevel portraits → residence.population_icon (buildings share one house icon).
+    pop_icons: dict[int, str] = {}
+    for m in re.finditer(
+        r"<Template>PopulationLevel</Template>\s*<Values>(.*?)</Values>\s*</Asset>",
+        text,
+        re.S,
+    ):
+        chunk = m.group(1)
+        g = re.search(r"<GUID>(\d+)</GUID>", chunk)
+        icon_m = re.search(r"<IconFilename>([^<]+)</IconFilename>", chunk)
+        if g and icon_m:
+            pop_icons[int(g.group(1))] = icon_m.group(1).replace("\\", "/")
+    for b in buildings.values():
+        pl = b.get("population_level")
+        if pl and int(pl) in pop_icons:
+            b["population_icon"] = pop_icons[int(pl)]
+
+    # Classify need kinds using product names; enrich residence_needs entries.
+    for nd in needs.values():
+        prod = products.get(str(nd.get("need_product") or ""))
+        pname = prod["name"] if prod else None
+        nd["kind"] = classify_need_kind(nd["name"], pname)
+
+    for b in buildings.values():
+        enriched = []
+        for item in b.get("residence_needs") or []:
+            ng = item["need_guid"]
+            nd = needs.get(str(ng), {})
+            enriched.append(
+                {
+                    "need_guid": ng,
+                    "kind": nd.get("kind", "goods"),
+                    "need_product": nd.get("need_product"),
+                    "consumption_rate": item.get("consumption_rate"),
+                    "buff_only": item.get("buff_only", False),
+                    "icon": nd.get("icon"),
+                    "name": nd.get("name"),
+                    "name_en": nd.get("name_en"),
+                    "name_de": nd.get("name_de"),
+                }
+            )
+        b["residence_needs"] = enriched
+
+    # Reverse upgrade edges → base_guid (who upgrades into this).
+    upgrade_into: dict[int, list[int]] = {}
+    for b in buildings.values():
+        if b.get("category") != "residence":
+            continue
+        for ug in b.get("upgrade_guids") or []:
+            upgrade_into.setdefault(int(ug), []).append(int(b["guid"]))
+    for b in buildings.values():
+        if b.get("category") != "residence":
+            continue
+        parents = upgrade_into.get(int(b["guid"]), [])
+        b["base_guids"] = parents
+        # Walk upgrades forward for full forward chain from this node.
+        chain = [int(b["guid"])]
+        seen = {chain[0]}
+        frontier = list(b.get("upgrade_guids") or [])
+        while frontier:
+            nxt = int(frontier.pop(0))
+            if nxt in seen:
+                continue
+            seen.add(nxt)
+            chain.append(nxt)
+            child = buildings.get(str(nxt))
+            if child:
+                frontier.extend(child.get("upgrade_guids") or [])
+        b["upgrade_chain"] = chain
+
     OUT.write_text(
-        json.dumps({"buildings": buildings, "products": products}, ensure_ascii=False),
+        json.dumps(
+            {"buildings": buildings, "products": products, "needs": needs},
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     from collections import Counter
@@ -630,12 +830,30 @@ def main() -> None:
     with_street = sum(1 for b in buildings.values() if b.get("street_distance"))
     with_radius = sum(1 for b in buildings.values() if b.get("radius_distance"))
     with_bonus = sum(1 for b in buildings.values() if b.get("effect_bonuses"))
+    loca_b = sum(1 for b in buildings.values() if b.get("name_de") or b.get("name_en"))
+    loca_p = sum(1 for p in products.values() if p.get("name_de") or p.get("name_en"))
+    residences = sum(1 for b in buildings.values() if b.get("category") == "residence")
+    with_needs = sum(1 for b in buildings.values() if b.get("residence_needs"))
     print(
-        f"wrote {OUT} buildings={len(buildings)} products={len(products)} "
+        f"wrote {OUT} buildings={len(buildings)} products={len(products)} needs={len(needs)} "
+        f"residences={residences} with_needs={with_needs} "
         f"with_io={with_io} fuel={fuel} street={with_street} radius={with_radius} "
-        f"bonuses={with_bonus} cats={dict(cats)} roads={dict(roads)} "
+        f"bonuses={with_bonus} loca_b={loca_b} loca_p={loca_p} "
+        f"cats={dict(cats)} roads={dict(roads)} "
         f"regions={dict(region_hits)}"
     )
+    r3087 = buildings.get("3087")
+    if r3087:
+        print(
+            "sample residence 3087",
+            r3087.get("short_name"),
+            "upgrades",
+            r3087.get("upgrade_guids"),
+            "chain",
+            r3087.get("upgrade_chain"),
+            "needs",
+            [(n.get("need_guid"), n.get("kind"), n.get("name")) for n in r3087.get("residence_needs") or []],
+        )
     for sample in ("30754", "3190", "3528", "3527", "3177"):
         b = buildings.get(sample)
         if b:

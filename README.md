@@ -1,0 +1,123 @@
+# Anno 117 Stamp Editor
+
+Community-Tool (Rust / egui) zum **Öffnen, Bearbeiten und Speichern** von Anno-117-Stamp-Packs (Blueprints).
+
+Kein offizielles Ubisoft-Produkt. Du brauchst ein legales Anno-117-Spiel, um Stamps und UI-Daten zu nutzen.
+
+---
+
+## Was kann der Editor?
+
+- Stamp-Packs (JSON + Pipette/FileDB) laden und speichern
+- Gebäude platzieren, verschieben, drehen, kopieren
+- Straßen & Aquädukte malen (inkl. Hochführung über Straßen)
+- Farmen / Felder (SubTileGrid), Coverage, Produktionsketten
+- Bibliothek außerhalb des Spiel-Sync-Ordners + Mirror ins Spiel
+- Residenz-Stufen **T1–T4** im Editor sichtbar (Hinweis: das Spiel speichert in Blueprints oft nur die Basis-GUID)
+
+---
+
+## Schnellstart (Release-Binary)
+
+1. Unter [Releases](https://github.com/Fabibassi/anno117-stamp-editor/releases) die Windows-ZIP laden
+2. `stamp_editor.exe` starten
+3. Beim ersten Start: **Datei → Sichere Bibliothek** (oder eigenen Ordner wählen) — nicht dauerhaft in `Documents\…\stamps` arbeiten, das Spiel leert diesen Ordner
+4. Katalog/Icons: lokal aus den Spieldaten erzeugen (siehe unten) — **nicht** im Repo enthalten
+
+Ohne Katalog startet der Editor trotzdem, aber ohne sinnvolle Baulette/Labels.
+
+---
+
+## Bauen aus dem Quellcode
+
+Voraussetzungen: [Rust](https://rustup.rs/) (stable), Windows.
+
+```powershell
+cd stamp_editor
+cargo run --release
+```
+
+Optional Pack direkt öffnen:
+
+```powershell
+cargo run --release -- --open "C:\Pfad\zu\dein\stamp.json"
+```
+
+Tests:
+
+```powershell
+cargo test --release
+```
+
+Legacy-Zisternen-Pos in Packs korrigieren:
+
+```powershell
+cargo run --release -- --fix-cisterns "C:\Pfad\zu\stamps"
+```
+
+### Katalog & Icons (lokal)
+
+Abgeleitete Spieldaten gehören **nicht** auf GitHub (`_gamedata/` ist ignoriert).
+
+```powershell
+# Beispiel — Pfade an deine Installation anpassen
+python _tools\rebuild_editor_catalog.py
+```
+
+Spiel-Stamps typischerweise unter:
+
+`Documents\Anno 117 - Pax Romana\stamps\`
+
+---
+
+## Bedienung (Kurz)
+
+| Aktion | Steuerung |
+|--------|-----------|
+| Bibliothek | Linke Leiste; speichern spiegelt optional ins Spiel |
+| Pan | Mausrad-Taste / RMB auf leerem Feld |
+| Zoom | Scroll |
+| Platzieren | Gebäude wählen → LMB |
+| Verschieben | LMB ziehen |
+| Wege / Aquädukt | Straßen-Werkzeug / Aquädukt-Pinsel |
+| Land/Marsh | **V** (wo unterstützt, z. B. Lager) |
+
+Mehr Details: [`stamp_editor/README.md`](stamp_editor/README.md)
+
+---
+
+## Hinweis zu Residenz-Stufen
+
+Anno 117 unterscheidet in vielen Blueprint-Dateien **nicht** zwischen Upgrade-Stufen — oft steht nur die T1-GUID (z. B. Liberti). Der Editor kann T1–T4 setzen und anzeigen; aus dem Spiel übernommene Stamps sind häufig alles T1.
+
+---
+
+## Über KI-Unterstützung beim Coden
+
+Große Teile dieses Projekts entstanden **mit Hilfe von KI** (Cursor / Coding-Assistenten) und menschlicher Steuerung: Ziele setzen, prüfen, verwerfen, freigeben.
+
+### Bitte kein Drama wegen „AI-Code“
+
+- Das ist ein **Hobby-/Community-Tool**, kein Wettbewerb um Jobs oder Prestige.
+- **Niemand verliert etwas**, nur weil KI mitgeschrieben hat — und **niemand „gewinnt“** dadurch etwas von dir weg. Es entsteht nur ein Werkzeug, das vorher so nicht da war.
+- Wenn dich der Ansatz stört: fork, ignoriere es, oder schreibe deinen eigenen Editor. Beides ist okay.
+- Kritik an **Bugs und UX** ist willkommen. Moralische Entrüstung darüber, *wie* der Code entstanden ist, hilft niemandem weiter.
+
+Kurz: Code ist Code. Nützlich oder nicht — das entscheidet die Nutzung, nicht die Tastaturgeschichte.
+
+---
+
+## Rechtliches / Fair Play
+
+- MIT-Lizenz für den Editor-Code (siehe `LICENSE`)
+- Anno 117, Assets, Texte und Marken gehören Ubisoft / den Rechteinhabern
+- Dieses Repo enthält **keine** entpackten UI-Texturen, keine `assets.xml` und keine abgeleiteten Katalog-JSONs
+- Nutze den Editor nur mit Daten aus **deiner** legalen Spielinstallation
+
+---
+
+## Mitmachen
+
+Issues und PRs sind willkommen — Bugs, Ideen, Korrekturen. Siehe auch das Issue zur Projekt-/KI-Haltung im Repo.
+
+Changelog: [`CHANGELOG.md`](CHANGELOG.md)

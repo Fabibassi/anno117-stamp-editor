@@ -383,6 +383,8 @@ mod tests {
             guid: 1,
             name: name.into(),
             short_name: None,
+            name_en: None,
+            name_de: None,
             template: template.into(),
             category: category.into(),
             size: [3.0, 3.0],

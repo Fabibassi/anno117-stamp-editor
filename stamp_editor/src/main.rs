@@ -1,3 +1,6 @@
+// Kein schwarzes CMD-Fenster neben der GUI (auch Debug).
+#![windows_subsystem = "windows"]
+
 mod app;
 
 use app::StampEditorApp;

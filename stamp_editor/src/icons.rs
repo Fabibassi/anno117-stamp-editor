@@ -1,7 +1,7 @@
 //! Load Anno UI icons: PNG cache under `_gamedata/ui_png`, filled from `ui.rda` (lazy + bulk).
 
 use crate::rda::{
-    cache_rel_from_rda_key, candidate_rda_keys, is_bulk_icon_key, open_ui_rda, SharedRda,
+    cache_rel_from_rda_key, candidate_rda_keys, is_bulk_icon_key, open_ui_rda, RdaSet, SharedRda,
 };
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions};
 use image::imageops::FilterType;
@@ -45,7 +45,7 @@ pub struct UiIcons {
     textures: HashMap<String, TextureHandle>,
     missing: HashSet<String>,
     root: PathBuf,
-    rda: Option<SharedRda>,
+    rda: Option<Arc<RdaSet>>,
     status: Arc<Mutex<IconExtractStatus>>,
     bulk_started: Arc<AtomicBool>,
 }
@@ -70,15 +70,18 @@ impl UiIcons {
         self.status.lock().map(|g| g.clone()).unwrap_or_default()
     }
 
-    /// Attach `ui.rda` from a game install and kick off background bulk extract (once).
+    /// Attach UI RDAs (patches + ui.rda) from a game install and kick off bulk extract.
     pub fn attach_game_install(&mut self, game_install: &Path) {
         match open_ui_rda(game_install) {
-            Ok(rda) => {
+            Ok((rda, summary)) => {
                 let n = rda.len();
                 self.rda = Some(rda.clone());
+                // Retry paths that failed when only base ui.rda was linked.
+                self.missing.clear();
                 if let Ok(mut st) = self.status.lock() {
-                    st.message = format!("ui.rda indexiert ({n} Dateien)");
+                    st.message = format!("UI-RDAs indexiert ({n} Dateien) · {summary}");
                 }
+                self.bulk_started.store(false, Ordering::SeqCst);
                 self.start_bulk_extract();
             }
             Err(e) => {
@@ -112,18 +115,23 @@ impl UiIcons {
             .name("ui-icon-bulk".into())
             .spawn(move || {
                 let mut seen_rel = HashSet::new();
-                let mut keys: Vec<String> = Vec::new();
-                let mut all: Vec<String> = rda
-                    .keys()
-                    .filter(|k| is_bulk_icon_key(k))
-                    .filter(|k| {
-                        let k = k.as_str();
-                        k.contains("/4k/")
-                            || k.contains("/construction_bar/")
-                            || k.contains("/ds/icons/")
-                    })
-                    .cloned()
-                    .collect();
+                let mut keys: Vec<(SharedRda, String)> = Vec::new();
+                let mut all: Vec<(SharedRda, String)> = Vec::new();
+                for arch in rda.archives() {
+                    for k in arch.keys() {
+                        if !is_bulk_icon_key(k) {
+                            continue;
+                        }
+                        let ks = k.as_str();
+                        if !(ks.contains("/4k/")
+                            || ks.contains("/construction_bar/")
+                            || ks.contains("/ds/icons/"))
+                        {
+                            continue;
+                        }
+                        all.push((arch.clone(), k.clone()));
+                    }
+                }
                 // Prefer 4k paths when both map to the same cache file.
                 all.sort_by(|a, b| {
                     let score = |k: &str| {
@@ -135,12 +143,14 @@ impl UiIcons {
                             2
                         }
                     };
-                    score(a).cmp(&score(b)).then_with(|| a.cmp(b))
+                    score(&a.1)
+                        .cmp(&score(&b.1))
+                        .then_with(|| a.1.cmp(&b.1))
                 });
-                for k in all {
+                for (arch, k) in all {
                     if let Some(rel) = cache_rel_from_rda_key(&k) {
                         if seen_rel.insert(rel) {
-                            keys.push(k);
+                            keys.push((arch, k));
                         }
                     }
                 }
@@ -151,8 +161,8 @@ impl UiIcons {
                     st.total = total;
                     st.message = format!("Icons extrahieren 0/{total}");
                 }
-                for (i, key) in keys.iter().enumerate() {
-                    let _ = extract_rda_key_to_cache(&rda, &root, key, None);
+                for (i, (arch, key)) in keys.iter().enumerate() {
+                    let _ = extract_rda_key_to_cache(arch, &root, key, None);
                     if let Ok(mut st) = status.lock() {
                         st.done = (i + 1) as u32;
                         if i % 25 == 0 || i + 1 == keys.len() {
@@ -277,9 +287,9 @@ impl UiIcons {
 
         let rda = self.rda.as_ref()?;
         let candidates = candidate_rda_keys(game_or_chrome);
-        let key = rda.resolve(&candidates)?;
+        let (arch, key) = rda.resolve(&candidates)?;
         let max = if chrome { Some(1024) } else { Some(96) };
-        extract_rda_key_to_cache(rda, &self.root, &key, max).ok()
+        extract_rda_key_to_cache(&arch, &self.root, &key, max).ok()
     }
 
     pub fn chrome(&mut self, ctx: &egui::Context, filename: &str) -> Option<TextureHandle> {

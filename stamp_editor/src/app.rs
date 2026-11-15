@@ -8,6 +8,10 @@ use stamp_editor::coverage::{
     footprint_cells_for_region, kind_color, layout_stats_region, CoverageMap, CoverageMode,
     RoadKind,
 };
+use stamp_editor::needs::{
+    analyse_city_needs, provided_need_guids, report_for_building, report_for_def,
+    ResidenceNeedReport,
+};
 use stamp_editor::area_efficiency::{
     analyze_area_efficiency_with_fields, blocker_map, competition_group,
     contested_free_cells, is_resource_area_building, radius_cells, resource_need, resource_radius,
@@ -15,10 +19,12 @@ use stamp_editor::area_efficiency::{
 };
 use stamp_editor::economy::analyze_chain_region;
 use stamp_editor::history::{History, Snapshot};
+use stamp_editor::i18n::{self, Language};
 use stamp_editor::library::{self, EditorConfig, LibraryPack};
 use stamp_editor::meshgraph::{
-    apply_road_path, is_road_brush_guid, orthogonal_road_path, read_mesh_info, relative_to_tile,
-    ROAD_GUID_DIRT, ROAD_GUID_STONE,
+    apply_road_path, is_aqueduct_brush_guid, is_aqueduct_maxground_guid, is_road_brush_guid,
+    mesh_road_cells, orthogonal_road_path, read_mesh_info, relative_to_tile, road_guid_for_region,
+    CisternInlet, ROAD_GUID_DIRT, ROAD_GUID_STONE,
 };
 use stamp_editor::modules::{
     complex_group_indices, complex_main_index, count_progress_for_stamp_area, dist_tiles,
@@ -26,9 +32,13 @@ use stamp_editor::modules::{
 };
 use stamp_editor::pack::{
     append_blank_stamp, copy_stamp_to_pack, delete_stamp_entry, duplicate_stamp, move_stamp_to_pack,
-    new_blank_stamp, open_first_real_stamp, open_named_stamp, save_open_stamp, OpenStamp,
+    new_blank_stamp, open_first_real_stamp, open_named_stamp, rename_stamp_entry, save_open_stamp,
+    OpenStamp,
 };
-use stamp_editor::stamp::Building;
+use stamp_editor::stamp::{
+    apply_field_tiles, connected_field_subset, disconnected_field_cells, field_cells_of_owner,
+    foreign_field_cells, Building,
+};
 use eframe::egui::{self, Color32, Frame, Pos2, Rect, RichText, Sense, Stroke, Vec2};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -57,6 +67,21 @@ struct ClipboardRoad {
 /// Marker written to the OS clipboard so Windows/eframe emits `Event::Paste` on Ctrl+V.
 const OS_CLIPBOARD_MARKER: &str = "rusticus-stamp-clipboard-v1";
 
+fn sanitize_stamp_filename(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .map(|c| match c {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+            c if c.is_control() => '_',
+            c => c,
+        })
+        .collect();
+    cleaned
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 pub struct StampEditorApp {
     catalog: Catalog,
     catalog_path: PathBuf,
@@ -72,6 +97,7 @@ pub struct StampEditorApp {
     /// Right-hand analysis panel; off by default so it doesn't cover the baulette.
     show_analyse: bool,
     region_filter: RegionFilter,
+    language: Language,
     palette_selected_guid: Option<u32>,
     status: String,
     cell_px: f32,
@@ -90,6 +116,8 @@ pub struct StampEditorApp {
     placing_guid: Option<u32>,
     /// Pipette Variation while placing (warehouse marsh = `Some(1)` → 5×5).
     place_variation: Option<u32>,
+    /// Pipette `Dir` while a building is in hand (`R` / `Shift+R`).
+    place_direction: i32,
     /// Active drag stroke: road line, demolish rect, or place rect.
     drag_stroke: Option<DragStroke>,
     /// After a stroke drag, ignore the trailing `clicked()` so we don't double-apply.
@@ -98,6 +126,9 @@ pub struct StampEditorApp {
     road_brush_guid: Option<i32>,
     /// Dedicated road eraser (orthogonal stroke always removes).
     road_erase_mode: bool,
+    /// PlantFarm field brush: ComplexOwnerID + field module GUID.
+    field_brush_owner: Option<u64>,
+    field_brush_guid: Option<u32>,
     /// Anno-style RMB radial / quick-select wheel.
     radial: Option<RadialMenu>,
     history: History,
@@ -105,6 +136,10 @@ pub struct StampEditorApp {
     library_root: PathBuf,
     /// Linked Anno 117 install (icons come from `maindata/ui.rda`, not redistributed).
     game_install: Option<PathBuf>,
+    /// Live Ubisoft stamps folder (wipe-synced on game start) — export/mirror target.
+    game_stamps_root: PathBuf,
+    /// Mirror each library save into `game_stamps_root`.
+    mirror_to_game: bool,
     library_packs: Vec<LibraryPack>,
     library_clipboard: Option<LibraryClipboard>,
     move_group: bool,
@@ -113,6 +148,16 @@ pub struct StampEditorApp {
     clipboard_roads: Vec<ClipboardRoad>,
     /// Absolute road cells in the current marquee selection.
     selected_roads: HashSet<(i32, i32)>,
+    /// PlantFarm SubTileGrid tiles in the current selection (stamp-relative).
+    selected_fields: HashSet<(i32, i32)>,
+    /// Field-tile drag: origins at drag start.
+    drag_field_origins: Vec<(i32, i32)>,
+    /// Live delta (tiles) while dragging selected field cells.
+    drag_field_delta: (i32, i32),
+    /// Field cell under the cursor when the field drag started.
+    drag_field_anchor: (i32, i32),
+    /// True while LMB-dragging selected field tiles (not a building).
+    dragging_fields: bool,
     /// True while the hand was armed from Ablage (place whole group + roads).
     hand_from_clipboard: bool,
     /// Last canvas pointer in world tiles (for Ctrl+V paste under cursor).
@@ -131,6 +176,10 @@ pub struct StampEditorApp {
     buildmenu_entry: Option<usize>,
     /// Selected entry inside the infrastructure left strip (category/building).
     buildmenu_infra_entry: Option<usize>,
+    /// Residence upgrade chain shown in the mid build row (place by tier).
+    residence_tier_guids: Option<Vec<u32>>,
+    /// Keep the service-needs window on this residence while placing its providers.
+    residence_needs_pin: Option<usize>,
     ui_icons: UiIcons,
     /// Debounced autosave deadline.
     autosave_at: Option<Instant>,
@@ -142,12 +191,21 @@ pub struct StampEditorApp {
     library_fingerprint: u64,
     /// Next time to re-check the library folder for external changes.
     library_watch_at: Instant,
+    /// `Some(draft_name)` → modal to create a new stamp in the active region folder.
+    new_stamp_dialog: Option<String>,
+    /// Request focus once when the new-stamp dialog opens.
+    new_stamp_dialog_focus: bool,
+    /// Rename stamp: `(pack_path, old_name, draft)`.
+    rename_stamp_dialog: Option<(PathBuf, String, String)>,
+    rename_stamp_dialog_focus: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StrokeKind {
     /// Orthogonal road paint/toggle-erase along a line.
     Road { paint_on: bool },
+    /// PlantFarm SubTileGrid paint/erase along an orthogonal path.
+    Field { paint_on: bool },
     /// Axis-aligned demolish box (roads + buildings).
     DemolishRect,
     /// Axis-aligned place grid for `placing_guid`.
@@ -264,7 +322,8 @@ enum RadialAction {
 #[derive(Debug, Clone)]
 struct RadialItem {
     action: RadialAction,
-    label: &'static str,
+    /// i18n key (e.g. `radial.road_dirt`).
+    label_key: &'static str,
     /// Game IconFilename under icon_content/…
     icon: &'static str,
 }
@@ -287,32 +346,32 @@ impl RadialMenu {
         &[
             RadialItem {
                 action: RadialAction::RoadDirt,
-                label: "Weg Erde",
+                label_key: "radial.road_dirt",
                 icon: "data/ui/fhd/base/icon_content/infrastructure/icon_3d_road_dirt.png",
             },
             RadialItem {
                 action: RadialAction::RoadStone,
-                label: "Weg Stein",
+                label_key: "radial.road_stone",
                 icon: "data/ui/fhd/base/icon_content/infrastructure/icon_3d_road_stone.png",
             },
             RadialItem {
                 action: RadialAction::Demolish,
-                label: "Abriss",
+                label_key: "radial.demolish",
                 icon: "data/ui/fhd/base/icon_content/tools/icon_2d_tool_demolish.png",
             },
             RadialItem {
                 action: RadialAction::Copy,
-                label: "Kopieren",
+                label_key: "radial.copy",
                 icon: "data/ui/fhd/base/icon_content/tools/icon_2d_tool_copy.png",
             },
             RadialItem {
                 action: RadialAction::Move,
-                label: "Verschieben",
+                label_key: "radial.move",
                 icon: "data/ui/fhd/base/icon_content/tools/icon_2d_tool_move_building.png",
             },
             RadialItem {
                 action: RadialAction::ClearHand,
-                label: "Hand frei",
+                label_key: "radial.clear_hand",
                 icon: "data/ui/fhd/base/icon_content/construction_tools/icon_2d_tools.png",
             },
         ]
@@ -371,6 +430,7 @@ enum LibraryAction {
     DeleteStamp { pack: PathBuf, name: String },
     DeleteFolder { path: PathBuf },
     DuplicateStamp { pack: PathBuf, name: String },
+    RenameStamp { pack: PathBuf, name: String },
     CopyPack { path: PathBuf },
     CopyStamp { pack: PathBuf, name: String },
     Paste { target_folder: PathBuf },
@@ -390,23 +450,37 @@ impl StampEditorApp {
         let cfg = EditorConfig::load();
         let library_root = cfg.library_root.clone();
         let game_install = cfg.game_install.clone();
+        let game_stamps_root = cfg.game_stamps_root.clone();
+        let mirror_to_game = cfg.mirror_to_game;
         let library_packs = library::scan_library(&library_root);
         let library_fingerprint = library::library_fingerprint(&library_root);
+        let language = Language::from_config(&cfg.language);
         let game_note = match &game_install {
             Some(p) if EditorConfig::looks_like_anno_install(p) => {
-                format!("Spiel verknüpft: {}", p.display())
+                i18n::tr_fmt(
+                    language,
+                    "status.game_linked",
+                    &[("path", &p.display().to_string())],
+                )
             }
-            Some(p) => format!("Spielordner ungültig (keine ui.rda): {}", p.display()),
-            None => "Kein Spielordner — Datei → Anno-Spielordner verknüpfen…".into(),
+            Some(p) => i18n::tr_fmt(
+                language,
+                "status.game_invalid",
+                &[("path", &p.display().to_string())],
+            ),
+            None => i18n::tr(language, "status.game_none").to_string(),
         };
         let catalog_note = if catalog_ok {
             String::new()
         } else {
-            format!(
-                " · Katalog fehlt/kaputt: {} — Gebäudegrößen unzuverlässig!",
-                catalog_path.display()
+            i18n::tr_fmt(
+                language,
+                "status.catalog_bad",
+                &[("path", &catalog_path.display().to_string())],
             )
         };
+        let n_packs = library_packs.len().to_string();
+        let lib_path = library_root.display().to_string();
         let mut app = Self {
             catalog,
             catalog_path,
@@ -419,11 +493,17 @@ impl StampEditorApp {
             show_analyse: false,
             // Concrete region so the construction bar (incl. Wege) is visible.
             region_filter: RegionFilter::Latium,
+            language,
             palette_selected_guid: None,
-            status: format!(
-                "Bibliothek: {} ({} Packs). {game_note}{catalog_note}",
-                library_root.display(),
-                library_packs.len()
+            status: i18n::tr_fmt(
+                language,
+                "status.library",
+                &[
+                    ("path", &lib_path),
+                    ("n", &n_packs),
+                    ("game", &game_note),
+                    ("catalog", &catalog_note),
+                ],
             ),
             cell_px: 18.0,
             pan: Vec2::ZERO,
@@ -436,21 +516,31 @@ impl StampEditorApp {
             drag_anchor_start: (0.0, 0.0),
             placing_guid: None,
             place_variation: None,
+            place_direction: 0,
             drag_stroke: None,
             suppress_stroke_click: false,
             road_brush_guid: None,
             road_erase_mode: false,
+            field_brush_owner: None,
+            field_brush_guid: None,
             radial: None,
             history: History::new(),
             history_drag_pushed: false,
             library_root,
             game_install,
+            game_stamps_root,
+            mirror_to_game,
             library_packs,
             library_clipboard: None,
             move_group: false,
             clipboard: Vec::new(),
             clipboard_roads: Vec::new(),
             selected_roads: HashSet::new(),
+            selected_fields: HashSet::new(),
+            drag_field_origins: Vec::new(),
+            drag_field_delta: (0, 0),
+            drag_field_anchor: (0, 0),
+            dragging_fields: false,
             hand_from_clipboard: false,
             last_pointer_world: None,
             module_parent_index: None,
@@ -461,18 +551,28 @@ impl StampEditorApp {
             buildmenu_tab: Some(0),
             buildmenu_entry: None,
             buildmenu_infra_entry: None,
+            residence_tier_guids: None,
+            residence_needs_pin: None,
             ui_icons: UiIcons::new(),
             autosave_at: None,
             library_selection: HashSet::new(),
             library_marquee: None,
             library_fingerprint,
             library_watch_at: Instant::now() + Duration::from_secs(1),
+            new_stamp_dialog: None,
+            new_stamp_dialog_focus: false,
+            rename_stamp_dialog: None,
+            rename_stamp_dialog_focus: false,
         };
         if let Some(g) = app.game_install.clone() {
             app.ui_icons.attach_game_install(&g);
         }
         // Empty canvas is a blank editable stamp (not a dead "open file" screen).
-        app.start_new_stamp();
+        // Must live under Region Roman/Celtic/Egyptian — Anno wipe-syncs other folders.
+        library::ensure_region_library_layout(&app.library_root);
+        let boot_dir = app.region_stamp_dir();
+        let _ = std::fs::create_dir_all(&boot_dir);
+        app.start_new_stamp_in(&boot_dir, false);
         if !catalog_ok {
             app.status = format!(
                 "Katalog fehlt/kaputt: {} — Footprints/Labels unzuverlässig. {game_note}",
@@ -482,9 +582,25 @@ impl StampEditorApp {
         app
     }
 
-    fn unique_new_pack_path_in(&self, dir: &Path) -> PathBuf {
+    fn default_stamp_name(&self) -> &'static str {
+        self.t("stamp.default_name")
+    }
+
+    /// Anno only keeps `Region Roman` / `Region Celtic` / `Region Egyptian` under stamps/.
+    fn region_stamp_dir(&self) -> PathBuf {
+        self.library_root
+            .join(self.region_filter.game_stamp_folder())
+    }
+
+    fn unique_new_pack_path_in(&self, dir: &Path, base_name: &str) -> PathBuf {
         let _ = std::fs::create_dir_all(dir);
-        library::unique_json_path(dir, "Neues Stamp")
+        let base = base_name.trim();
+        let base = if base.is_empty() {
+            self.default_stamp_name()
+        } else {
+            base
+        };
+        library::unique_json_path(dir, base)
     }
 
     fn schedule_autosave(&mut self) {
@@ -498,6 +614,7 @@ impl StampEditorApp {
     }
 
     /// Poll library folder for external add/remove/edit; rescan when fingerprint changes.
+    /// Also pulls missing packs from the live game stamps folder (in-game creates).
     fn tick_library_watch(&mut self, ctx: &egui::Context) {
         let now = Instant::now();
         // Keep waking egui even when idle so external folder changes are noticed.
@@ -506,6 +623,21 @@ impl StampEditorApp {
             return;
         }
         self.library_watch_at = now + Duration::from_secs(1);
+        if !self.library_is_game_stamps() {
+            if let Ok(n) = library::seed_library_from_game(
+                &self.library_root,
+                &self.game_stamps_root,
+            ) {
+                if n > 0 {
+                    self.refresh_library_silent();
+                    self.status = self.tf(
+                        "status.imported_from_game",
+                        &[("n", &n.to_string())],
+                    );
+                    return;
+                }
+            }
+        }
         let fp = library::library_fingerprint(&self.library_root);
         if fp == self.library_fingerprint {
             return;
@@ -534,26 +666,53 @@ impl StampEditorApp {
         }
     }
 
-    /// Write current stamp to disk (creates pack file if still `is_new`).
-    fn autosave_now(&mut self, refresh_lib: bool) {
-        let Some(open) = self.open.as_mut() else {
-            return;
-        };
-        if !open.dirty && !open.is_new {
+    fn import_from_game(&mut self) {
+        if self.library_is_game_stamps() {
+            self.status = self.t("status.export_same_folder").into();
             return;
         }
-        match save_open_stamp(open) {
-            Ok(()) => {
-                open.dirty = false;
-                open.is_new = false;
-                let path = open.pack_path.clone();
-                let name = open.entry_name.clone();
+        match library::import_packs_from_game(
+            &self.library_root,
+            &self.game_stamps_root,
+            true,
+        ) {
+            Ok(n) => {
+                self.refresh_library();
+                self.status = self.tf(
+                    "status.imported_from_game",
+                    &[("n", &n.to_string())],
+                );
+            }
+            Err(e) => {
+                self.status = self.tf("status.import_failed", &[("err", &e)]);
+            }
+        }
+    }
+
+    /// Write current stamp to disk (creates pack file if still `is_new`).
+    /// Only runs when `dirty` — empty boot blanks stay in memory until first edit.
+    fn autosave_now(&mut self, refresh_lib: bool) {
+        let dirty = self.open.as_ref().is_some_and(|o| o.dirty);
+        if !dirty {
+            return;
+        }
+        let save_result = self.open.as_ref().map(save_open_stamp);
+        match save_result {
+            Some(Ok(())) => {
+                let (path, name) = {
+                    let open = self.open.as_mut().unwrap();
+                    open.dirty = false;
+                    open.is_new = false;
+                    (open.pack_path.clone(), open.entry_name.clone())
+                };
                 if refresh_lib {
                     self.refresh_library_silent();
                 }
-                self.status = format!("Gespeichert: {name} ({})", path.display());
+                let mirror_note = self.mirror_pack_after_save(&path);
+                self.status = format!("Gespeichert: {name} ({}){mirror_note}", path.display());
             }
-            Err(err) => self.status = format!("Speichern fehlgeschlagen: {err}"),
+            Some(Err(err)) => self.status = format!("Speichern fehlgeschlagen: {err}"),
+            None => {}
         }
     }
 
@@ -581,32 +740,33 @@ impl StampEditorApp {
 
     fn flush_autosave_blocking(&mut self) {
         self.autosave_at = None;
-        if self.open.as_ref().is_some_and(|o| o.dirty || o.is_new) {
-            let should = self.open.as_ref().is_some_and(|o| {
-                o.dirty || (!o.is_new && o.pack_path.exists())
-            });
-            if should {
-                let refresh = self.open.as_ref().is_some_and(|o| o.is_new);
-                self.autosave_now(refresh);
-            }
+        // Persist dirty canvas before replacing `self.open` (e.g. library click).
+        // Boot blanks start clean (`dirty: false`) so they are not written here.
+        let should = self.open.as_ref().is_some_and(|o| o.dirty);
+        if should {
+            let refresh = self
+                .open
+                .as_ref()
+                .is_some_and(|o| o.is_new || !o.pack_path.exists());
+            self.autosave_now(refresh);
         }
     }
 
-    /// Replace the canvas with a new empty stamp.
+    /// Open the name dialog for a new stamp (current region folder).
     fn start_new_stamp(&mut self) {
-        let dir = self.library_root.join("unsorted");
-        self.start_new_stamp_in(&dir, false);
+        self.new_stamp_dialog = Some(self.default_stamp_name().to_string());
+        self.new_stamp_dialog_focus = true;
     }
 
-    fn start_new_stamp_in(&mut self, dir: &Path, persist_now: bool) {
+    fn start_new_stamp_named(&mut self, dir: &Path, name: &str, persist_now: bool) {
         self.flush_autosave_blocking();
-        let path = self.unique_new_pack_path_in(dir);
-        let name = path
+        let path = self.unique_new_pack_path_in(dir, name);
+        let entry_name = path
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "Neues Stamp".into());
+            .unwrap_or_else(|| self.default_stamp_name().to_string());
         let region = self.region_filter.stamp_region_guid();
-        match new_blank_stamp(path, name, region) {
+        match new_blank_stamp(path, entry_name, region) {
             Ok(open) => {
                 self.history.clear();
                 self.history_drag_pushed = false;
@@ -623,31 +783,294 @@ impl StampEditorApp {
                         o.dirty = true;
                     }
                     self.autosave_now(true);
-                    self.status = format!(
-                        "Neues Stamp angelegt · Region {} · speichert automatisch",
-                        self.region_filter.label()
+                    self.status = self.tf(
+                        "status.new_stamp_ok",
+                        &[("region", self.region_filter.label_lang(self.language))],
                     );
                 } else {
-                    self.status = format!(
-                        "Neues Stamp — leer · Region {} · speichert bei erster Änderung",
-                        self.region_filter.label()
+                    self.status = self.tf(
+                        "status.new_stamp_empty",
+                        &[("region", self.region_filter.label_lang(self.language))],
                     );
                 }
             }
-            Err(err) => self.status = format!("Neues Stamp fehlgeschlagen: {err}"),
+            Err(err) => {
+                self.status = self.tf("status.new_stamp_failed", &[("err", &err.to_string())])
+            }
         }
     }
 
-    fn confirm_delete(label: &str) -> bool {
+    fn start_new_stamp_in(&mut self, dir: &Path, persist_now: bool) {
+        let name = self.default_stamp_name().to_string();
+        self.start_new_stamp_named(dir, &name, persist_now);
+    }
+
+    fn show_rename_stamp_dialog(&mut self, ctx: &egui::Context) {
+        let Some((_, _, _)) = self.rename_stamp_dialog.as_ref() else {
+            return;
+        };
+        let title = self.t("lib.rename_title");
+        let name_lbl = self.t("lib.rename_name");
+        let ok_lbl = self.t("lib.rename_ok");
+        let cancel_lbl = self.t("lib.rename_cancel");
+        let mut confirmed = false;
+        let mut cancelled = false;
+        let mut enter = false;
+        let want_focus = self.rename_stamp_dialog_focus;
+        egui::Window::new(title)
+            .id(egui::Id::new("rename_stamp_dialog"))
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.label(name_lbl);
+                let resp = ui.text_edit_singleline(
+                    &mut self
+                        .rename_stamp_dialog
+                        .as_mut()
+                        .expect("dialog open")
+                        .2,
+                );
+                if want_focus {
+                    resp.request_focus();
+                }
+                if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    enter = true;
+                }
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if ui.button(ok_lbl).clicked() {
+                        confirmed = true;
+                    }
+                    if ui.button(cancel_lbl).clicked() {
+                        cancelled = true;
+                    }
+                });
+                if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    cancelled = true;
+                }
+            });
+        if want_focus {
+            self.rename_stamp_dialog_focus = false;
+        }
+        if cancelled {
+            self.rename_stamp_dialog = None;
+            return;
+        }
+        if confirmed || enter {
+            let Some((pack, old_name, draft)) = self.rename_stamp_dialog.take() else {
+                return;
+            };
+            let name = sanitize_stamp_filename(draft.trim());
+            if name.is_empty() {
+                self.rename_stamp_dialog = Some((pack, old_name.clone(), old_name));
+                self.rename_stamp_dialog_focus = true;
+                return;
+            }
+            self.flush_autosave_blocking();
+            match rename_stamp_entry(&pack, &old_name, &name) {
+                Ok((new_path, new_name)) => {
+                    if let Some(open) = self.open.as_mut() {
+                        if open.pack_path == pack && open.entry_name == old_name {
+                            open.pack_path = new_path.clone();
+                            open.entry_name = new_name.clone();
+                        }
+                    }
+                    self.refresh_library();
+                    self.status = self.tf(
+                        "status.stamp_renamed",
+                        &[("old", &old_name), ("new", &new_name)],
+                    );
+                }
+                Err(e) => {
+                    self.status =
+                        self.tf("status.rename_failed", &[("err", &e.to_string())]);
+                }
+            }
+        }
+    }
+
+    fn show_new_stamp_dialog(&mut self, ctx: &egui::Context) {
+        let Some(_) = self.new_stamp_dialog.as_ref() else {
+            return;
+        };
+        let title = self.t("stamp.new_dialog_title");
+        let name_lbl = self.t("stamp.new_dialog_name");
+        let ok_lbl = self.t("stamp.new_dialog_ok");
+        let cancel_lbl = self.t("stamp.new_dialog_cancel");
+        let mut confirmed = false;
+        let mut cancelled = false;
+        let mut enter = false;
+        let want_focus = self.new_stamp_dialog_focus;
+        egui::Window::new(title)
+            .id(egui::Id::new("new_stamp_dialog"))
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.label(name_lbl);
+                let resp = ui.text_edit_singleline(
+                    self.new_stamp_dialog.as_mut().expect("dialog open"),
+                );
+                if want_focus {
+                    resp.request_focus();
+                }
+                if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    enter = true;
+                }
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if ui.button(ok_lbl).clicked() {
+                        confirmed = true;
+                    }
+                    if ui.button(cancel_lbl).clicked() {
+                        cancelled = true;
+                    }
+                });
+                if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    cancelled = true;
+                }
+            });
+        if want_focus {
+            self.new_stamp_dialog_focus = false;
+        }
+        if cancelled {
+            self.new_stamp_dialog = None;
+            return;
+        }
+        if confirmed || enter {
+            let name = self
+                .new_stamp_dialog
+                .take()
+                .unwrap_or_else(|| self.default_stamp_name().to_string());
+            let name = sanitize_stamp_filename(name.trim());
+            if name.is_empty() {
+                self.new_stamp_dialog = Some(self.default_stamp_name().to_string());
+                self.new_stamp_dialog_focus = true;
+                return;
+            }
+            let dir = self.region_stamp_dir();
+            let _ = std::fs::create_dir_all(&dir);
+            self.start_new_stamp_named(&dir, &name, true);
+        }
+    }
+
+    fn confirm_delete(&self, label: &str) -> bool {
         matches!(
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Warning)
-                .set_title("Löschen?")
+                .set_title(self.t("dialog.delete_title"))
                 .set_description(label)
                 .set_buttons(rfd::MessageButtons::OkCancel)
                 .show(),
             rfd::MessageDialogResult::Ok
         )
+    }
+
+    /// After deleting the open stamp/pack: open another library entry, or a silent blank.
+    /// Never opens the New-Stamp name dialog.
+    fn open_fallback_after_delete(&mut self) {
+        self.autosave_at = None;
+        self.open = None;
+        // Prefer a pack that still matches the region filter.
+        let region = self.region_filter;
+        let pick = self
+            .library_packs
+            .iter()
+            .find(|p| region.matches_stamp(p.region_hint, &p.folder) && !p.stamps.is_empty())
+            .or_else(|| self.library_packs.iter().find(|p| !p.stamps.is_empty()));
+        if let Some(pack) = pick {
+            if let Some(entry) = pack.stamps.first() {
+                let path = pack.path.clone();
+                let name = entry.name.clone();
+                // open_named flushes; open is already None so that's fine.
+                match open_named_stamp(&path, &name) {
+                    Ok(open) => {
+                        self.set_open(open, &path);
+                        return;
+                    }
+                    Err(_) => {}
+                }
+            }
+        }
+        let dir = self.region_stamp_dir();
+        let _ = std::fs::create_dir_all(&dir);
+        self.start_new_stamp_in(&dir, false);
+    }
+
+    /// Delete selected library packs/stamps (with confirm). Returns true if handled.
+    fn delete_library_selection(&mut self) -> bool {
+        if self.library_selection.is_empty() {
+            return false;
+        }
+        let items: Vec<LibItem> = self.library_selection.iter().cloned().collect();
+        let msg = if items.len() == 1 {
+            match &items[0] {
+                LibItem::Pack(path) => {
+                    let name = path
+                        .file_name()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| path.display().to_string());
+                    self.tf("dialog.delete_pack", &[("name", &name)])
+                }
+                LibItem::Stamp { name, .. } => {
+                    self.tf("dialog.delete_stamp", &[("name", name)])
+                }
+            }
+        } else {
+            self.tf(
+                "dialog.delete_n",
+                &[("n", &items.len().to_string())],
+            )
+        };
+        if !self.confirm_delete(&msg) {
+            return true;
+        }
+
+        let open_pack = self.open.as_ref().map(|o| o.pack_path.clone());
+        let open_name = self.open.as_ref().map(|o| o.entry_name.clone());
+        let mut deleted_open = false;
+        let mut err: Option<String> = None;
+        let mut deleted = 0usize;
+
+        for item in &items {
+            let hits_open = match item {
+                LibItem::Pack(path) => open_pack.as_ref() == Some(path),
+                LibItem::Stamp { pack, name } => {
+                    open_pack.as_ref() == Some(pack) && open_name.as_deref() == Some(name.as_str())
+                }
+            };
+            if hits_open {
+                self.autosave_at = None;
+                self.open = None;
+                deleted_open = true;
+            }
+            let result = match item {
+                LibItem::Pack(path) => library::delete_pack_file(path),
+                LibItem::Stamp { pack, name } => {
+                    delete_stamp_entry(pack, name).map_err(|e| e.to_string())
+                }
+            };
+            match result {
+                Ok(()) => deleted += 1,
+                Err(e) => err = Some(e),
+            }
+        }
+
+        self.library_selection.clear();
+        self.refresh_library();
+        if deleted_open {
+            self.open_fallback_after_delete();
+        }
+        self.status = if let Some(e) = err {
+            self.tf(
+                "status.delete_partial",
+                &[("n", &deleted.to_string()), ("err", &e)],
+            )
+        } else {
+            self.tf("status.deleted_n", &[("n", &deleted.to_string())])
+        };
+        true
     }
 
     fn apply_library_action(&mut self, action: LibraryAction) {
@@ -666,7 +1089,7 @@ impl StampEditorApp {
             }
             LibraryAction::NewStampInPack { pack } => {
                 let region = self.region_filter.stamp_region_guid();
-                match append_blank_stamp(&pack, "Neues Stamp", region) {
+                match append_blank_stamp(&pack, self.default_stamp_name(), region) {
                     Ok(open) => {
                         self.refresh_library();
                         self.set_open(open, &pack);
@@ -680,38 +1103,55 @@ impl StampEditorApp {
                     .file_name()
                     .map(|s| s.to_string_lossy().into_owned())
                     .unwrap_or_else(|| path.display().to_string());
-                if !Self::confirm_delete(&format!("Pack „{name}“ wirklich löschen?")) {
+                let msg = self.tf("dialog.delete_pack", &[("name", &name)]);
+                if !self.confirm_delete(&msg) {
                     return;
                 }
                 let was_open = self.open.as_ref().is_some_and(|o| o.pack_path == path);
+                if was_open {
+                    // Don't autosave into a file we're about to remove.
+                    self.autosave_at = None;
+                    self.open = None;
+                }
                 match library::delete_pack_file(&path) {
                     Ok(()) => {
-                        if was_open {
-                            self.start_new_stamp();
-                        }
                         self.refresh_library();
-                        self.status = format!("Pack gelöscht: {name}");
+                        if was_open {
+                            self.open_fallback_after_delete();
+                        }
+                        self.status = self.tf("status.pack_deleted", &[("name", &name)]);
                     }
-                    Err(e) => self.status = format!("Löschen fehlgeschlagen: {e}"),
+                    Err(e) => {
+                        self.status =
+                            self.tf("status.delete_failed", &[("err", &e.to_string())])
+                    }
                 }
             }
             LibraryAction::DeleteStamp { pack, name } => {
-                if !Self::confirm_delete(&format!("Stamp „{name}“ wirklich löschen?")) {
+                let msg = self.tf("dialog.delete_stamp", &[("name", &name)]);
+                if !self.confirm_delete(&msg) {
                     return;
                 }
                 let was_open = self
                     .open
                     .as_ref()
                     .is_some_and(|o| o.pack_path == pack && o.entry_name == name);
+                if was_open {
+                    self.autosave_at = None;
+                    self.open = None;
+                }
                 match delete_stamp_entry(&pack, &name) {
                     Ok(()) => {
-                        if was_open {
-                            self.start_new_stamp();
-                        }
                         self.refresh_library();
-                        self.status = format!("Stamp gelöscht: {name}");
+                        if was_open {
+                            self.open_fallback_after_delete();
+                        }
+                        self.status = self.tf("status.stamp_deleted", &[("name", &name)]);
                     }
-                    Err(e) => self.status = format!("Löschen fehlgeschlagen: {e}"),
+                    Err(e) => {
+                        self.status =
+                            self.tf("status.delete_failed", &[("err", &e.to_string())])
+                    }
                 }
             }
             LibraryAction::DuplicateStamp { pack, name } => {
@@ -724,6 +1164,10 @@ impl StampEditorApp {
                     }
                     Err(e) => self.status = format!("Duplizieren fehlgeschlagen: {e}"),
                 }
+            }
+            LibraryAction::RenameStamp { pack, name } => {
+                self.rename_stamp_dialog = Some((pack, name.clone(), name));
+                self.rename_stamp_dialog_focus = true;
             }
             LibraryAction::CopyPack { path } => {
                 self.library_clipboard = Some(LibraryClipboard::Pack(path.clone()));
@@ -790,7 +1234,8 @@ impl StampEditorApp {
                     .file_name()
                     .map(|s| s.to_string_lossy().into_owned())
                     .unwrap_or_else(|| path.display().to_string());
-                if !Self::confirm_delete(&format!("Leeren Ordner „{name}“ löschen?")) {
+                let folder_msg = self.tf("dialog.delete_folder", &[("name", &name)]);
+                if !self.confirm_delete(&folder_msg) {
                     return;
                 }
                 match library::delete_library_folder(&path) {
@@ -941,8 +1386,94 @@ impl StampEditorApp {
         let _ = EditorConfig {
             library_root: self.library_root.clone(),
             game_install: self.game_install.clone(),
+            game_stamps_root: self.game_stamps_root.clone(),
+            mirror_to_game: self.mirror_to_game,
+            language: self.language.as_config().to_string(),
         }
         .save();
+    }
+
+    fn library_is_game_stamps(&self) -> bool {
+        EditorConfig::is_game_stamps_path(&self.library_root, &self.game_stamps_root)
+    }
+
+    /// Mirror a just-saved library pack into Documents stamps (best-effort).
+    fn mirror_pack_after_save(&self, pack_path: &std::path::Path) -> String {
+        if !self.mirror_to_game || self.library_is_game_stamps() {
+            return String::new();
+        }
+        match library::mirror_pack_to_game(
+            &self.library_root,
+            &self.game_stamps_root,
+            pack_path,
+        ) {
+            Ok(dest) => format!(" · Spiegel → {}", dest.display()),
+            Err(e) => format!(" · Spiegel fehlgeschlagen: {e}"),
+        }
+    }
+
+    fn export_library_to_game(&mut self) {
+        if self.library_is_game_stamps() {
+            self.status = self.t("status.export_same_folder").into();
+            return;
+        }
+        match library::export_packs_to_game(
+            &self.library_root,
+            &self.game_stamps_root,
+            &self.library_packs,
+        ) {
+            Ok(n) => {
+                self.status = self.tf(
+                    "status.exported_to_game",
+                    &[
+                        ("n", &n.to_string()),
+                        ("path", &self.game_stamps_root.display().to_string()),
+                    ],
+                );
+            }
+            Err(e) => {
+                self.status = self.tf("status.export_failed", &[("err", &e)]);
+            }
+        }
+    }
+
+    fn use_safe_library(&mut self) {
+        let safe = EditorConfig::default_root();
+        let _ = std::fs::create_dir_all(&safe);
+        match library::seed_library_from_game(&safe, &self.game_stamps_root) {
+            Ok(n) => {
+                self.library_root = safe;
+                self.refresh_library();
+                self.save_config();
+                self.status = self.tf(
+                    "status.safe_library",
+                    &[
+                        ("n", &n.to_string()),
+                        ("path", &self.library_root.display().to_string()),
+                    ],
+                );
+            }
+            Err(e) => {
+                self.status = self.tf("status.safe_library_failed", &[("err", &e)]);
+            }
+        }
+    }
+
+    fn t(&self, key: &str) -> &'static str {
+        i18n::tr(self.language, key)
+    }
+
+    fn tf(&self, key: &str, args: &[(&str, &str)]) -> String {
+        i18n::tr_fmt(self.language, key, args)
+    }
+
+    /// Language-only helpers — avoid borrowing `self` inside `&self.open` scopes.
+    fn t_lang(lang: Language, key: &str) -> &'static str {
+        i18n::tr(lang, key)
+    }
+
+    fn tf_lang(lang: Language, key: &str, args: &[(&str, &str)]) -> String {
+        i18n::tr_fmt(lang, key, args)
     }
 
     fn link_game_install(&mut self, path: PathBuf) {
@@ -967,9 +1498,12 @@ impl StampEditorApp {
         self.placing_guid = Some(guid);
         self.module_parent_index = None;
         self.road_brush_guid = None;
+        self.field_brush_owner = None;
+        self.field_brush_guid = None;
         self.hand_from_clipboard = false;
         // Default: land footprint. Marsh (5×5 warehouse) via place_variation = 1 (Taste V).
         self.place_variation = None;
+        self.place_direction = 0;
         self.refresh_place_status(label);
     }
 
@@ -978,12 +1512,14 @@ impl StampEditorApp {
             return;
         };
         let variation = self.place_variation;
-        let size_hint = self
+        let dir = self.place_direction.rem_euclid(8);
+        let mut size_hint = self
             .catalog
             .building(guid)
             .map(|d| {
                 let s = d.size_for_variation(variation);
-                let mut t = format!("{}×{}", s[0] as i32, s[1] as i32);
+                let (ow, oh) = oriented_size(s[0], s[1], dir);
+                let mut t = format!("{}×{}", ow as i32, oh as i32);
                 if d.size_marsh.is_some() {
                     let kind = if matches!(variation, Some(v) if v >= 1) {
                         "Marsh"
@@ -995,13 +1531,84 @@ impl StampEditorApp {
                 t
             })
             .unwrap_or_default();
+        size_hint.push_str(&format!(" · Dir {dir} · R drehen"));
+        if self
+            .catalog
+            .building(guid)
+            .is_some_and(|d| d.is_aqueduct_cistern())
+        {
+            let side = match CisternInlet::from_direction(dir) {
+                CisternInlet::North => "N",
+                CisternInlet::South => "S",
+                CisternInlet::West => "W",
+                CisternInlet::East => "O",
+            };
+            size_hint.push_str(&format!(" · Anschluss {side}"));
+        }
         self.status = if size_hint.is_empty() {
-            format!("Hand: {label} — ziehen = Rechteck · Klick = 1 · RMB = fallen lassen")
+            self.tf("status.hand_place", &[("label", label)])
         } else {
-            format!(
-                "Hand: {label} ({size_hint}) — ziehen = Rechteck · Klick = 1 · RMB = fallen lassen"
+            self.tf(
+                "status.hand_place_size",
+                &[("label", label), ("size", &size_hint)],
             )
         };
+    }
+
+    /// Inlet cells + outward arrow for cisterns (placed or ghost).
+    fn paint_cistern_inlet_hint(
+        &self,
+        painter: &egui::Painter,
+        canvas: Rect,
+        min_x: i32,
+        max_x: i32,
+        min_y: i32,
+        max_y: i32,
+        direction: i32,
+    ) {
+        let inlet = CisternInlet::from_direction(direction);
+        // Only the center socket cell accepts aqueduct — side cells would cover neighbors.
+        let mid_x = (min_x + max_x) / 2;
+        let mid_y = (min_y + max_y) / 2;
+        // Anno Y-up: north = +Y (max_y+1), south = -Y (min_y-1).
+        let (ix, iy) = match inlet {
+            CisternInlet::North => (mid_x, max_y + 1),
+            CisternInlet::South => (mid_x, min_y - 1),
+            CisternInlet::West => (min_x - 1, mid_y),
+            CisternInlet::East => (max_x + 1, mid_y),
+        };
+        let inlet_color = Color32::from_rgb(40, 140, 220);
+        let r = self.cell_screen_rect(canvas, ix, iy);
+        painter.rect_filled(r, 0.0, Color32::from_rgba_unmultiplied(40, 140, 220, 90));
+        painter.rect_stroke(
+            r,
+            0.0,
+            Stroke::new(2.0_f32, inlet_color),
+            egui::StrokeKind::Inside,
+        );
+        // Arrow from footprint center toward inlet (clear while building is in hand).
+        let foot = self.cells_screen_rect(canvas, min_x, min_y, max_x, max_y);
+        let tip = match inlet {
+            CisternInlet::North => Pos2::new(foot.center().x, foot.top() - self.cell_px * 0.35),
+            CisternInlet::South => Pos2::new(foot.center().x, foot.bottom() + self.cell_px * 0.35),
+            CisternInlet::West => Pos2::new(foot.left() - self.cell_px * 0.35, foot.center().y),
+            CisternInlet::East => Pos2::new(foot.right() + self.cell_px * 0.35, foot.center().y),
+        };
+        let base = foot.center();
+        let dir_v = (tip - base).normalized();
+        let ortho = Vec2::new(-dir_v.y, dir_v.x);
+        let len = self.cell_px.max(10.0) * 0.85;
+        let tip_p = base + dir_v * len;
+        let wing = self.cell_px.max(8.0) * 0.28;
+        let p0 = tip_p;
+        let p1 = tip_p - dir_v * wing * 1.6 + ortho * wing;
+        let p2 = tip_p - dir_v * wing * 1.6 - ortho * wing;
+        painter.line_segment([base, tip_p], Stroke::new(2.5_f32, inlet_color));
+        painter.add(egui::Shape::convex_polygon(
+            vec![p0, p1, p2],
+            inlet_color,
+            Stroke::NONE,
+        ));
     }
 
     /// Toggle Land ↔ Marsh footprint while placing (buildings with `size_marsh`).
@@ -1015,7 +1622,7 @@ impl StampEditorApp {
         if def.size_marsh.is_none() {
             self.status = format!(
                 "{} hat keine Marsh-Variante",
-                self.catalog.label(guid)
+                self.catalog.label(guid, self.language)
             );
             return;
         }
@@ -1023,7 +1630,7 @@ impl StampEditorApp {
             Some(v) if v >= 1 => None,
             _ => Some(1),
         };
-        let label = self.catalog.label(guid);
+        let label = self.catalog.label(guid, self.language);
         self.refresh_place_status(&label);
     }
 
@@ -1043,7 +1650,7 @@ impl StampEditorApp {
         if def.size_marsh.is_none() {
             self.status = format!(
                 "{} hat keine Marsh-Variante",
-                self.catalog.label(guid)
+                self.catalog.label(guid, self.language)
             );
             return;
         }
@@ -1067,7 +1674,7 @@ impl StampEditorApp {
                 let (w, h) = self.building_size(guid, next);
                 self.status = format!(
                     "{} → {kind} {}×{}",
-                    self.catalog.label(guid),
+                    self.catalog.label(guid, self.language),
                     w as i32,
                     h as i32
                 );
@@ -1076,39 +1683,113 @@ impl StampEditorApp {
         }
     }
 
+    fn is_street_tool(&self, guid: u32) -> bool {
+        let g = guid as i32;
+        is_road_brush_guid(g)
+            || is_aqueduct_brush_guid(g)
+            || self.catalog.building(guid).is_some_and(|d| {
+                d.is_aqueduct_connector()
+                    || d.category == "street"
+                    || d.road_kind.is_some()
+            })
+    }
+
     fn activate_menu_building(&mut self, guid: u32, label: &str) {
         let g = guid as i32;
-        if is_road_brush_guid(g) {
+        if self.is_street_tool(guid) {
+            self.field_brush_owner = None;
+            self.field_brush_guid = None;
             self.road_brush_guid = Some(g);
             self.road_erase_mode = false;
             self.placing_guid = None;
             self.place_variation = None;
             self.drag_stroke = None;
-            self.status = format!("Weg-Pinsel: {label} — ziehen = Linie/Knick · Start auf Weg = radieren");
+            self.residence_tier_guids = None;
+            // Dirt/stone: collapse the infra category. Aqueduct stays open so
+            // Basin / Segment / Cistern remain clickable in the mid-row.
+            if is_road_brush_guid(g) && !is_aqueduct_brush_guid(g) {
+                self.buildmenu_infra_entry = None;
+                self.buildmenu_entry = None;
+            }
+            self.status = self.tf("status.road_brush", &[("label", &label)]);
             return;
         }
         self.road_erase_mode = false;
+        self.road_brush_guid = None;
+        // Open tier mid-row when placing a residence (or picking a tier from it).
+        match self.catalog.building(guid) {
+            Some(def) if def.is_residence() => {
+                let chain = self.catalog.residence_chain(guid);
+                self.residence_tier_guids = if chain.len() > 1 {
+                    Some(chain)
+                } else {
+                    None
+                };
+            }
+            _ => {
+                self.residence_tier_guids = None;
+            }
+        }
         self.pick_place_guid(guid, label);
+    }
+
+    fn upgrade_selected_residence(&mut self, new_guid: u32) {
+        let Some(sel) = self.selected_building else {
+            return;
+        };
+        self.push_history();
+        let label = self.catalog.label(new_guid, self.language);
+        if let Some(open) = self.open.as_mut() {
+            if open.stamp.set_building_guid(sel, new_guid).is_ok() {
+                open.dirty = true;
+                self.schedule_autosave();
+                self.status = self.tf(
+                    "status.residence_tier",
+                    &[("label", &label)],
+                );
+                self.refresh_coverage();
+            }
+        }
     }
 
     fn activate_road_eraser(&mut self) {
         self.road_erase_mode = true;
         self.road_brush_guid = None;
+        self.field_brush_owner = None;
+        self.field_brush_guid = None;
         self.placing_guid = None;
         self.place_variation = None;
         self.module_parent_index = None;
         self.drag_stroke = None;
         self.buildmenu_infra_entry = None;
+        self.residence_tier_guids = None;
         self.status =
-            "Abriss — Rechteck ziehen (Wege + Gebäude) · RMB = fallen lassen".into();
+            self.t("status.demolish").into();
+    }
+
+    fn activate_field_brush(&mut self, owner: u64, field_guid: u32, label: &str) {
+        self.field_brush_owner = Some(owner);
+        self.field_brush_guid = Some(field_guid);
+        self.placing_guid = None;
+        self.place_variation = None;
+        self.module_parent_index = None;
+        self.road_brush_guid = None;
+        self.road_erase_mode = false;
+        self.hand_from_clipboard = false;
+        self.drag_stroke = None;
+        self.status = self.tf("status.field_paint", &[("label", label)]);
     }
 
     fn road_tool_active(&self) -> bool {
         self.road_brush_guid.is_some() || self.road_erase_mode
     }
 
+    fn field_tool_active(&self) -> bool {
+        self.field_brush_owner.is_some() && self.field_brush_guid.is_some()
+    }
+
     fn hand_busy(&self) -> bool {
-        self.placing_guid.is_some() || self.road_tool_active()
+        self.placing_guid.is_some() || self.road_tool_active() || self.field_tool_active()
     }
 
     fn open_radial(&mut self, origin: Pos2) {
@@ -1118,7 +1799,7 @@ impl StampEditorApp {
             ignore_next_click: true,
         });
         self.status =
-            "Schnellwahl-Rad — Tool wählen · Mitte/außen/Esc = Hand frei".into();
+            self.t("status.radial_open").into();
     }
 
     /// Close the wheel without picking a slot → drop whatever is in hand.
@@ -1126,9 +1807,9 @@ impl StampEditorApp {
         self.radial = None;
         if self.hand_busy() {
             self.clear_hand();
-            self.status = "Hand frei".into();
+            self.status = self.t("status.hand_free").into();
         } else {
-            self.status = "Schnellwahl geschlossen".into();
+            self.status = self.t("status.radial_closed").into();
         }
     }
 
@@ -1146,7 +1827,7 @@ impl StampEditorApp {
                 // No canvas building: copy whatever is currently in the placement hand / palette.
         if indices.is_empty() {
             if let Some(guid) = self.placing_guid.or(self.palette_selected_guid) {
-                let label = self.catalog.label(guid);
+                let label = self.catalog.label(guid, self.language);
                 self.clipboard = vec![ClipboardBuilding {
                     guid,
                     direction: 0,
@@ -1273,7 +1954,7 @@ impl StampEditorApp {
         // Keep road selection visible until next marquee/clear.
         let n = clip.len();
         let n_roads = roads.len();
-        let label = self.catalog.label(clip[0].guid);
+        let label = self.catalog.label(clip[0].guid, self.language);
         self.clipboard = clip;
         self.clipboard_roads = roads;
         // Copy only fills the clipboard — Ctrl+V puts it into the hand.
@@ -1301,9 +1982,16 @@ impl StampEditorApp {
         self.module_parent_index = None;
         self.placing_guid = Some(p.guid);
         self.place_variation = p.variation;
+        self.place_direction = p.direction;
         self.palette_selected_guid = Some(p.guid);
         self.hand_from_clipboard = true;
-        let label = self.catalog.label(p.guid);
+        self.residence_tier_guids = self
+            .catalog
+            .building(p.guid)
+            .filter(|d| d.is_residence())
+            .map(|d| self.catalog.residence_chain(d.guid))
+            .filter(|c| c.len() > 1);
+        let label = self.catalog.label(p.guid, self.language);
         let extra = self.clipboard.len().saturating_sub(1);
         let roads = self.clipboard_roads.len();
         self.status = match (extra > 0, roads > 0) {
@@ -1322,6 +2010,7 @@ impl StampEditorApp {
     fn cut_selection(&mut self) {
         if self.selection_indices().is_empty()
             && self.selected_roads.is_empty()
+            && self.selected_fields.is_empty()
             && self.hover_building.is_none()
         {
             self.status = "Nichts ausgewählt zum Ausschneiden".into();
@@ -1416,6 +2105,24 @@ impl StampEditorApp {
     fn place_clipboard_group_at(&mut self, base_x: f32, base_y: f32) -> Option<usize> {
         let placed = self.clipboard_building_centers(base_x, base_y);
         let roads = self.clipboard_road_cells(base_x, base_y);
+        let mut occupied = self.occupied_footprint_cells(&[]);
+        for (c, cx, cy) in &placed {
+            if self
+                .catalog
+                .building(c.guid)
+                .is_some_and(|d| d.road_kind.is_some() || d.category == "street")
+            {
+                continue;
+            }
+            let cells =
+                self.trial_footprint_cells(c.guid, *cx, *cy, c.direction, c.variation);
+            if cells.iter().any(|t| occupied.contains(t)) {
+                return None;
+            }
+            for t in cells {
+                occupied.insert(t);
+            }
+        }
         let Some(open) = self.open.as_mut() else {
             return None;
         };
@@ -1472,7 +2179,7 @@ impl StampEditorApp {
         let (wx, wy) = self.last_pointer_world.unwrap_or_else(|| {
             (
                 -self.pan.x / self.cell_px,
-                -self.pan.y / self.cell_px,
+                self.pan.y / self.cell_px, // matches Y-up pan from frame_on_content
             )
         });
         if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
@@ -1562,10 +2269,22 @@ impl StampEditorApp {
         self.radial = None;
         match action {
             RadialAction::RoadDirt => {
-                self.activate_menu_building(ROAD_GUID_DIRT as u32, "Weg Erde");
+                let dirt = road_guid_for_region(
+                    stamp_editor::buildmenu::ConstructionMenu::region_key(
+                        self.region_filter,
+                    ),
+                    false,
+                );
+                self.activate_menu_building(dirt as u32, self.t("radial.road_dirt"));
             }
             RadialAction::RoadStone => {
-                self.activate_menu_building(ROAD_GUID_STONE as u32, "Weg Stein");
+                let stone = road_guid_for_region(
+                    stamp_editor::buildmenu::ConstructionMenu::region_key(
+                        self.region_filter,
+                    ),
+                    true,
+                );
+                self.activate_menu_building(stone as u32, self.t("radial.road_stone"));
             }
             RadialAction::Demolish => {
                 self.activate_road_eraser();
@@ -1576,11 +2295,11 @@ impl StampEditorApp {
             }
             RadialAction::Move => {
                 self.clear_hand();
-                self.status = "Verschieben — Gebäude mit LMB ziehen · RMB = Rad öffnen".into();
+                self.status = self.t("status.move_mode").into();
             }
             RadialAction::ClearHand => {
                 self.clear_hand();
-                self.status = "Hand frei".into();
+                self.status = self.t("status.hand_free").into();
             }
         }
     }
@@ -1591,11 +2310,14 @@ impl StampEditorApp {
         self.module_parent_index = None;
         self.road_brush_guid = None;
         self.road_erase_mode = false;
+        self.field_brush_owner = None;
+        self.field_brush_guid = None;
         self.hand_from_clipboard = false;
         self.drag_stroke = None;
         // Drop infra tile highlight with the tool (was stuck on after RMB).
         self.buildmenu_infra_entry = None;
         self.buildmenu_entry = None;
+        self.residence_tier_guids = None;
         self.status = "Hand geleert".into();
     }
 
@@ -1603,6 +2325,15 @@ impl StampEditorApp {
         self.selected_building = None;
         self.selected_buildings.clear();
         self.selected_roads.clear();
+        self.selected_fields.clear();
+        self.dragging_fields = false;
+        self.drag_field_origins.clear();
+        self.drag_field_delta = (0, 0);
+        self.drag_field_anchor = (0, 0);
+        // Empty hand + deselect → dismiss pinned service window.
+        if !self.hand_busy() {
+            self.residence_needs_pin = None;
+        }
     }
 
     fn select_only(&mut self, idx: usize) {
@@ -1610,6 +2341,19 @@ impl StampEditorApp {
         self.selected_buildings.insert(idx);
         self.selected_building = Some(idx);
         self.selected_roads.clear();
+        self.selected_fields.clear();
+        let is_house = self
+            .open
+            .as_ref()
+            .and_then(|o| o.stamp.buildings.get(idx))
+            .and_then(|b| self.catalog.building(b.guid))
+            .is_some_and(|d| d.is_residence());
+        if is_house {
+            self.residence_needs_pin = Some(idx);
+        } else if !self.hand_busy() {
+            // Empty hand selecting a non-house → close service pin.
+            self.residence_needs_pin = None;
+        }
     }
 
     fn set_canvas_selection(&mut self, indices: impl IntoIterator<Item = usize>) {
@@ -1618,14 +2362,25 @@ impl StampEditorApp {
         self.selected_building = self.selected_buildings.iter().copied().min();
     }
 
-    fn set_canvas_selection_with_roads(
+    fn set_canvas_selection_full(
         &mut self,
         indices: impl IntoIterator<Item = usize>,
         roads: impl IntoIterator<Item = (i32, i32)>,
+        fields: impl IntoIterator<Item = (i32, i32)>,
     ) {
         self.set_canvas_selection(indices);
         self.selected_roads.clear();
         self.selected_roads.extend(roads);
+        self.selected_fields.clear();
+        self.selected_fields.extend(fields);
+    }
+
+    fn select_fields_only(&mut self, fields: impl IntoIterator<Item = (i32, i32)>) {
+        self.selected_buildings.clear();
+        self.selected_building = None;
+        self.selected_roads.clear();
+        self.selected_fields.clear();
+        self.selected_fields.extend(fields);
     }
 
     fn toggle_canvas_selection(&mut self, idx: usize) {
@@ -1657,12 +2412,29 @@ impl StampEditorApp {
             StrokeKind::DemolishRect
         } else if self.placing_guid.is_some() {
             StrokeKind::PlaceRect
-        } else if self.road_brush_guid.is_some() {
-            let already = self
-                .coverage
-                .roads
-                .contains_key(&stamp_editor::coverage::Cell { x: tx, y: ty });
-            StrokeKind::Road { paint_on: !already }
+        } else if self.field_tool_active() {
+            let owner = self.field_brush_owner;
+            let already = self.open.as_ref().is_some_and(|o| {
+                o.stamp.polygon_cells.iter().any(|c| {
+                    c.complex_owner_id == owner && c.x == tx && c.y == ty
+                })
+            });
+            StrokeKind::Field { paint_on: !already }
+        } else if let Some(brush) = self.road_brush_guid {
+            // Same GUID under cursor → erase (toggle). Empty or *other* road type →
+            // paint/overwrite so Dirt→Stone upgrades work when starting on Dirt.
+            let existing = self.open.as_ref().and_then(|o| {
+                mesh_road_cells(&o.stamp.document)
+                    .into_iter()
+                    .find(|(x, y, _)| *x == tx && *y == ty)
+                    .map(|(_, _, g)| g)
+            });
+            let paint_on = match existing {
+                None => true,
+                Some(g) if g == brush => false,
+                Some(_) => true,
+            };
+            StrokeKind::Road { paint_on }
         } else if !self.hand_busy() {
             StrokeKind::SelectRect
         } else {
@@ -1725,10 +2497,66 @@ impl StampEditorApp {
                     stroke.cursor.1
                 );
             }
+            StrokeKind::Field { paint_on } => {
+                let Some(owner) = self.field_brush_owner else {
+                    return;
+                };
+                let Some(field_guid) = self.field_brush_guid else {
+                    return;
+                };
+                // In-game style: filled axis-aligned rect; blocked tiles are skipped.
+                let (min_x, min_y, max_x, max_y) = rect_bounds(stroke.start, stroke.cursor);
+                let area = rect_cells(min_x, min_y, max_x, max_y);
+                let seeds = self.farm_main_connect_seeds(owner);
+                let mut changed = 0usize;
+                if let Some(open_mut) = self.open.as_mut() {
+                    let mut blocked: HashSet<(i32, i32)> =
+                        stamp_editor::meshgraph::mesh_road_cells(&open_mut.stamp.document)
+                            .into_iter()
+                            .map(|(x, y, _)| (x, y))
+                            .collect();
+                    let region = open_mut.region_guid;
+                    let drag = read_mesh_info(&open_mut.stamp.document)
+                        .map(|i| i.drag_center)
+                        .unwrap_or((0.0, 0.0));
+                    for b in &open_mut.stamp.buildings {
+                        let def = self.catalog.building(b.guid);
+                        if def.is_some_and(|d| d.category == "street") {
+                            continue;
+                        }
+                        for c in footprint_cells_for_region(b, def, region, drag) {
+                            blocked.insert((c.x, c.y));
+                        }
+                    }
+                    changed = apply_field_tiles(
+                        &mut open_mut.stamp,
+                        owner,
+                        field_guid,
+                        &area,
+                        paint_on,
+                        &blocked,
+                        Some(&seeds),
+                    );
+                    if changed > 0 {
+                        open_mut.stamp.refresh_buildings();
+                        open_mut.dirty = true;
+                        self.schedule_autosave();
+                    }
+                }
+                self.refresh_coverage();
+                let verb = if paint_on { "gesetzt" } else { "entfernt" };
+                let w = max_x - min_x + 1;
+                let h = max_y - min_y + 1;
+                self.status = format!(
+                    "Feld {verb}: {changed}/{n} frei in {w}×{h}",
+                    n = area.len()
+                );
+            }
             StrokeKind::SelectRect => {
                 let (min_x, min_y, max_x, max_y) = rect_bounds(stroke.start, stroke.cursor);
                 let mut hits = Vec::new();
                 let mut road_hits = Vec::new();
+                let mut field_hits = Vec::new();
                 if let Some(open_ref) = self.open.as_ref() {
                     let region = open_ref.region_guid;
                     let drag = read_mesh_info(&open_ref.stamp.document)
@@ -1747,6 +2575,14 @@ impl StampEditorApp {
                             hits.push(i);
                         }
                     }
+                    // Individual PlantFarm tiles — not the whole farm.
+                    for c in &open_ref.stamp.polygon_cells {
+                        if c.x >= min_x && c.x <= max_x && c.y >= min_y && c.y <= max_y {
+                            field_hits.push((c.x, c.y));
+                        }
+                    }
+                    field_hits.sort_unstable();
+                    field_hits.dedup();
                     for cell in rect_cells(min_x, min_y, max_x, max_y) {
                         if self
                             .coverage
@@ -1762,18 +2598,22 @@ impl StampEditorApp {
                 }
                 let n = hits.len();
                 let n_roads = road_hits.len();
-                self.set_canvas_selection_with_roads(hits, road_hits);
+                let n_fields = field_hits.len();
+                self.set_canvas_selection_full(hits, road_hits, field_hits);
                 self.refresh_coverage();
-                self.status = match (n == 0, n_roads == 0) {
-                    (true, true) => "Auswahl leer".into(),
-                    (false, true) => {
+                self.status = match (n == 0, n_roads == 0, n_fields == 0) {
+                    (true, true, true) => "Auswahl leer".into(),
+                    (false, true, true) => {
                         format!("{n} Gebäude markiert — Ctrl+C / Ctrl+X / Entf")
                     }
-                    (true, false) => {
+                    (true, false, true) => {
                         format!("{n_roads} Weg-Zellen markiert — Ctrl+C / Ctrl+X / Entf")
                     }
-                    (false, false) => format!(
-                        "{n} Gebäude + {n_roads} Wege markiert — Ctrl+C / Ctrl+X / Entf"
+                    (true, true, false) => {
+                        format!("{n_fields} Feld-Zellen markiert — ziehen / Entf")
+                    }
+                    _ => format!(
+                        "{n} Gebäude + {n_roads} Wege + {n_fields} Felder — Ctrl+C / Entf"
                     ),
                 };
             }
@@ -1937,7 +2777,7 @@ impl StampEditorApp {
                         self.schedule_autosave();
                     }
                     self.refresh_coverage();
-                    let label = self.catalog.label(guid);
+                    let label = self.catalog.label(guid, self.language);
                     self.status = if blocked > 0 {
                         format!("Platziert {placed}× Gruppe (übersprungen {blocked})")
                     } else if extra_n > 0 || road_n > 0 {
@@ -1950,7 +2790,12 @@ impl StampEditorApp {
                     return;
                 }
 
+                let place_dir = self.place_direction;
                 let parent_idx = self.module_parent_index;
+                let mut occupied = self.occupied_footprint_cells(&[]);
+                let place_drag = self.stamp_drag();
+                let place_region = self.open.as_ref().map(|o| o.region_guid).unwrap_or(0);
+                let place_def = self.catalog.building(guid);
                 if let Some(open_mut) = self.open.as_mut() {
                     let parent_pos_r = parent_idx.and_then(|pi| {
                         open_mut.stamp.buildings.get(pi).map(|p| {
@@ -1968,6 +2813,27 @@ impl StampEditorApp {
                                 continue;
                             }
                         }
+                        let trial = Building {
+                            guid,
+                            x: sx,
+                            y: sy,
+                            direction: place_dir,
+                            complex_owner_id: None,
+                            variation,
+                        };
+                        let cells: Vec<(i32, i32)> = footprint_cells_for_region(
+                            &trial,
+                            place_def,
+                            place_region,
+                            place_drag,
+                        )
+                        .into_iter()
+                        .map(|c| (c.x, c.y))
+                        .collect();
+                        if cells.iter().any(|c| occupied.contains(c)) {
+                            blocked += 1;
+                            continue;
+                        }
                         match open_mut.stamp.add_building_from_template(
                             guid, sx, sy, place_dir, variation,
                         ) {
@@ -1981,6 +2847,9 @@ impl StampEditorApp {
                                         });
                                     let _ = open_mut.stamp.set_building_owner(pi, oid);
                                     let _ = open_mut.stamp.set_building_owner(new_idx, oid);
+                                }
+                                for c in cells {
+                                    occupied.insert(c);
                                 }
                                 last_main = Some(new_idx);
                                 placed += 1;
@@ -1999,7 +2868,7 @@ impl StampEditorApp {
                     self.schedule_autosave();
                 }
                 self.refresh_coverage();
-                let label = self.catalog.label(guid);
+                let label = self.catalog.label(guid, self.language);
                 self.status = if blocked > 0 {
                     format!("Platziert {placed}× {label} (übersprungen {blocked})")
                 } else {
@@ -2018,29 +2887,21 @@ impl StampEditorApp {
         );
     }
 
-    fn bonus_attr_short(attr: &str) -> &str {
-        match attr {
-            "FireSafety" => "Brandschutz",
-            "Health" => "Gesundheit",
-            "Happiness" => "Zufriedenheit",
-            "Money" | "Income" => "Geld",
-            "Workforce" => "Arbeitskraft",
-            "Faith" => "Glaube",
-            "Knowledge" => "Wissen",
-            "Prestige" => "Prestige",
-            "Attractiveness" => "Attraktivität",
-            "ResidenceProsperity" => "Wohlstand",
-            "Population" => "Bevölkerung",
-            "ProvidedNeed" => "Need",
-            other => other,
+    fn bonus_attr_short(&self, attr: &str) -> String {
+        let key = format!("buff.{attr}");
+        let translated = self.t(&key);
+        if translated != "???" {
+            translated.to_string()
+        } else {
+            attr.to_string()
         }
     }
 
-    fn format_bonus_chip(attr: &str, value: f32) -> String {
+    fn format_bonus_chip(&self, attr: &str, value: f32) -> String {
         if attr == "ProvidedNeed" {
-            return "Need ✓".into();
+            return self.t("buff.need_ok").to_string();
         }
-        let name = Self::bonus_attr_short(attr);
+        let name = self.bonus_attr_short(attr);
         if value.fract().abs() < 0.05 {
             format!("{name} {value:+.0}")
         } else {
@@ -2049,7 +2910,7 @@ impl StampEditorApp {
     }
 
     /// Compact incoming-buff summary: aggregated attrs + source count (no per-source spam).
-    fn format_incoming_summary(hits: &[stamp_editor::coverage::EffectHit]) -> Vec<String> {
+    fn format_incoming_summary(&self, hits: &[stamp_editor::coverage::EffectHit]) -> Vec<String> {
         let mut agg: std::collections::BTreeMap<String, f32> =
             std::collections::BTreeMap::new();
         let mut need_count = 0usize;
@@ -2065,13 +2926,13 @@ impl StampEditorApp {
         let mut lines: Vec<String> = agg
             .iter()
             .take(6)
-            .map(|(a, v)| Self::format_bonus_chip(a, *v))
+            .map(|(a, v)| self.format_bonus_chip(a, *v))
             .collect();
         if need_count > 0 {
-            lines.push(format!("Needs ✓ {need_count}"));
+            lines.push(self.tf("buff.needs_ok", &[("n", &need_count.to_string())]));
         }
         if !hits.is_empty() {
-            lines.push(format!("{} Quellen", hits.len()));
+            lines.push(self.tf("buff.sources", &[("n", &hits.len().to_string())]));
         }
         lines
     }
@@ -2109,6 +2970,7 @@ impl StampEditorApp {
     }
 
     /// Draw a game icon centered in a building footprint rectangle.
+    /// Residences use the population portrait + tier digit (shared house icon is useless).
     /// Returns true when an icon was painted (caller can skip text fallback).
     fn paint_building_icon(
         &mut self,
@@ -2122,10 +2984,21 @@ impl StampEditorApp {
         if min_side < 8.0 {
             return false;
         }
-        let icon_path = self
-            .buildmenu
-            .building_icon(guid)
-            .map(|s| s.to_string());
+        let def = self.catalog.building(guid);
+        let icon_path = def
+            .and_then(|d| {
+                if d.is_residence() {
+                    d.residence_display_icon().map(|s| s.to_string())
+                } else {
+                    None
+                }
+            })
+            .or_else(|| {
+                self.buildmenu
+                    .building_icon(guid)
+                    .map(|s| s.to_string())
+            })
+            .or_else(|| def.and_then(|d| d.icon.clone()));
         let Some(path) = icon_path else {
             return false;
         };
@@ -2143,10 +3016,156 @@ impl StampEditorApp {
             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
             Color32::from_rgba_unmultiplied(255, 255, 255, a),
         );
+        if let Some(tag) = self.catalog.residence_tier_tag(guid) {
+            // Show from fairly zoomed-out; "T1" needs a pill, not a tiny circle.
+            if min_side >= 12.0 {
+                let font_sz = (min_side * 0.22).clamp(9.0, 13.0);
+                let galley = painter.layout_no_wrap(
+                    tag,
+                    egui::FontId::proportional(font_sz),
+                    Color32::from_rgba_unmultiplied(250, 245, 230, a),
+                );
+                let pad = Vec2::new(4.0, 2.0);
+                let bw = galley.size().x + pad.x * 2.0;
+                let bh = galley.size().y + pad.y * 2.0;
+                let bg = Rect::from_min_size(
+                    Pos2::new(outline.right() - bw - 2.0, outline.bottom() - bh - 2.0),
+                    Vec2::new(bw, bh),
+                );
+                painter.rect_filled(
+                    bg,
+                    3.0,
+                    Color32::from_rgba_unmultiplied(20, 16, 10, a),
+                );
+                painter.rect_stroke(
+                    bg,
+                    3.0,
+                    Stroke::new(
+                        1.2_f32,
+                        Color32::from_rgba_unmultiplied(220, 185, 110, a),
+                    ),
+                    egui::StrokeKind::Outside,
+                );
+                painter.galley(
+                    Pos2::new(bg.min.x + pad.x, bg.min.y + pad.y),
+                    galley,
+                    Color32::from_rgba_unmultiplied(250, 245, 230, a),
+                );
+            }
+        }
         true
     }
 
+    /// Footprint fill so T1…T4 residences stay distinct when zoomed out.
+    fn residence_tier_fill(tier: u8, selected: bool, in_cov: bool) -> Color32 {
+        if selected {
+            return Color32::from_rgb(90, 150, 220);
+        }
+        if in_cov {
+            return Color32::from_rgb(60, 110, 150);
+        }
+        match tier {
+            1 => Color32::from_rgb(72, 118, 78),   // T1 Liberti / Wanderer
+            2 => Color32::from_rgb(88, 108, 150),  // T2 Plebejer / …
+            3 => Color32::from_rgb(130, 95, 145),  // T3 Equites / …
+            _ => Color32::from_rgb(160, 120, 70),  // T4+ Patrizier
+        }
+    }
+
+    /// Footprint tiles of non-road buildings, optionally skipping indices.
+    fn occupied_footprint_cells(&self, exclude: &[usize]) -> HashSet<(i32, i32)> {
+        let mut out = HashSet::new();
+        let Some(open) = self.open.as_ref() else {
+            return out;
+        };
+        let drag = self.stamp_drag();
+        let region = open.region_guid;
+        let skip: HashSet<usize> = exclude.iter().copied().collect();
+        for (i, b) in open.stamp.buildings.iter().enumerate() {
+            if skip.contains(&i) {
+                continue;
+            }
+            if self.catalog.building(b.guid).is_some_and(|d| {
+                d.road_kind.is_some() || d.category == "street"
+            }) {
+                continue;
+            }
+            for c in footprint_cells_for_region(
+                b,
+                self.catalog.building(b.guid),
+                region,
+                drag,
+            ) {
+                out.insert((c.x, c.y));
+            }
+        }
+        out
+    }
+
+    fn trial_footprint_cells(
+        &self,
+        guid: u32,
+        x: f32,
+        y: f32,
+        direction: i32,
+        variation: Option<u32>,
+    ) -> Vec<(i32, i32)> {
+        let b = Building {
+            guid,
+            x,
+            y,
+            direction,
+            complex_owner_id: None,
+            variation,
+        };
+        let region = self.open.as_ref().map(|o| o.region_guid).unwrap_or(0);
+        footprint_cells_for_region(
+            &b,
+            self.catalog.building(guid),
+            region,
+            self.stamp_drag(),
+        )
+        .into_iter()
+        .map(|c| (c.x, c.y))
+        .collect()
+    }
+
+    fn footprint_overlaps_occupied(
+        &self,
+        guid: u32,
+        x: f32,
+        y: f32,
+        direction: i32,
+        variation: Option<u32>,
+        occupied: &HashSet<(i32, i32)>,
+    ) -> bool {
+        self.trial_footprint_cells(guid, x, y, direction, variation)
+            .iter()
+            .any(|c| occupied.contains(c))
+    }
+
+    /// Icon path for a menu entry (entry icon, else building_icons map).
+    fn resolve_menu_icon(&self, entry: &MenuEntry) -> Option<String> {
+        if let Some(i) = entry.icon().filter(|s| !s.is_empty()) {
+            return Some(i.to_string());
+        }
+        match entry {
+            MenuEntry::Building { guid, .. } => self
+                .buildmenu
+                .building_icon(*guid)
+                .map(|s| s.to_string()),
+            MenuEntry::Chain { buildings, .. } => buildings
+                .first()
+                .and_then(|g| self.buildmenu.building_icon(*g))
+                .map(|s| s.to_string()),
+            MenuEntry::Category { entries, .. } => {
+                entries.iter().find_map(|e| self.resolve_menu_icon(e))
+            }
+        }
+    }
+
     /// Circular goods / chain slot — drawn geometrically (chrome PNGs are off-center).
+    /// Optional `overlay` (e.g. tier "1"…"5") is painted centered on the icon.
     fn goods_tile(
         &mut self,
         ui: &mut egui::Ui,
@@ -2154,6 +3173,7 @@ impl StampEditorApp {
         game_icon: Option<&str>,
         selected: bool,
         tip: &str,
+        overlay: Option<&str>,
     ) -> egui::Response {
         let size = Vec2::splat(48.0);
         let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
@@ -2181,7 +3201,9 @@ impl StampEditorApp {
             ),
         );
         if selected {
-            let tip_p = Pos2::new(c.x, rect.top() + 1.0);
+            // Keep the caret inside the tile — drawing above the rect bled into the
+            // row above / canvas and looked like a shifted second strip.
+            let tip_p = Pos2::new(c.x, rect.top() + 6.0);
             ui.painter().add(egui::Shape::convex_polygon(
                 vec![
                     tip_p + Vec2::new(0.0, -5.0),
@@ -2198,7 +3220,89 @@ impl StampEditorApp {
             .ui_icons
             .get_or_placeholder(ctx, game_icon, [64, 64], [40, 50, 70]);
         Self::paint_tex(ui, &tex, img_rect, Color32::WHITE);
+        if let Some(text) = overlay {
+            // Bottom-right badge so population portraits stay readable.
+            let badge_c = Pos2::new(rect.right() - 11.0, rect.bottom() - 11.0);
+            ui.painter().circle_filled(
+                badge_c,
+                10.0,
+                Color32::from_rgb(28, 22, 14),
+            );
+            ui.painter().circle_stroke(
+                badge_c,
+                10.0,
+                Stroke::new(1.25_f32, Color32::from_rgb(220, 185, 110)),
+            );
+            ui.painter().text(
+                badge_c,
+                egui::Align2::CENTER_CENTER,
+                text,
+                egui::FontId::proportional(14.0),
+                Color32::from_rgb(250, 245, 230),
+            );
+        }
         resp.on_hover_text(tip)
+    }
+
+    /// T1 residence root for the active culture filter (empty `base_guids`).
+    fn default_residence_root(&self, region: RegionFilter) -> Option<u32> {
+        if matches!(region, RegionFilter::All) {
+            return None;
+        }
+        let mut roots: Vec<&stamp_editor::catalog::BuildingDef> = self
+            .catalog
+            .buildings_iter()
+            .filter(|b| {
+                b.is_residence()
+                    && b.base_guids.is_empty()
+                    && region.matches_building(b)
+            })
+            .collect();
+        // Prefer culture-pure roots (single region tag) over hybrids.
+        roots.sort_by_key(|b| (b.regions.len(), b.guid));
+        roots.first().map(|b| b.guid)
+    }
+
+    /// When the region filter changes while a residence tool is active, swap the
+    /// mid-row chain (+ hand) to that culture's house tiers.
+    fn refresh_residence_tiers_for_region(&mut self) {
+        let placing_residence = self
+            .placing_guid
+            .and_then(|g| self.catalog.building(g))
+            .is_some_and(|d| d.is_residence());
+        if self.residence_tier_guids.is_none() && !placing_residence {
+            return;
+        }
+        let old_idx = self
+            .placing_guid
+            .and_then(|g| {
+                self.residence_tier_guids
+                    .as_ref()
+                    .and_then(|c| c.iter().position(|&x| x == g))
+            })
+            .unwrap_or(0);
+        let Some(root) = self.default_residence_root(self.region_filter) else {
+            self.residence_tier_guids = None;
+            if placing_residence {
+                self.placing_guid = None;
+                self.place_variation = None;
+                self.palette_selected_guid = None;
+            }
+            return;
+        };
+        let chain = self.catalog.residence_chain(root);
+        let new_guid = chain
+            .get(old_idx)
+            .copied()
+            .or_else(|| chain.first().copied())
+            .unwrap_or(root);
+        self.residence_tier_guids = if chain.len() > 1 {
+            Some(chain)
+        } else {
+            None
+        };
+        let label = self.catalog.label(new_guid, self.language);
+        self.pick_place_guid(new_guid, &label);
     }
 
     fn portrait_tile(
@@ -2359,7 +3463,8 @@ impl StampEditorApp {
     fn stroke_anchor_tile(&self, wx: f32, wy: f32) -> (i32, i32) {
         if let Some(guid) = self.placing_guid {
             if !self.road_erase_mode && self.road_brush_guid.is_none() {
-                let (bw, bh) = self.building_size(guid, self.place_variation);
+                let (w0, h0) = self.building_size(guid, self.place_variation);
+                let (bw, bh) = oriented_size(w0, h0, self.place_direction);
                 return self.place_top_left_from_mouse(wx, wy, bw, bh);
             }
         }
@@ -2541,13 +3646,195 @@ impl StampEditorApp {
         }
     }
 
+    fn field_cell_meta(&self, tx: i32, ty: i32) -> Option<(u64, u32)> {
+        let open = self.open.as_ref()?;
+        open.stamp
+            .polygon_cells
+            .iter()
+            .find(|c| c.x == tx && c.y == ty)
+            .and_then(|c| {
+                let owner = c.complex_owner_id.filter(|o| *o != 0)?;
+                Some((owner, c.guid))
+            })
+    }
+
+    /// Farm main footprint tiles — fields must stay 4-connected to these.
+    fn farm_main_connect_seeds(&self, owner: u64) -> HashSet<(i32, i32)> {
+        let mut seeds = HashSet::new();
+        let Some(open) = self.open.as_ref() else {
+            return seeds;
+        };
+        let region = open.region_guid;
+        let drag = read_mesh_info(&open.stamp.document)
+            .map(|i| i.drag_center)
+            .unwrap_or((0.0, 0.0));
+        for (i, b) in open.stamp.buildings.iter().enumerate() {
+            if b.complex_owner_id != Some(owner) {
+                continue;
+            }
+            if complex_main_index(&open.stamp.buildings, &self.catalog, i) != Some(i) {
+                continue;
+            }
+            let def = self.catalog.building(b.guid);
+            for c in footprint_cells_for_region(b, def, region, drag) {
+                seeds.insert((c.x, c.y));
+            }
+        }
+        seeds
+    }
+
+    fn erase_field_cells(&mut self, cells: &[(i32, i32)]) -> usize {
+        if cells.is_empty() {
+            return 0;
+        }
+        // Group by (owner, guid) using current polygon_cells metadata.
+        let mut groups: HashMap<(u64, u32), Vec<(i32, i32)>> = HashMap::new();
+        let metas: Vec<_> = cells
+            .iter()
+            .filter_map(|&(x, y)| self.field_cell_meta(x, y).map(|m| (x, y, m.0, m.1)))
+            .collect();
+        for (x, y, owner, guid) in metas {
+            groups.entry((owner, guid)).or_default().push((x, y));
+        }
+        let empty = HashSet::new();
+        let mut n = 0usize;
+        for ((owner, guid), list) in &groups {
+            let seeds = self.farm_main_connect_seeds(*owner);
+            let Some(open) = self.open.as_mut() else {
+                break;
+            };
+            n += apply_field_tiles(
+                &mut open.stamp,
+                *owner,
+                *guid,
+                list,
+                false,
+                &empty,
+                Some(&seeds),
+            );
+        }
+        if n > 0 {
+            if let Some(open) = self.open.as_mut() {
+                open.stamp.refresh_buildings();
+            }
+        }
+        n
+    }
+
+    fn paint_field_cells(&mut self, cells: &[(i32, i32, u64, u32)]) -> usize {
+        if cells.is_empty() {
+            return 0;
+        }
+        let mut groups: HashMap<(u64, u32), Vec<(i32, i32)>> = HashMap::new();
+        for &(x, y, owner, guid) in cells {
+            groups.entry((owner, guid)).or_default().push((x, y));
+        }
+        let mut n = 0usize;
+        for ((owner, guid), list) in &groups {
+            let seeds = self.farm_main_connect_seeds(*owner);
+            let Some(open) = self.open.as_mut() else {
+                break;
+            };
+            let mut blocked: HashSet<(i32, i32)> =
+                stamp_editor::meshgraph::mesh_road_cells(&open.stamp.document)
+                    .into_iter()
+                    .map(|(x, y, _)| (x, y))
+                    .collect();
+            let region = open.region_guid;
+            let drag = read_mesh_info(&open.stamp.document)
+                .map(|i| i.drag_center)
+                .unwrap_or((0.0, 0.0));
+            for b in &open.stamp.buildings {
+                let def = self.catalog.building(b.guid);
+                if def.is_some_and(|d| d.category == "street") {
+                    continue;
+                }
+                for c in footprint_cells_for_region(b, def, region, drag) {
+                    blocked.insert((c.x, c.y));
+                }
+            }
+            n += apply_field_tiles(
+                &mut open.stamp,
+                *owner,
+                *guid,
+                list,
+                true,
+                &blocked,
+                Some(&seeds),
+            );
+        }
+        if n > 0 {
+            if let Some(open) = self.open.as_mut() {
+                open.stamp.refresh_buildings();
+            }
+        }
+        n
+    }
+
+    fn begin_field_drag(&mut self, anchor: (i32, i32)) {
+        self.drag_field_origins = self.selected_fields.iter().copied().collect();
+        self.drag_field_origins.sort_unstable();
+        self.drag_field_delta = (0, 0);
+        self.drag_field_anchor = anchor;
+        self.dragging_fields = true;
+        self.dragging_building = None;
+        self.drag_stroke = None;
+        self.clear_selection_drag();
+        self.history_drag_pushed = false;
+    }
+
+    fn commit_field_drag(&mut self) {
+        if !self.dragging_fields {
+            return;
+        }
+        let (dx, dy) = self.drag_field_delta;
+        let origins = std::mem::take(&mut self.drag_field_origins);
+        self.dragging_fields = false;
+        self.drag_field_delta = (0, 0);
+        if dx == 0 && dy == 0 {
+            return;
+        }
+        // Capture owner/guid before erase.
+        let painted: Vec<(i32, i32, u64, u32)> = origins
+            .iter()
+            .filter_map(|&(x, y)| {
+                self.field_cell_meta(x, y)
+                    .map(|(o, g)| (x + dx, y + dy, o, g))
+            })
+            .collect();
+        if !self.history_drag_pushed {
+            self.push_history();
+        }
+        let erased = self.erase_field_cells(&origins);
+        let added = self.paint_field_cells(&painted);
+        if erased > 0 || added > 0 {
+            if let Some(open) = self.open.as_mut() {
+                open.dirty = true;
+                self.schedule_autosave();
+            }
+            self.selected_fields = painted.iter().map(|&(x, y, _, _)| (x, y)).collect();
+            self.status = format!(
+                "{n} Feld-Zellen verschoben ({dx},{dy})",
+                n = self.selected_fields.len()
+            );
+            self.refresh_coverage();
+        }
+    }
+
     fn delete_selection(&mut self, group_ops: bool) {
         let mut indices = self.selection_indices();
         let roads_to_clear: Vec<(i32, i32)> = self.selected_roads.iter().copied().collect();
-        if indices.is_empty() && roads_to_clear.is_empty() {
+        let fields_to_clear: Vec<(i32, i32)> = self.selected_fields.iter().copied().collect();
+        if indices.is_empty() && roads_to_clear.is_empty() && fields_to_clear.is_empty() {
             return;
         }
         self.push_history();
+        // Erase fields first (need polygon_cells metadata + buildings still present).
+        let fields_n = if !fields_to_clear.is_empty() {
+            self.erase_field_cells(&fields_to_clear)
+        } else {
+            0
+        };
         let Some(open) = self.open.as_mut() else {
             return;
         };
@@ -2592,16 +3879,17 @@ impl StampEditorApp {
                 0,
             );
         }
-        if ok > 0 || roads_n > 0 {
+        if ok > 0 || roads_n > 0 || fields_n > 0 {
             open.dirty = true;
             self.schedule_autosave();
             self.clear_canvas_selection();
             self.module_parent_index = None;
-            self.status = match (ok, roads_n) {
-                (0, n) => format!("{n} Weg-Zellen gelöscht"),
-                (b, 0) if b > 1 => format!("{b} Gebäude gelöscht"),
-                (1, 0) => "Gebäude gelöscht".into(),
-                (b, n) => format!("{b} Gebäude + {n} Weg-Zellen gelöscht"),
+            self.status = match (ok, roads_n, fields_n) {
+                (0, 0, f) => format!("{f} Feld-Zellen gelöscht"),
+                (0, n, 0) => format!("{n} Weg-Zellen gelöscht"),
+                (b, 0, 0) if b > 1 => format!("{b} Gebäude gelöscht"),
+                (1, 0, 0) => "Gebäude gelöscht".into(),
+                (b, n, f) => format!("{b} Gebäude + {n} Wege + {f} Felder gelöscht"),
             };
             self.refresh_coverage();
         } else if let Some(e) = err {
@@ -2681,6 +3969,7 @@ impl StampEditorApp {
     }
 
     pub fn open_named(&mut self, path: PathBuf, name: &str) {
+        self.flush_autosave_blocking();
         match open_named_stamp(&path, name) {
             Ok(open) => self.set_open(open, &path),
             Err(err) => self.status = format!("Öffnen fehlgeschlagen: {err}"),
@@ -2688,6 +3977,7 @@ impl StampEditorApp {
     }
 
     fn open_path(&mut self, path: PathBuf) {
+        self.flush_autosave_blocking();
         match open_first_real_stamp(&path) {
             Ok(open) => self.set_open(open, &path),
             Err(err) => self.status = format!("Öffnen fehlgeschlagen: {err}"),
@@ -2698,6 +3988,7 @@ impl StampEditorApp {
         self.history.clear();
         self.history_drag_pushed = false;
         self.module_parent_index = None;
+        self.residence_needs_pin = None;
         // Only auto-pick region when opening a pack (global filter stays user-controlled after).
         self.region_filter = RegionFilter::from_region_guid(open.region_guid);
         let cistern_note = if open.stamp.cistern_fixes_on_load > 0 {
@@ -2713,7 +4004,7 @@ impl StampEditorApp {
             open.entry_name,
             path.display(),
             open.stamp.buildings.len(),
-            self.region_filter.label(),
+            self.region_filter.label_lang(self.language),
             cistern_note
         );
         // Prefer selecting a farm main that already has a ComplexOwner group.
@@ -2753,7 +4044,7 @@ impl StampEditorApp {
                     "Stamp: {} — {} Gebäude · Filter {}",
                     open.entry_name,
                     open.stamp.buildings.len(),
-                    self.region_filter.label()
+                    self.region_filter.label_lang(self.language)
                 );
                 self.clear_canvas_selection();
                 self.module_parent_index = None;
@@ -2778,7 +4069,9 @@ impl StampEditorApp {
                 .pack_path
                 .parent()
                 .map(|p| p.to_path_buf())
-                .unwrap_or_else(|| library_root.join("unsorted"));
+                .unwrap_or_else(|| {
+                    library_root.join(RegionFilter::game_stamp_folder_for_guid(region_guid))
+                });
             let suggested = open
                 .pack_path
                 .file_name()
@@ -2815,7 +4108,8 @@ impl StampEditorApp {
                     open.pack_path.clone()
                 };
                 self.refresh_library();
-                self.status = format!("Gespeichert: {}", path.display());
+                let mirror_note = self.mirror_pack_after_save(&path);
+                self.status = format!("Gespeichert: {}{mirror_note}", path.display());
             }
             Err(err) => self.status = format!("Speichern fehlgeschlagen: {err}"),
         }
@@ -2842,27 +4136,46 @@ impl StampEditorApp {
         }
         let avg_x = sx / n as f32;
         let avg_y = sy / n as f32;
-        self.pan = Vec2::new(-avg_x * self.cell_px, -avg_y * self.cell_px);
+        // Anno Y-up: pan.y = +avg_y so world_to_screen centers with the Y flip below.
+        self.pan = Vec2::new(-avg_x * self.cell_px, avg_y * self.cell_px);
     }
 
     fn world_to_screen(&self, rect: Rect, x: f32, y: f32) -> Pos2 {
+        // Anno stamp space is Y-up (north = +Y). Screen Y grows downward, so flip.
         Pos2::new(
             rect.center().x + self.pan.x + x * self.cell_px,
-            rect.center().y + self.pan.y + y * self.cell_px,
+            rect.center().y + self.pan.y - y * self.cell_px,
         )
     }
 
     fn screen_to_world(&self, rect: Rect, pos: Pos2) -> (f32, f32) {
         let x = (pos.x - rect.center().x - self.pan.x) / self.cell_px;
-        let y = (pos.y - rect.center().y - self.pan.y) / self.cell_px;
+        let y = -(pos.y - rect.center().y - self.pan.y) / self.cell_px;
         (x, y)
     }
 
     /// Integer tile (x,y) → screen rect covering that full cell (voxel/blueprint style).
+    ///
+    /// With Y-up world → screen flip, the world corner `(x,y)` is below `(x+1,y+1)` on
+    /// screen, so corners must be sorted — raw `from_min_max` would invert the rect and
+    /// paint nothing (footprints/roads vanish; only center labels remain).
     fn cell_screen_rect(&self, rect: Rect, x: i32, y: i32) -> Rect {
-        let min = self.world_to_screen(rect, x as f32, y as f32);
-        let max = self.world_to_screen(rect, x as f32 + 1.0, y as f32 + 1.0);
-        Rect::from_min_max(min, max)
+        let a = self.world_to_screen(rect, x as f32, y as f32);
+        let b = self.world_to_screen(rect, x as f32 + 1.0, y as f32 + 1.0);
+        Rect::from_min_max(
+            Pos2::new(a.x.min(b.x), a.y.min(b.y)),
+            Pos2::new(a.x.max(b.x), a.y.max(b.y)),
+        )
+    }
+
+    /// Inclusive tile AABB → screen rect (union of corner cells; Y-flip safe).
+    fn cells_screen_rect(&self, rect: Rect, min_x: i32, min_y: i32, max_x: i32, max_y: i32) -> Rect {
+        let a = self.cell_screen_rect(rect, min_x, min_y);
+        let b = self.cell_screen_rect(rect, max_x, max_y);
+        Rect::from_min_max(
+            Pos2::new(a.min.x.min(b.min.x), a.min.y.min(b.min.y)),
+            Pos2::new(a.max.x.max(b.max.x), a.max.y.max(b.max.y)),
+        )
     }
 
     fn building_size(&self, guid: u32, variation: Option<u32>) -> (f32, f32) {
@@ -2933,10 +4246,7 @@ impl StampEditorApp {
         let (x0, y0) = footprint_top_left_blocker(x, y, mx, my, self.stamp_drag());
         let bw = w.round().max(1.0) as i32;
         let bh = h.round().max(1.0) as i32;
-        Rect::from_min_max(
-            self.cell_screen_rect(rect, x0, y0).min,
-            self.cell_screen_rect(rect, x0 + bw - 1, y0 + bh - 1).max,
-        )
+        self.cells_screen_rect(rect, x0, y0, x0 + bw - 1, y0 + bh - 1)
     }
 
     fn building_at_pointer(
@@ -2958,7 +4268,259 @@ impl StampEditorApp {
         })
     }
 
+    /// PlantFarm field tile → ComplexOwner main building index (for click/marquee/drag).
+    fn farm_main_at_field_tile(&self, tx: i32, ty: i32) -> Option<usize> {
+        let open = self.open.as_ref()?;
+        let owner = open
+            .stamp
+            .polygon_cells
+            .iter()
+            .find(|c| c.x == tx && c.y == ty)
+            .and_then(|c| c.complex_owner_id.filter(|o| *o != 0))?;
+        let seed = open
+            .stamp
+            .buildings
+            .iter()
+            .position(|b| b.complex_owner_id == Some(owner))?;
+        complex_main_index(&open.stamp.buildings, &self.catalog, seed)
+    }
+
+    /// Building under pointer, else farm main via field tile (hover / farm UI only).
+    fn selectable_at_pointer(
+        &self,
+        rect: Rect,
+        buildings: &[Building],
+        pointer: Pos2,
+    ) -> Option<usize> {
+        if let Some(i) = self.building_at_pointer(rect, buildings, pointer) {
+            return Some(i);
+        }
+        let (wx, wy) = self.screen_to_world(rect, pointer);
+        let (tx, ty) = (wx.floor() as i32, wy.floor() as i32);
+        self.farm_main_at_field_tile(tx, ty)
+    }
+
+    fn field_tile_at_pointer(&self, rect: Rect, pointer: Pos2) -> Option<(i32, i32)> {
+        let (wx, wy) = self.screen_to_world(rect, pointer);
+        let (tx, ty) = (wx.floor() as i32, wy.floor() as i32);
+        let open = self.open.as_ref()?;
+        open.stamp
+            .polygon_cells
+            .iter()
+            .any(|c| c.x == tx && c.y == ty)
+            .then_some((tx, ty))
+    }
+
     /// Floating controls: module count + place-field buttons for the focused farm.
+    fn residence_index_if_house(&self, idx: usize) -> Option<usize> {
+        let open = self.open.as_ref()?;
+        let b = open.stamp.buildings.get(idx)?;
+        let def = self.catalog.building(b.guid)?;
+        def.is_residence().then_some(idx)
+    }
+
+    /// Residence the service window should stay on (selection, pin while placing, or hover).
+    fn residence_needs_focus(&self) -> Option<usize> {
+        if let Some(s) = self.selected_building {
+            if self.residence_index_if_house(s).is_some() {
+                return Some(s);
+            }
+        }
+        if let Some(p) = self.residence_needs_pin {
+            if self.residence_index_if_house(p).is_some() {
+                return Some(p);
+            }
+        }
+        self.hover_building
+            .and_then(|h| self.residence_index_if_house(h))
+    }
+
+    /// Top-right quick-place panel for a selected/hovered residence's service needs
+    /// (same pattern as farm Untergebäude).
+    fn show_residence_needs_ui(&mut self, ctx: &egui::Context) {
+        if self.open.is_none() {
+            return;
+        }
+        // Drop a stale pin (deleted / upgraded away from residence).
+        if let Some(p) = self.residence_needs_pin {
+            if self.residence_index_if_house(p).is_none() {
+                self.residence_needs_pin = None;
+            }
+        }
+        let Some(sel) = self.residence_needs_focus() else {
+            return;
+        };
+        let open = self.open.as_ref().expect("open checked");
+        let Some(b) = open.stamp.buildings.get(sel) else {
+            return;
+        };
+        let Some(def) = self.catalog.building(b.guid) else {
+            return;
+        };
+        if !def.is_residence() {
+            return;
+        }
+        let lang = self.language;
+        let region = RegionFilter::from_region_guid(open.region_guid);
+        let house_label = self.catalog.label(b.guid, lang);
+        let report = if self.selected_building == Some(sel)
+            && matches!(self.coverage.mode, CoverageMode::Incoming)
+        {
+            report_for_def(def, &provided_need_guids(&self.coverage.hits))
+        } else {
+            let cov = compute_coverage_region(
+                &open.stamp.buildings,
+                &self.catalog,
+                sel,
+                Some(&open.stamp.document),
+                open.region_guid,
+            );
+            report_for_def(def, &provided_need_guids(&cov.hits))
+        };
+        if report.services.is_empty() {
+            return;
+        }
+        let rows: Vec<(bool, String, Option<String>, Vec<(u32, String)>)> = report
+            .services
+            .iter()
+            .map(|s| {
+                let need_lbl = s.need.label(lang);
+                let icon = s.need.icon.clone();
+                let providers = self
+                    .catalog
+                    .buildings_providing_need(s.need.need_guid, region);
+                let place_btns: Vec<(u32, String)> =
+                    if providers.first().is_some_and(|p| p.is_aqueduct_cistern()) {
+                        // Basin + MinGround + MaxGround (hoch) + Zisterne
+                        self.catalog
+                            .aqueduct_kit(region)
+                            .into_iter()
+                            .map(|p| {
+                                let mut label = self.catalog.label(p.guid, lang);
+                                if p.is_aqueduct_maxground() {
+                                    label = format!(
+                                        "{} ({})",
+                                        label,
+                                        i18n::tr(lang, "aqueduct.maxground_short")
+                                    );
+                                } else if p.is_aqueduct_minground() {
+                                    label = format!(
+                                        "{} ({})",
+                                        label,
+                                        i18n::tr(lang, "aqueduct.minground_short")
+                                    );
+                                }
+                                (p.guid, label)
+                            })
+                            .collect()
+                    } else {
+                        providers
+                            .into_iter()
+                            .next()
+                            .map(|p| vec![(p.guid, self.catalog.label(p.guid, lang))])
+                            .unwrap_or_default()
+                    };
+                (s.met, need_lbl, icon, place_btns)
+            })
+            .collect();
+        let met = report.met_count();
+        let total = report.service_count();
+        let mut pending_place: Option<(u32, String)> = None;
+
+        let screen = ctx.screen_rect();
+        let default_h = ((rows.len() as f32) * 26.0 + 88.0).clamp(140.0, screen.height() * 0.55);
+        let title = self.t("analyse.residence_services").to_string();
+
+        egui::Window::new(title)
+            .id(egui::Id::new("residence_needs_ui"))
+            .collapsible(false)
+            .movable(true)
+            .resizable([false, true])
+            .default_size([260.0, default_h])
+            .min_height(120.0)
+            .max_height(screen.height() * 0.85)
+            .default_pos(egui::pos2(screen.right() - 276.0, screen.top() + 72.0))
+            .constrain(true)
+            .show(ctx, |ui| {
+                ui.label(RichText::new(&house_label).strong());
+                let color = if met >= total && total > 0 {
+                    Color32::from_rgb(90, 180, 90)
+                } else if met > 0 {
+                    Color32::from_rgb(220, 160, 60)
+                } else {
+                    Color32::from_rgb(220, 100, 80)
+                };
+                ui.colored_label(
+                    color,
+                    self.tf(
+                        "analyse.services_badge",
+                        &[
+                            ("met", &met.to_string()),
+                            ("total", &total.to_string()),
+                        ],
+                    ),
+                );
+                ui.add_space(4.0);
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = 2.0;
+                        for (is_met, need_lbl, icon, providers) in &rows {
+                            let mark = if *is_met { "[x]" } else { "[ ]" };
+                            let mcolor = if *is_met {
+                                Color32::from_rgb(90, 180, 90)
+                            } else {
+                                Color32::from_rgb(220, 100, 80)
+                            };
+                            ui.horizontal_wrapped(|ui| {
+                                if let Some(path) = icon.as_deref() {
+                                    let tex = self.ui_icons.get_or_placeholder(
+                                        ui.ctx(),
+                                        Some(path),
+                                        [24, 24],
+                                        [40, 50, 70],
+                                    );
+                                    let (rect, _) = ui.allocate_exact_size(
+                                        Vec2::splat(16.0),
+                                        Sense::hover(),
+                                    );
+                                    Self::paint_tex(ui, &tex, rect, Color32::WHITE);
+                                }
+                                ui.colored_label(mcolor, mark);
+                                ui.label(need_lbl);
+                                if providers.is_empty() {
+                                    ui.label(
+                                        RichText::new(self.t("analyse.service_no_provider"))
+                                            .small()
+                                            .weak(),
+                                    );
+                                } else {
+                                    for (pg, pl) in providers {
+                                        let btn = self.tf(
+                                            "analyse.place_service",
+                                            &[("name", pl)],
+                                        );
+                                        if ui.small_button(btn).clicked() {
+                                            pending_place = Some((*pg, pl.clone()));
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    });
+            });
+
+        if let Some((guid, label)) = pending_place {
+            self.residence_needs_pin = Some(sel);
+            self.activate_menu_building(guid, &label);
+            self.module_parent_index = None;
+            self.status = self.tf(
+                "status.hand_place",
+                &[("label", &label)],
+            );
+        }
+    }
+
     fn show_complex_module_ui(&mut self, ctx: &egui::Context) {
         let Some(open) = self.open.as_ref() else {
             return;
@@ -3002,8 +4564,10 @@ impl StampEditorApp {
             main_idx,
             main_def,
         );
-        let main_label = self.catalog.label(main_guid);
+        let main_label = self.catalog.label(main_guid, self.language);
         let ready = need > 0 && have as u32 >= need;
+        let area_farm = stamp_editor::modules::uses_area_progress(main_def);
+        let farm_owner = main_b.complex_owner_id.filter(|o| *o != 0);
 
         // Area (not Window): cannot be dismissed/persisted-closed; always visible while focused.
         egui::Area::new(egui::Id::new("complex_module_ui"))
@@ -3014,7 +4578,7 @@ impl StampEditorApp {
                     .inner_margin(10.0)
                     .show(ui, |ui| {
                         ui.set_min_width(200.0);
-                        ui.label(RichText::new("Untergebäude").strong());
+                        ui.label(RichText::new(self.t("analyse.subbuildings")).strong());
                         ui.label(RichText::new(&main_label).strong());
                         let color = if ready {
                             Color32::from_rgb(90, 180, 90)
@@ -3023,7 +4587,7 @@ impl StampEditorApp {
                         } else {
                             Color32::GRAY
                         };
-                        let unit = if stamp_editor::modules::uses_area_progress(main_def) {
+                        let unit = if area_farm {
                             "Fläche (Kacheln)"
                         } else {
                             "Felder / Module"
@@ -3036,15 +4600,35 @@ impl StampEditorApp {
                             .small()
                             .weak(),
                         );
-                        for (mg, ml) in &mod_btns {
-                            if ui.button(format!("+ {ml} platzieren")).clicked() {
-                                self.placing_guid = Some(*mg);
-                                self.module_parent_index = Some(main_idx);
-                                self.palette_selected_guid = Some(*mg);
-                                self.hand_from_clipboard = false;
-                                self.status = format!(
-                                    "Modul „{ml}“ — im Radius der Farm platzieren (Owner-Link)"
-                                );
+                        if area_farm {
+                            if let Some((fg, fl)) = mod_btns.first().cloned() {
+                                let active = self.field_brush_owner == farm_owner
+                                    && self.field_brush_guid == Some(fg);
+                                let label = if active {
+                                    format!("Feld malen: {fl} (aktiv)")
+                                } else {
+                                    format!("Feld malen: {fl}")
+                                };
+                                if ui.button(label).clicked() {
+                                    if let Some(oid) = farm_owner {
+                                        self.activate_field_brush(oid, fg, &fl);
+                                    } else {
+                                        self.status =
+                                            "Farm braucht ComplexOwnerID für Feld-Malen".into();
+                                    }
+                                }
+                            }
+                        } else {
+                            for (mg, ml) in &mod_btns {
+                                if ui.button(format!("+ {ml} platzieren")).clicked() {
+                                    self.placing_guid = Some(*mg);
+                                    self.module_parent_index = Some(main_idx);
+                                    self.palette_selected_guid = Some(*mg);
+                                    self.hand_from_clipboard = false;
+                                    self.status = format!(
+                                        "Modul „{ml}“ — im Radius der Farm platzieren (Owner-Link)"
+                                    );
+                                }
                             }
                         }
                     });
@@ -3166,7 +4750,11 @@ impl StampEditorApp {
                 painter.text(
                     slot_c,
                     egui::Align2::CENTER_CENTER,
-                    item.label.chars().next().unwrap_or('?').to_string(),
+                    self.t(item.label_key)
+                        .chars()
+                        .next()
+                        .unwrap_or('?')
+                        .to_string(),
                     egui::FontId::proportional(16.0),
                     Color32::WHITE,
                 );
@@ -3195,7 +4783,7 @@ impl StampEditorApp {
             painter.text(
                 origin + Vec2::Y * 18.0,
                 egui::Align2::CENTER_CENTER,
-                item.label,
+                self.t(item.label_key),
                 egui::FontId::proportional(13.0),
                 accent_hot,
             );
@@ -3367,8 +4955,12 @@ impl eframe::App for StampEditorApp {
         // BEFORE panels: otherwise library/palette TextEdit steals Ctrl+C/V.
         self.handle_edit_shortcuts(ctx);
         if self.open.is_none() {
-            self.start_new_stamp();
+            let dir = self.region_stamp_dir();
+            let _ = std::fs::create_dir_all(&dir);
+            self.start_new_stamp_in(&dir, false);
         }
+        self.show_new_stamp_dialog(ctx);
+        self.show_rename_stamp_dialog(ctx);
 
         let dropped: Vec<PathBuf> = ctx.input(|i| {
             i.raw
@@ -3384,7 +4976,8 @@ impl eframe::App for StampEditorApp {
         }
 
         egui::TopBottomPanel::top("menu").show(ctx, |ui| {
-            // Larger top-bar controls (menus, region, road brush, 45°).
+            // Fixed rows — never put Region/tools inside menu::bar (it wraps and
+            // the first line "jumps" onto a second when Hand/clipboard labels appear).
             {
                 let style = ui.style_mut();
                 style.text_styles.insert(
@@ -3399,15 +4992,19 @@ impl eframe::App for StampEditorApp {
                     egui::TextStyle::Heading,
                     egui::FontId::proportional(18.0),
                 );
-                style.spacing.button_padding = egui::vec2(12.0, 8.0);
-                style.spacing.item_spacing = egui::vec2(12.0, 8.0);
-                style.spacing.interact_size.y = 28.0;
+                style.spacing.button_padding = egui::vec2(10.0, 6.0);
+                style.spacing.item_spacing = egui::vec2(10.0, 6.0);
+                style.spacing.interact_size.y = 26.0;
             }
-            ui.set_min_height(44.0);
 
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("Datei", |ui| {
-                    if ui.button("Anno-Spielordner verknüpfen…").clicked() {
+            // Row 1: menus (no wrap) + stamp title beside them — never inside
+            // menu::bar alone (egui wraps the title onto a second menu line).
+            ui.horizontal(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                egui::menu::bar(ui, |ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                ui.menu_button(self.t("menu.file"), |ui| {
+                    if ui.button(self.t("file.link_game")).clicked() {
                         let start = self
                             .game_install
                             .clone()
@@ -3418,7 +5015,7 @@ impl eframe::App for StampEditorApp {
                             })
                             .unwrap_or_else(|| PathBuf::from(r"C:\"));
                         if let Some(path) = rfd::FileDialog::new()
-                            .set_title("Anno 117 - Pax Romana Installationsordner")
+                            .set_title(self.t("dialog.link_game_title"))
                             .set_directory(start)
                             .pick_folder()
                         {
@@ -3427,38 +5024,69 @@ impl eframe::App for StampEditorApp {
                         ui.close_menu();
                     }
                     if self.game_install.is_some() {
-                        if ui.button("Spielordner-Verknüpfung lösen").clicked() {
+                        if ui.button(self.t("file.unlink_game")).clicked() {
                             self.game_install = None;
                             self.ui_icons.clear_game_install();
                             self.save_config();
-                            self.status =
-                                "Spielordner gelöst — Icons nur aus lokalem Cache, falls vorhanden."
-                                    .into();
+                            self.status = self.t("status.game_unlinked").into();
                             ui.close_menu();
                         }
                     }
                     ui.separator();
-                    if ui.button("Bibliothek-Ordner…").clicked() {
+                    if ui.button(self.t("file.library_folder")).clicked() {
                         if let Some(path) = rfd::FileDialog::new()
                             .set_directory(&self.library_root)
                             .pick_folder()
                         {
-                            self.library_root = path;
-                            self.refresh_library();
+                            if EditorConfig::is_game_stamps_path(&path, &self.game_stamps_root) {
+                                self.status = self.t("status.library_is_sync").into();
+                            } else {
+                                self.library_root = path;
+                                self.refresh_library();
+                                self.save_config();
+                            }
                         }
                         ui.close_menu();
                     }
-                    if ui.button("Bibliothek neu scannen").clicked() {
+                    if ui.button(self.t("file.use_safe_library")).clicked() {
+                        self.use_safe_library();
+                        ui.close_menu();
+                    }
+                    if ui.button(self.t("file.export_to_game")).clicked() {
+                        match rfd::MessageDialog::new()
+                            .set_level(rfd::MessageLevel::Warning)
+                            .set_title(self.t("dialog.export_title"))
+                            .set_description(self.t("dialog.export_body"))
+                            .set_buttons(rfd::MessageButtons::OkCancel)
+                            .show()
+                        {
+                            rfd::MessageDialogResult::Ok => self.export_library_to_game(),
+                            _ => {}
+                        }
+                        ui.close_menu();
+                    }
+                    if ui.button(self.t("file.import_from_game")).clicked() {
+                        self.import_from_game();
+                        ui.close_menu();
+                    }
+                    {
+                        let mirror_label = self.t("file.mirror_to_game");
+                        if ui
+                            .checkbox(&mut self.mirror_to_game, mirror_label)
+                            .changed()
+                        {
+                            self.save_config();
+                        }
+                    }
+                    if ui.button(self.t("file.rescan_library")).clicked() {
                         self.refresh_library();
                         ui.close_menu();
                     }
-                    if ui.button("Nach Region sortieren…").clicked() {
+                    if ui.button(self.t("file.sort_by_region")).clicked() {
                         match rfd::MessageDialog::new()
                             .set_level(rfd::MessageLevel::Warning)
-                            .set_title("Packs verschieben?")
-                            .set_description(
-                                "Packs werden anhand RegionGUID nach Albion/Latium/unsorted verschoben.",
-                            )
+                            .set_title(self.t("dialog.sort_title"))
+                            .set_description(self.t("dialog.sort_body"))
                             .set_buttons(rfd::MessageButtons::OkCancel)
                             .show()
                         {
@@ -3469,20 +5097,24 @@ impl eframe::App for StampEditorApp {
                                 ) {
                                     Ok(n) => {
                                         self.refresh_library();
-                                        self.status = format!("{n} Pack(s) sortiert.");
+                                        self.status = self.tf(
+                                            "status.sorted",
+                                            &[("n", &n.to_string())],
+                                        );
                                     }
-                                    Err(e) => self.status = format!("Sortieren fehlgeschlagen: {e}"),
+                                    Err(e) => {
+                                        self.status = self.tf(
+                                            "status.sort_failed",
+                                            &[("err", &e.to_string())],
+                                        )
+                                    }
                                 }
                             }
                             _ => {}
                         }
                         ui.close_menu();
                     }
-                    if ui.button("Neues Stamp").clicked() {
-                        self.start_new_stamp();
-                        ui.close_menu();
-                    }
-                    if ui.button("Pack-Datei öffnen…").clicked() {
+                    if ui.button(self.t("file.open_pack")).clicked() {
                         if let Some(path) = rfd::FileDialog::new()
                             .add_filter("Stamp Pack", &["json"])
                             .set_directory(&self.library_root)
@@ -3492,31 +5124,39 @@ impl eframe::App for StampEditorApp {
                         }
                         ui.close_menu();
                     }
-                    if ui.button("Speichern\tCtrl+S").clicked() {
+                    if ui.button(self.t("file.save")).clicked() {
                         self.save_current();
                         ui.close_menu();
                     }
-                    if ui.button("Katalog neu laden").clicked() {
+                    if ui.button(self.t("file.reload_catalog")).clicked() {
                         match Catalog::load(&self.catalog_path) {
                             Ok(c) => {
                                 self.catalog = c;
-                                self.status = "Katalog geladen.".into();
+                                self.status = self.t("status.catalog_loaded").into();
                                 self.refresh_coverage();
                             }
-                            Err(e) => self.status = format!("Katalog-Fehler: {e}"),
+                            Err(e) => {
+                                self.status = self.tf(
+                                    "status.catalog_failed",
+                                    &[("err", &e.to_string())],
+                                )
+                            }
                         }
                         ui.close_menu();
                     }
                 });
-                ui.menu_button("Bearbeiten", |ui| {
+                ui.menu_button(self.t("menu.edit"), |ui| {
                     if ui
-                        .add_enabled(self.history.can_undo(), egui::Button::new("Rückgängig\tCtrl+Z"))
+                        .add_enabled(
+                            self.history.can_undo(),
+                            egui::Button::new(self.t("edit.undo")),
+                        )
                         .clicked()
                     {
                         if let Some(cur) = self.take_snapshot() {
                             if let Some(prev) = self.history.undo(cur) {
                                 self.apply_snapshot(prev);
-                                self.status = "Rückgängig".into();
+                                self.status = self.t("status.undo").into();
                             }
                         }
                         ui.close_menu();
@@ -3524,14 +5164,14 @@ impl eframe::App for StampEditorApp {
                     if ui
                         .add_enabled(
                             self.history.can_redo(),
-                            egui::Button::new("Wiederherstellen\tCtrl+Y"),
+                            egui::Button::new(self.t("edit.redo")),
                         )
                         .clicked()
                     {
                         if let Some(cur) = self.take_snapshot() {
                             if let Some(next) = self.history.redo(cur) {
                                 self.apply_snapshot(next);
-                                self.status = "Wiederhergestellt".into();
+                                self.status = self.t("status.redo").into();
                             }
                         }
                         ui.close_menu();
@@ -3547,7 +5187,7 @@ impl eframe::App for StampEditorApp {
                             .as_ref()
                             .is_some_and(|o| !o.stamp.buildings.is_empty());
                     if ui
-                        .add_enabled(can_copy, egui::Button::new("Ausschneiden\tCtrl+X"))
+                        .add_enabled(can_copy, egui::Button::new(self.t("edit.cut")))
                         .clicked()
                     {
                         self.cut_selection();
@@ -3555,7 +5195,7 @@ impl eframe::App for StampEditorApp {
                         ui.close_menu();
                     }
                     if ui
-                        .add_enabled(can_copy, egui::Button::new("Kopieren\tCtrl+C"))
+                        .add_enabled(can_copy, egui::Button::new(self.t("edit.copy")))
                         .clicked()
                     {
                         if self.copy_selection_to_clipboard() {
@@ -3566,7 +5206,7 @@ impl eframe::App for StampEditorApp {
                     if ui
                         .add_enabled(
                             !self.clipboard.is_empty(),
-                            egui::Button::new("Einfügen (in die Hand)\tCtrl+V"),
+                            egui::Button::new(self.t("edit.paste_hand")),
                         )
                         .clicked()
                     {
@@ -3576,7 +5216,7 @@ impl eframe::App for StampEditorApp {
                     if ui
                         .add_enabled(
                             !self.clipboard.is_empty(),
-                            egui::Button::new("Sofort unter Cursor\tCtrl+Shift+V"),
+                            egui::Button::new(self.t("edit.paste_cursor")),
                         )
                         .clicked()
                     {
@@ -3586,7 +5226,7 @@ impl eframe::App for StampEditorApp {
                     if ui
                         .add_enabled(
                             self.selected_building.is_some() || !self.clipboard.is_empty(),
-                            egui::Button::new("Duplizieren\tCtrl+D"),
+                            egui::Button::new(self.t("edit.duplicate")),
                         )
                         .clicked()
                     {
@@ -3598,27 +5238,50 @@ impl eframe::App for StampEditorApp {
                         .add_enabled(
                             self.selected_building.is_some()
                                 || !self.selected_buildings.is_empty()
-                                || !self.selected_roads.is_empty(),
-                            egui::Button::new("Löschen\tEntf"),
+                                || !self.selected_roads.is_empty()
+                                || !self.selected_fields.is_empty(),
+                            egui::Button::new(self.t("edit.delete")),
                         )
                         .clicked()
                     {
                         self.request_delete = true;
                         ui.close_menu();
                     }
-                    ui.checkbox(
-                        &mut self.move_group,
-                        "Gruppe verschieben (Main+Module, oder Alt halten)",
-                    );
+                    let move_group_lbl = self.t("edit.move_group");
+                    ui.checkbox(&mut self.move_group, move_group_lbl);
                 });
-                ui.menu_button("Ansicht", |ui| {
-                    if ui.button("Zentrieren\tF").clicked() {
+                if ui.button(self.t("menu.new")).clicked() {
+                    self.start_new_stamp();
+                }
+                ui.menu_button(self.t("menu.view"), |ui| {
+                    if ui.button(self.t("view.center")).clicked() {
                         self.center_view();
                         ui.close_menu();
                     }
-                    ui.checkbox(&mut self.show_palette, "Gebäudesuche (Seitenleiste)");
-                    ui.checkbox(&mut self.show_analyse, "Analyse (rechte Seite)");
-                    ui.add(egui::Slider::new(&mut self.cell_px, 8.0..=48.0).text("Zoom"));
+                    let palette_lbl = self.t("view.palette");
+                    let analyse_lbl = self.t("view.analyse");
+                    let zoom_lbl = self.t("view.zoom");
+                    ui.checkbox(&mut self.show_palette, palette_lbl);
+                    ui.checkbox(&mut self.show_analyse, analyse_lbl);
+                    ui.add(egui::Slider::new(&mut self.cell_px, 8.0..=48.0).text(zoom_lbl));
+                });
+                ui.menu_button(self.t("menu.language"), |ui| {
+                    for lang in Language::ALL {
+                        let selected = self.language == lang;
+                        if ui
+                            .selectable_label(selected, lang.label())
+                            .clicked()
+                        {
+                            self.language = lang;
+                            self.save_config();
+                            self.status = self.tf(
+                                "status.lang_changed",
+                                &[("lang", lang.label())],
+                            );
+                            ui.close_menu();
+                        }
+                    }
+                });
                 });
                 if let Some(open) = &self.open {
                     ui.separator();
@@ -3629,10 +5292,14 @@ impl eframe::App for StampEditorApp {
                     };
                     ui.label(RichText::new(label).strong());
                 }
-                ui.separator();
+            });
+
+            // Row 2: tools + region — always one line.
+            ui.horizontal(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 if ui
-                    .button(RichText::new("Kopieren").size(15.0))
-                    .on_hover_text("Ctrl+C — nur in die Zwischenablage")
+                    .button(RichText::new(self.t("toolbar.copy")).size(15.0))
+                    .on_hover_text(self.t("toolbar.copy_tip"))
                     .clicked()
                 {
                     if self.copy_selection_to_clipboard() {
@@ -3642,30 +5309,12 @@ impl eframe::App for StampEditorApp {
                 if ui
                     .add_enabled(
                         !self.clipboard.is_empty(),
-                        egui::Button::new(RichText::new("Einfügen").size(15.0)),
+                        egui::Button::new(RichText::new(self.t("lib.paste")).size(15.0)),
                     )
-                    .on_hover_text("Ctrl+V — Ablage in die Hand · Klick setzt die ganze Gruppe")
+                    .on_hover_text(self.t("edit.paste_hand"))
                     .clicked()
                 {
                     self.arm_clipboard_in_hand();
-                }
-                if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
-                    let extra = self.clipboard.len().saturating_sub(1);
-                    let roads = self.clipboard_roads.len();
-                    let abl = if roads > 0 {
-                        format!(
-                            "Ablage: {} (+{}, {} Wege)",
-                            self.catalog.label(p.guid),
-                            extra,
-                            roads
-                        )
-                    } else {
-                        format!("Ablage: {} (+{})", self.catalog.label(p.guid), extra)
-                    };
-                    ui.colored_label(
-                        Color32::from_rgb(140, 210, 160),
-                        RichText::new(abl).size(13.0),
-                    );
                 }
                 ui.separator();
                 // 45°-Modus: UI disabled for now (unreliable; low priority).
@@ -3675,22 +5324,18 @@ impl eframe::App for StampEditorApp {
                     false,
                     egui::Checkbox::new(
                         &mut forty_five_off,
-                        RichText::new("45°-Modus").size(16.0),
+                        RichText::new(self.t("toolbar.45")).size(15.0),
                     ),
-                );
-                ui.label(
-                    RichText::new("45° vorerst aus · R = 90° · Snap 1")
-                        .size(13.0)
-                        .weak(),
-                );
+                )
+                .on_hover_text(self.t("toolbar.45_tip"));
                 ui.separator();
-                ui.label(RichText::new("Region").size(16.0).strong());
+                ui.label(RichText::new(self.t("region")).size(15.0).strong());
                 for region in RegionFilter::ALL {
                     let selected = self.region_filter == region;
                     if ui
                         .selectable_label(
                             selected,
-                            RichText::new(region.label()).size(16.0),
+                            RichText::new(region.label_lang(self.language)).size(15.0),
                         )
                         .clicked()
                     {
@@ -3703,10 +5348,23 @@ impl eframe::App for StampEditorApp {
                                 open.region_guid = region.stamp_region_guid();
                             }
                         }
+                        self.refresh_residence_tiers_for_region();
                     }
                 }
+            });
+
+            // Row 3: status + controls hint.
+            ui.horizontal(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                ui.label(RichText::new(&self.status).size(14.0));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label(
+                        RichText::new(self.t("canvas.controls"))
+                            .size(11.0)
+                            .weak(),
+                    );
                 });
-            ui.label(RichText::new(&self.status).size(14.0));
+            });
         });
 
         // Height follows content: strip alone vs strip + needs/kette row.
@@ -3734,21 +5392,86 @@ impl eframe::App for StampEditorApp {
                 .get(tab_idx_preview)
                 .map(|t| t.is_need())
                 .unwrap_or(false);
-        let show_upper_preview = need_mode_preview || self.buildmenu_infra_entry.is_some();
-        // Strip (~64) + optional needs row (~60) + small gaps — no dead filler band.
-        let build_bar_h: f32 = if show_upper_preview { 128.0 } else { 68.0 };
+        // Must match draw-time `content_entries` / `show_mid`. Setting infra_entry on a
+        // leaf Building (road) used to reserve mid height with nothing drawn → blank
+        // bottom row and the strip visually "jumped" up one row.
+        let mid_preview_entries: Vec<&MenuEntry> =
+            if let Some(infra_ei) = self.buildmenu_infra_entry {
+                tabs_preview
+                    .iter()
+                    .find(|t| t.is_infrastructure())
+                    .and_then(|t| t.entries.get(infra_ei))
+                    .and_then(|e| match e {
+                        MenuEntry::Category { entries, .. } => Some(entries.as_slice()),
+                        _ => None,
+                    })
+                    .unwrap_or(&[])
+                    .iter()
+                    .collect()
+            } else if need_mode_preview {
+                tabs_preview
+                    .get(tab_idx_preview)
+                    .map(|t| t.entries.iter().collect())
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+        let show_mid_preview = !mid_preview_entries.is_empty()
+            || self
+                .residence_tier_guids
+                .as_ref()
+                .is_some_and(|c| c.len() > 1);
+        // Deep (3rd) row: selected mid entry is a chain/category with children.
+        // Residence tier mid is leaf buildings — never opens a deep row.
+        let show_deep_preview = show_mid_preview
+            && self.residence_tier_guids.is_none()
+            && self.buildmenu_entry.is_some_and(|ei| {
+                matches!(
+                    mid_preview_entries.get(ei),
+                    Some(MenuEntry::Chain { buildings, .. }) if !buildings.is_empty()
+                ) || matches!(
+                    mid_preview_entries.get(ei),
+                    Some(MenuEntry::Category { entries, .. }) if !entries.is_empty()
+                )
+            });
+        // Bottom strip + optional mid + optional deep row (+ gaps).
+        const BUILD_ROW_H: f32 = 60.0;
+        const BUILD_ROW_GAP: f32 = 4.0;
+        // Extra slack: Frame margins + item_spacing must not trigger a scrollbar
+        // (scrollbar insets rows horizontally → "shift" when deep opens).
+        let build_bar_h: f32 = BUILD_STRIP_H
+            + if show_mid_preview {
+                BUILD_ROW_H + BUILD_ROW_GAP
+            } else {
+                0.0
+            }
+            + if show_deep_preview {
+                BUILD_ROW_H + BUILD_ROW_GAP
+            } else {
+                0.0
+            }
+            + 8.0;
         // Library tree + stamps of the open pack.
         egui::SidePanel::left("stamps")
             .resizable(true)
             .default_width(240.0)
             .show(ctx, |ui| {
-                ui.heading("Bibliothek");
+                ui.heading(self.t("lib.title"));
                 ui.label(
                     RichText::new(self.library_root.display().to_string())
                         .small()
                         .weak(),
                 );
-                                 ui.label(
+                if self.library_is_game_stamps() {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(220, 120, 40),
+                        self.t("lib.sync_warning"),
+                    );
+                    if ui.button(self.t("file.use_safe_library")).clicked() {
+                        self.use_safe_library();
+                    }
+                }
+                ui.label(
                     RichText::new("Ctrl+Klick · Rechteck · Drag auf Ordner/Pack")
                         .small()
                         .weak(),
@@ -3796,8 +5519,20 @@ impl eframe::App for StampEditorApp {
                             })
                             .cloned()
                             .collect();
-                        if packs.is_empty() && !text_filter.is_empty() {
-                            continue;
+                        // Hide folders that only contain packs for other regions
+                        // (or that don't match the text filter). Truly empty folders stay visible.
+                        if packs.is_empty() {
+                            let has_any_packs = self.library_packs.iter().any(|p| {
+                                let f = if p.folder.is_empty() {
+                                    "(Root)".to_string()
+                                } else {
+                                    p.folder.clone()
+                                };
+                                f == folder
+                            });
+                            if has_any_packs || !text_filter.is_empty() {
+                                continue;
+                            }
                         }
 
                         let folder_header = egui::CollapsingHeader::new(&folder)
@@ -3847,35 +5582,42 @@ impl eframe::App for StampEditorApp {
                                         }
                                         let stamp_name = entry.name.clone();
                                         resp.context_menu(|ui| {
-                                            if ui.button("Öffnen").clicked() {
+                                            if ui.button(self.t("lib.open")).clicked() {
                                                 lib_action = Some(LibraryAction::OpenStamp {
                                                     pack: pack_path.clone(),
                                                     name: stamp_name.clone(),
                                                 });
                                                 ui.close_menu();
                                             }
-                                            if ui.button("Duplizieren").clicked() {
+                                            if ui.button(self.t("lib.rename")).clicked() {
+                                                lib_action = Some(LibraryAction::RenameStamp {
+                                                    pack: pack_path.clone(),
+                                                    name: stamp_name.clone(),
+                                                });
+                                                ui.close_menu();
+                                            }
+                                            if ui.button(self.t("lib.duplicate")).clicked() {
                                                 lib_action = Some(LibraryAction::DuplicateStamp {
                                                     pack: pack_path.clone(),
                                                     name: stamp_name.clone(),
                                                 });
                                                 ui.close_menu();
                                             }
-                                            if ui.button("Kopieren").clicked() {
+                                            if ui.button(self.t("lib.copy")).clicked() {
                                                 lib_action = Some(LibraryAction::CopyStamp {
                                                     pack: pack_path.clone(),
                                                     name: stamp_name.clone(),
                                                 });
                                                 ui.close_menu();
                                             }
-                                            if ui.button("Pack kopieren").clicked() {
+                                            if ui.button(self.t("lib.copy_pack")).clicked() {
                                                 lib_action = Some(LibraryAction::CopyPack {
                                                     path: pack_path.clone(),
                                                 });
                                                 ui.close_menu();
                                             }
                                             ui.separator();
-                                            if ui.button("Löschen…").clicked() {
+                                            if ui.button(self.t("lib.delete")).clicked() {
                                                 lib_action = Some(LibraryAction::DeletePack {
                                                     path: pack_path.clone(),
                                                 });
@@ -3964,7 +5706,7 @@ impl eframe::App for StampEditorApp {
                                                 let stamp_name = entry.name.clone();
                                                 let stamp_pack = pack_path.clone();
                                                 resp.context_menu(|ui| {
-                                                    if ui.button("Öffnen").clicked() {
+                                                    if ui.button(self.t("lib.open")).clicked() {
                                                         lib_action =
                                                             Some(LibraryAction::OpenStamp {
                                                                 pack: stamp_pack.clone(),
@@ -3972,7 +5714,15 @@ impl eframe::App for StampEditorApp {
                                                             });
                                                         ui.close_menu();
                                                     }
-                                                    if ui.button("Duplizieren").clicked() {
+                                                    if ui.button(self.t("lib.rename")).clicked() {
+                                                        lib_action =
+                                                            Some(LibraryAction::RenameStamp {
+                                                                pack: stamp_pack.clone(),
+                                                                name: stamp_name.clone(),
+                                                            });
+                                                        ui.close_menu();
+                                                    }
+                                                    if ui.button(self.t("lib.duplicate")).clicked() {
                                                         lib_action = Some(
                                                             LibraryAction::DuplicateStamp {
                                                                 pack: stamp_pack.clone(),
@@ -3981,7 +5731,7 @@ impl eframe::App for StampEditorApp {
                                                         );
                                                         ui.close_menu();
                                                     }
-                                                    if ui.button("Kopieren").clicked() {
+                                                    if ui.button(self.t("lib.copy")).clicked() {
                                                         lib_action =
                                                             Some(LibraryAction::CopyStamp {
                                                                 pack: stamp_pack.clone(),
@@ -3990,7 +5740,7 @@ impl eframe::App for StampEditorApp {
                                                         ui.close_menu();
                                                     }
                                                     ui.separator();
-                                                    if ui.button("Löschen…").clicked() {
+                                                    if ui.button(self.t("lib.delete")).clicked() {
                                                         lib_action =
                                                             Some(LibraryAction::DeleteStamp {
                                                                 pack: stamp_pack.clone(),
@@ -4042,7 +5792,7 @@ impl eframe::App for StampEditorApp {
                                             );
                                         }
                                         pack_header.header_response.context_menu(|ui| {
-                                            if ui.button("Neues Stamp in Pack").clicked() {
+                                            if ui.button(self.t("lib.new_stamp_in_pack")).clicked() {
                                                 lib_action = Some(LibraryAction::NewStampInPack {
                                                     pack: pack_path.clone(),
                                                 });
@@ -4051,7 +5801,7 @@ impl eframe::App for StampEditorApp {
                                             if ui
                                                 .add_enabled(
                                                     can_paste,
-                                                    egui::Button::new("Einfügen"),
+                                                    egui::Button::new(self.t("lib.paste")),
                                                 )
                                                 .clicked()
                                             {
@@ -4060,14 +5810,14 @@ impl eframe::App for StampEditorApp {
                                                 });
                                                 ui.close_menu();
                                             }
-                                            if ui.button("Pack kopieren").clicked() {
+                                            if ui.button(self.t("lib.copy_pack")).clicked() {
                                                 lib_action = Some(LibraryAction::CopyPack {
                                                     path: pack_path.clone(),
                                                 });
                                                 ui.close_menu();
                                             }
                                             ui.separator();
-                                            if ui.button("Pack löschen…").clicked() {
+                                            if ui.button(self.t("lib.delete_pack")).clicked() {
                                                 lib_action = Some(LibraryAction::DeletePack {
                                                     path: pack_path.clone(),
                                                 });
@@ -4102,20 +5852,20 @@ impl eframe::App for StampEditorApp {
 
                         let folder_for_menu = folder_path.clone();
                         folder_header.header_response.context_menu(|ui| {
-                            if ui.button("Neues Stamp").clicked() {
+                            if ui.button(self.t("lib.new_stamp")).clicked() {
                                 lib_action = Some(LibraryAction::NewStampPack {
                                     folder: folder_for_menu.clone(),
                                 });
                                 ui.close_menu();
                             }
-                            if ui.button("Neuer Ordner").clicked() {
+                            if ui.button(self.t("lib.new_folder")).clicked() {
                                 lib_action = Some(LibraryAction::NewFolder {
                                     parent: folder_for_menu.clone(),
                                 });
                                 ui.close_menu();
                             }
                             if ui
-                                .add_enabled(can_paste, egui::Button::new("Einfügen"))
+                                .add_enabled(can_paste, egui::Button::new(self.t("lib.paste")))
                                 .clicked()
                             {
                                 lib_action = Some(LibraryAction::Paste {
@@ -4124,7 +5874,7 @@ impl eframe::App for StampEditorApp {
                                 ui.close_menu();
                             }
                             ui.separator();
-                            if ui.button("Leeren Ordner löschen…").clicked() {
+                            if ui.button(self.t("lib.delete_folder")).clicked() {
                                 lib_action = Some(LibraryAction::DeleteFolder {
                                     path: folder_for_menu.clone(),
                                 });
@@ -4162,20 +5912,20 @@ impl eframe::App for StampEditorApp {
                         }
                     }
                     fill_resp.context_menu(|ui| {
-                        if ui.button("Neues Stamp").clicked() {
+                        if ui.button(self.t("lib.new_stamp")).clicked() {
                             lib_action = Some(LibraryAction::NewStampPack {
                                 folder: root_folder.clone(),
                             });
                             ui.close_menu();
                         }
-                        if ui.button("Neuer Ordner").clicked() {
+                        if ui.button(self.t("lib.new_folder")).clicked() {
                             lib_action = Some(LibraryAction::NewFolder {
                                 parent: root_folder.clone(),
                             });
                             ui.close_menu();
                         }
                         if ui
-                            .add_enabled(can_paste, egui::Button::new("Einfügen"))
+                            .add_enabled(can_paste, egui::Button::new(self.t("lib.paste")))
                             .clicked()
                         {
                             lib_action = Some(LibraryAction::Paste {
@@ -4233,9 +5983,9 @@ impl eframe::App for StampEditorApp {
 
         if self.show_palette {
             egui::SidePanel::left("palette").resizable(true).default_width(220.0).show(ctx, |ui| {
-                ui.heading("Suche");
+                ui.heading(self.t("search.title"));
                 ui.label(
-                    RichText::new("Fallback · Aus: Ansicht → Gebäudesuche")
+                    RichText::new(self.t("search.hint"))
                         .small()
                         .weak(),
                 );
@@ -4275,15 +6025,17 @@ impl eframe::App for StampEditorApp {
                     }
                 });
                 if let Some((guid, label)) = pick {
-                    self.pick_place_guid(guid, &label);
+                    self.activate_menu_building(guid, &label);
                 }
             });
         }
 
         if self.show_analyse {
+        let mut pending_residence_tier: Option<u32> = None;
         egui::SidePanel::right("stats").resizable(true).default_width(280.0).show(ctx, |ui| {
+            let lang = self.language;
             ui.horizontal(|ui| {
-                ui.heading("Analyse");
+                ui.heading(Self::t_lang(lang, "analyse.title"));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.small_button("✕").clicked() {
                         self.show_analyse = false;
@@ -4299,21 +6051,49 @@ impl eframe::App for StampEditorApp {
                     open.region_guid,
                 );
                 ui.group(|ui| {
-                    ui.label(RichText::new("Layout-Effizienz").strong());
-                    ui.label(format!(
-                        "Gebäude: {} (+{} Feld-Polygone / {} Zellen)",
-                        open.stamp.buildings.len(),
-                        open.stamp.polygon_modules.len(),
-                        open.stamp.polygon_cells.len()
+                    ui.label(RichText::new(Self::t_lang(lang, "analyse.layout")).strong());
+                    ui.label(Self::tf_lang(
+                        lang,
+                        "analyse.buildings_fields",
+                        &[
+                            ("b", &open.stamp.buildings.len().to_string()),
+                            ("mods", &open.stamp.polygon_modules.len().to_string()),
+                            ("cells", &open.stamp.polygon_cells.len().to_string()),
+                        ],
                     ));
-                    ui.label(format!("Unique GUIDs: {}", stats.unique_guids));
-                    ui.label(format!("Belegte Zellen: {}", stats.occupied_cells));
-                    ui.label(format!("BBox-Zellen: {}", stats.bbox_cells));
-                    ui.label(format!("Leere Zellen in BBox: {}", stats.empty_cells_in_bbox));
-                    ui.label(format!("Fill-Ratio: {:.1}%", stats.fill_ratio * 100.0));
-                    ui.label(format!(
-                        "Wege: {} (Dreck {}, Stein {})",
-                        stats.road_cells, stats.dirt_cells, stats.stone_cells
+                    ui.label(Self::tf_lang(
+                        lang,
+                        "analyse.unique_guids",
+                        &[("n", &stats.unique_guids.to_string())],
+                    ));
+                    ui.label(Self::tf_lang(
+                        lang,
+                        "analyse.occupied",
+                        &[("n", &stats.occupied_cells.to_string())],
+                    ));
+                    ui.label(Self::tf_lang(
+                        lang,
+                        "analyse.bbox",
+                        &[("n", &stats.bbox_cells.to_string())],
+                    ));
+                    ui.label(Self::tf_lang(
+                        lang,
+                        "analyse.empty_bbox",
+                        &[("n", &stats.empty_cells_in_bbox.to_string())],
+                    ));
+                    ui.label(Self::tf_lang(
+                        lang,
+                        "analyse.fill_ratio",
+                        &[("pct", &format!("{:.1}", stats.fill_ratio * 100.0))],
+                    ));
+                    ui.label(Self::tf_lang(
+                        lang,
+                        "analyse.roads",
+                        &[
+                            ("n", &stats.road_cells.to_string()),
+                            ("dirt", &stats.dirt_cells.to_string()),
+                            ("stone", &stats.stone_cells.to_string()),
+                        ],
                     ));
                 });
 
@@ -4323,6 +6103,7 @@ impl eframe::App for StampEditorApp {
                     Some(&open.stamp.document),
                     open.region_guid,
                     &open.stamp.polygon_cells,
+                    lang,
                 );
                 let chain = analyze_chain_region(
                     &open.stamp.buildings,
@@ -4330,28 +6111,134 @@ impl eframe::App for StampEditorApp {
                     Some(&open.stamp.document),
                     open.region_guid,
                     &open.stamp.polygon_cells,
+                    lang,
+                );
+                let region_guid = open.region_guid;
+                let mut incoming_by_index: HashMap<usize, CoverageMap> = HashMap::new();
+                for (idx, b) in open.stamp.buildings.iter().enumerate() {
+                    if self
+                        .catalog
+                        .building(b.guid)
+                        .is_some_and(|d| d.is_residence())
+                    {
+                        incoming_by_index.insert(
+                            idx,
+                            compute_coverage_region(
+                                &open.stamp.buildings,
+                                &self.catalog,
+                                idx,
+                                Some(&open.stamp.document),
+                                region_guid,
+                            ),
+                        );
+                    }
+                }
+                let (city_consumption, city_services) = analyse_city_needs(
+                    &self.catalog,
+                    &open.stamp.buildings,
+                    &incoming_by_index,
+                    lang,
                 );
                 ui.add_space(8.0);
                 ui.group(|ui| {
-                    ui.label(RichText::new("Produktionskette").strong());
-                    ui.label(format!("Produzenten mit I/O: {}", chain.producers));
+                    ui.label(
+                        RichText::new(Self::t_lang(lang, "analyse.city_consumption")).strong(),
+                    );
+                    if city_consumption.is_empty() {
+                        ui.label(
+                            RichText::new(Self::t_lang(lang, "analyse.no_residences")).weak(),
+                        );
+                    } else {
+                        egui::Grid::new("city_consumption_grid")
+                            .striped(true)
+                            .show(ui, |ui| {
+                                ui.label(Self::t_lang(lang, "analyse.product"));
+                                ui.label(Self::t_lang(lang, "analyse.consumption_houses"));
+                                ui.label(Self::t_lang(lang, "analyse.consumption_rate"));
+                                ui.end_row();
+                                for row in &city_consumption {
+                                    ui.label(&row.label);
+                                    ui.label(row.houses.to_string());
+                                    ui.label(format!("{:.2}", row.rate_sum));
+                                    ui.end_row();
+                                }
+                            });
+                    }
+                });
+                ui.add_space(8.0);
+                ui.group(|ui| {
+                    ui.label(
+                        RichText::new(Self::t_lang(lang, "analyse.service_coverage")).strong(),
+                    );
+                    if city_services.is_empty() {
+                        ui.label(
+                            RichText::new(Self::t_lang(lang, "analyse.no_residences")).weak(),
+                        );
+                    } else {
+                        for row in &city_services {
+                            let unmet = row.houses_needing.saturating_sub(row.houses_met);
+                            let color = if unmet == 0 {
+                                Color32::from_rgb(90, 180, 90)
+                            } else {
+                                Color32::from_rgb(220, 140, 70)
+                            };
+                            ui.horizontal(|ui| {
+                                if let Some(icon) = row.icon.as_deref() {
+                                    let tex = self.ui_icons.get_or_placeholder(
+                                        ui.ctx(),
+                                        Some(icon),
+                                        [24, 24],
+                                        [40, 50, 70],
+                                    );
+                                    let side = 16.0_f32;
+                                    let (rect, _) =
+                                        ui.allocate_exact_size(Vec2::splat(side), Sense::hover());
+                                    Self::paint_tex(ui, &tex, rect, Color32::WHITE);
+                                }
+                                ui.label(&row.label);
+                                ui.colored_label(
+                                    color,
+                                    Self::tf_lang(
+                                        lang,
+                                        "analyse.service_houses",
+                                        &[
+                                            ("met", &row.houses_met.to_string()),
+                                            ("need", &row.houses_needing.to_string()),
+                                        ],
+                                    ),
+                                );
+                            });
+                        }
+                    }
+                });
+                ui.add_space(8.0);
+                ui.group(|ui| {
+                    ui.label(RichText::new(Self::t_lang(lang, "analyse.chain")).strong());
+                    ui.label(Self::tf_lang(lang, 
+                        "analyse.producers",
+                        &[("n", &chain.producers.to_string())],
+                    ));
                     if chain.all_balanced {
                         ui.colored_label(
                             Color32::from_rgb(80, 180, 80),
-                            "Kette ausgeglichen (kein Input-Defizit)",
+                            Self::t_lang(lang, "analyse.chain_ok"),
                         );
                     } else {
                         ui.colored_label(
                             Color32::from_rgb(220, 120, 60),
-                            "Ungleichgewicht: Inputs fehlen",
+                            Self::tf_lang(
+                                lang,
+                                "analyse.imbalance",
+                                &[("detail", Self::t_lang(lang, "analyse.imbalance_detail"))],
+                            ),
                         );
                     }
                     egui::ScrollArea::vertical().max_height(280.0).show(ui, |ui| {
                         egui::Grid::new("chain_grid").striped(true).show(ui, |ui| {
-                            ui.label("Produkt");
-                            ui.label("Rein/min");
-                            ui.label("Raus/min");
-                            ui.label("Netto");
+                            ui.label(Self::t_lang(lang, "analyse.product"));
+                            ui.label(Self::t_lang(lang, "analyse.in_per_min"));
+                            ui.label(Self::t_lang(lang, "analyse.out_per_min"));
+                            ui.label(Self::t_lang(lang, "analyse.net"));
                             ui.end_row();
                             for f in &chain.flows {
                                 let color = if f.consumed_per_min > 0.0 && f.net() < -0.001 {
@@ -4374,22 +6261,20 @@ impl eframe::App for StampEditorApp {
                 if !areas.is_empty() {
                     ui.add_space(8.0);
                     ui.group(|ui| {
-                        ui.label(RichText::new("Flächeneffizienz (Wald/Sumpf/Ufer)").strong());
+                        ui.label(RichText::new(Self::t_lang(lang, "analyse.area_eff")).strong());
                         ui.label(
-                            RichText::new(
-                                "Frei = Radius − Blocker; Überlappung: exklusiv + Bedarfs-Priorität (wie Anno 1800)",
-                            )
-                            .small()
-                            .weak(),
+                            RichText::new(Self::t_lang(lang, "analyse.area_hint"))
+                                .small()
+                                .weak(),
                         );
                         egui::Grid::new("area_eff_grid")
                             .num_columns(4)
                             .spacing([8.0, 2.0])
                             .show(ui, |ui| {
-                                ui.label(RichText::new("Gebäude").strong());
-                                ui.label(RichText::new("Frei/Need").strong());
-                                ui.label(RichText::new("Blocker").strong());
-                                ui.label(RichText::new("Eff.").strong());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.building")).strong());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.free_need")).strong());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.blocker")).strong());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.eff")).strong());
                                 ui.end_row();
                                 for a in &areas {
                                     let color = if a.efficiency >= 0.999 {
@@ -4403,19 +6288,25 @@ impl eframe::App for StampEditorApp {
                                     ui.label(format!("{:.0}/{:.0}", a.have, a.need));
                                     ui.label(
                                         RichText::new(if a.contested_tiles > 0.0 {
-                                            format!(
-                                                "G{:.0} W{:.0} F{:.0} · Konk.{:.0}",
-                                                a.blocked_buildings,
-                                                a.blocked_roads,
-                                                a.blocked_fields,
-                                                a.contested_tiles
+                                            Self::tf_lang(
+                                                lang,
+                                                "analyse.contested",
+                                                &[
+                                                    ("b", &format!("{:.0}", a.blocked_buildings)),
+                                                    ("r", &format!("{:.0}", a.blocked_roads)),
+                                                    ("f", &format!("{:.0}", a.blocked_fields)),
+                                                    ("c", &format!("{:.0}", a.contested_tiles)),
+                                                ],
                                             )
                                         } else {
-                                            format!(
-                                                "G{:.0} W{:.0} F{:.0}",
-                                                a.blocked_buildings,
-                                                a.blocked_roads,
-                                                a.blocked_fields
+                                            Self::tf_lang(
+                                                lang,
+                                                "analyse.blockers_only",
+                                                &[
+                                                    ("b", &format!("{:.0}", a.blocked_buildings)),
+                                                    ("r", &format!("{:.0}", a.blocked_roads)),
+                                                    ("f", &format!("{:.0}", a.blocked_fields)),
+                                                ],
                                             )
                                         })
                                         .small(),
@@ -4440,7 +6331,7 @@ impl eframe::App for StampEditorApp {
                         let owner_id = b.complex_owner_id;
                         let group_n =
                             complex_group_indices(&open.stamp.buildings, sel).len();
-                        let label = self.catalog.label(guid);
+                        let label = self.catalog.label(guid, lang);
                         let name = self.catalog.name(guid).to_string();
                         let (w, h) = self.building_size(guid, variation);
                         let cov_r = self.coverage.radius;
@@ -4458,6 +6349,19 @@ impl eframe::App for StampEditorApp {
                         let service_kind = def.and_then(|d| d.service_kind.clone());
                         let effect_bonuses = def
                             .map(|d| d.effect_bonuses.clone())
+                            .unwrap_or_default();
+                        let residence_report: Option<ResidenceNeedReport> =
+                            def.filter(|d| d.is_residence()).map(|d| {
+                                let provided = if matches!(cov_mode, CoverageMode::Incoming) {
+                                    provided_need_guids(&cov_hits)
+                                } else {
+                                    HashSet::new()
+                                };
+                                report_for_def(d, &provided)
+                            });
+                        let residence_tiers: Vec<u32> = def
+                            .filter(|d| d.is_residence())
+                            .map(|_| self.catalog.residence_chain(guid))
                             .unwrap_or_default();
                         // Radius / productivity always relative to complex main.
                         let main_idx = complex_main_index(
@@ -4499,7 +6403,7 @@ impl eframe::App for StampEditorApp {
                             .unwrap_or_default();
                         ui.add_space(8.0);
                         ui.group(|ui| {
-                            ui.label(RichText::new("Auswahl / Coverage").strong());
+                            ui.label(RichText::new(Self::t_lang(lang, "analyse.selection")).strong());
                             ui.label(label);
                             ui.label(RichText::new(name).small().weak());
                             ui.label(format!("GUID {guid}  Pos ({bx:.1}, {by:.1})  Dir {dir}"));
@@ -4511,37 +6415,53 @@ impl eframe::App for StampEditorApp {
                                     sel,
                                 )
                                 .and_then(|mi| open.stamp.buildings.get(mi))
-                                .map(|mb| self.catalog.label(mb.guid))
+                                .map(|mb| self.catalog.label(mb.guid, lang))
                                 .unwrap_or_else(|| "?".into());
-                                ui.label(format!(
-                                    "Komplex Owner {oid} · {group_n} Gebäude (Haupt: {main_lbl})"
+                                ui.label(Self::tf_lang(
+                                    lang,
+                                    "analyse.complex",
+                                    &[
+                                        ("oid", &oid.to_string()),
+                                        ("n", &group_n.to_string()),
+                                        ("main", &main_lbl),
+                                    ],
                                 ));
                                 ui.label(
-                                    RichText::new("Rot = Hauptgebäude · Gelb = Untergebäude")
+                                    RichText::new(Self::t_lang(lang, "analyse.complex_hint"))
                                         .small()
                                         .weak(),
                                 );
                             } else {
-                                ui.label(RichText::new("Kein ComplexOwnerID — Einzelgebäude").weak());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.no_complex")).weak());
                             }
                             match cov_mode {
                                 CoverageMode::Outgoing => {
-                                    ui.label(format!(
-                                        "Abdeckung → {cov_n} Gebäude · Straße {cov_s:.0} · Radius {cov_r:.0}"
+                                    ui.label(Self::tf_lang(
+                                        lang,
+                                        "analyse.coverage_out",
+                                        &[
+                                            ("n", &cov_n.to_string()),
+                                            ("street", &format!("{cov_s:.0}")),
+                                            ("radius", &format!("{cov_r:.0}")),
+                                        ],
                                     ));
                                 }
                                 CoverageMode::Incoming => {
-                                    ui.label(format!("Erreicht von {cov_n} Quelle(n)"));
+                                    ui.label(Self::tf_lang(
+                                        lang,
+                                        "analyse.reached",
+                                        &[("n", &cov_n.to_string())],
+                                    ));
                                 }
                                 CoverageMode::None => {
-                                    ui.label(RichText::new("Keine Service-/Bonus-Reichweite").weak());
+                                    ui.label(RichText::new(Self::t_lang(lang, "analyse.no_service")).weak());
                                 }
                             }
                             if let Some(scope) = &effect_scope {
                                 ui.label(format!("EffectScope: {scope}"));
                             }
                             if let Some(k) = &service_kind {
-                                ui.label(format!("Art: {k}"));
+                                ui.label(Self::tf_lang(lang, "analyse.kind", &[("k", k)]));
                             }
                             if let Some(s) = street_d {
                                 ui.label(format!("StreetDistance: {s:.0}"));
@@ -4557,7 +6477,7 @@ impl eframe::App for StampEditorApp {
                             }
                             if let Some(a) = &sel_area {
                                 ui.separator();
-                                ui.label(RichText::new("Ressourcenfläche").strong());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.resource_area")).strong());
                                 let color = if a.efficiency >= 0.999 {
                                     Color32::from_rgb(90, 180, 90)
                                 } else if a.efficiency >= 0.7 {
@@ -4567,32 +6487,41 @@ impl eframe::App for StampEditorApp {
                                 };
                                 ui.colored_label(
                                     color,
-                                    format!(
-                                        "Effektiv {:.0} / Need {:.0} ({:.0}%)",
-                                        a.have,
-                                        a.need,
-                                        a.efficiency * 100.0
+                                    Self::tf_lang(
+                                        lang,
+                                        "analyse.eff_need",
+                                        &[
+                                            ("have", &format!("{:.0}", a.have)),
+                                            ("need", &format!("{:.0}", a.need)),
+                                            ("pct", &format!("{:.0}", a.efficiency * 100.0)),
+                                        ],
                                     ),
                                 );
-                                ui.label(format!(
-                                    "Klasse „{}“ · exklusiv {:.0} · umkämpft {:.0} (gewonnen {:.0})",
-                                    a.competition_group,
-                                    a.have_exclusive,
-                                    a.contested_tiles,
-                                    a.have_contested_won
+                                ui.label(Self::tf_lang(
+                                    lang,
+                                    "analyse.class_split",
+                                    &[
+                                        ("group", &a.competition_group),
+                                        ("excl", &format!("{:.0}", a.have_exclusive)),
+                                        ("cont", &format!("{:.0}", a.contested_tiles)),
+                                        ("won", &format!("{:.0}", a.have_contested_won)),
+                                    ],
                                 ));
-                                ui.label(format!(
-                                    "Radius {:.0}: {:.0} Kacheln · −Gebäude {:.0} · −Wege {:.0} · −Felder {:.0}",
-                                    a.radius,
-                                    a.raw_in_radius,
-                                    a.blocked_buildings,
-                                    a.blocked_roads,
-                                    a.blocked_fields
+                                ui.label(Self::tf_lang(
+                                    lang,
+                                    "analyse.radius_block",
+                                    &[
+                                        ("radius", &format!("{:.0}", a.radius)),
+                                        ("raw", &format!("{:.0}", a.raw_in_radius)),
+                                        ("b", &format!("{:.0}", a.blocked_buildings)),
+                                        ("r", &format!("{:.0}", a.blocked_roads)),
+                                        ("f", &format!("{:.0}", a.blocked_fields)),
+                                    ],
                                 ));
                             }
                             if !effect_bonuses.is_empty() {
                                 ui.separator();
-                                ui.label(RichText::new("Boni (Asset)").strong());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.bonuses")).strong());
                                 for b in &effect_bonuses {
                                     ui.label(format!("  {} {:+}", b.attr, b.value));
                                 }
@@ -4600,7 +6529,7 @@ impl eframe::App for StampEditorApp {
                             if matches!(cov_mode, CoverageMode::Incoming) && !cov_hits.is_empty()
                             {
                                 ui.separator();
-                                ui.label(RichText::new("Wirkende Quellen").strong());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.sources")).strong());
                                 for h in &cov_hits {
                                     let via = match (h.via_street, h.via_radius) {
                                         (true, true) => "Straße+Radius",
@@ -4617,9 +6546,67 @@ impl eframe::App for StampEditorApp {
                                     }
                                 }
                             }
+                            if residence_tiers.len() > 1 {
+                                ui.separator();
+                                ui.label(
+                                    RichText::new(Self::t_lang(lang, "analyse.residence_tier"))
+                                        .strong(),
+                                );
+                                ui.horizontal_wrapped(|ui| {
+                                    for &tg in &residence_tiers {
+                                        let lbl = self.catalog.label(tg, lang);
+                                        let sel = tg == guid;
+                                        if ui.selectable_label(sel, &lbl).clicked() && tg != guid
+                                        {
+                                            pending_residence_tier = Some(tg);
+                                        }
+                                    }
+                                });
+                            }
+                            if let Some(report) = &residence_report {
+                                ui.separator();
+                                ui.label(
+                                    RichText::new(Self::t_lang(lang, "analyse.service_needs"))
+                                        .strong(),
+                                );
+                                ui.label(Self::tf_lang(
+                                    lang,
+                                    "analyse.services_badge",
+                                    &[
+                                        ("met", &report.met_count().to_string()),
+                                        ("total", &report.service_count().to_string()),
+                                    ],
+                                ));
+                                for s in &report.services {
+                                    let mark = if s.met { "[x]" } else { "[ ]" };
+                                    let color = if s.met {
+                                        Color32::from_rgb(90, 180, 90)
+                                    } else {
+                                        Color32::from_rgb(220, 100, 80)
+                                    };
+                                    ui.horizontal(|ui| {
+                                        if let Some(icon) = s.need.icon.as_deref() {
+                                            let tex = self.ui_icons.get_or_placeholder(
+                                                ui.ctx(),
+                                                Some(icon),
+                                                [24, 24],
+                                                [40, 50, 70],
+                                            );
+                                            let side = 16.0_f32;
+                                            let (rect, _) = ui.allocate_exact_size(
+                                                Vec2::splat(side),
+                                                Sense::hover(),
+                                            );
+                                            Self::paint_tex(ui, &tex, rect, Color32::WHITE);
+                                        }
+                                        ui.colored_label(color, mark);
+                                        ui.colored_label(color, s.need.label(lang));
+                                    });
+                                }
+                            }
                             if need > 0 {
                                 ui.separator();
-                                ui.label(RichText::new("Module / Untergebäude").strong());
+                                ui.label(RichText::new(Self::t_lang(lang, "analyse.modules")).strong());
                                 let color = if have as u32 >= need {
                                     Color32::from_rgb(90, 180, 90)
                                 } else {
@@ -4645,9 +6632,12 @@ impl eframe::App for StampEditorApp {
                     }
                 }
             } else {
-                ui.label("Kein Stamp geladen.");
+                ui.label(self.t("analyse.no_stamp"));
             }
         });
+        if let Some(tg) = pending_residence_tier {
+            self.upgrade_selected_residence(tg);
+        }
         } // show_analyse
 
         if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
@@ -4672,7 +6662,18 @@ impl eframe::App for StampEditorApp {
                 i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace)
             });
             if key_delete || menu_delete {
-                self.delete_selection(group_ops);
+                // Canvas selection always wins over leftover library selection.
+                // Library Entf only when nothing on the canvas is selected
+                // (and not via Bearbeiten → Löschen, which is canvas-only).
+                let canvas_sel = self.selected_building.is_some()
+                    || !self.selected_buildings.is_empty()
+                    || !self.selected_roads.is_empty()
+                    || !self.selected_fields.is_empty();
+                if menu_delete || canvas_sel {
+                    self.delete_selection(group_ops);
+                } else if !self.library_selection.is_empty() {
+                    let _ = self.delete_library_selection();
+                }
             }
             // Land/Marsh footprint (V): while placing, or on selected building with size_marsh.
             if !mods.ctrl && !mods.command && ctx.input(|i| i.key_pressed(egui::Key::V)) {
@@ -4682,8 +6683,32 @@ impl eframe::App for StampEditorApp {
                     self.toggle_selected_variation(idx);
                 }
             }
-            // Rotate selected building (R). Shift+R = reverse.
+            // Rotate: building in hand, or selected building. Shift+R = reverse.
             if !mods.ctrl
+                && !mods.command
+                && ctx.input(|i| i.key_pressed(egui::Key::R))
+                && self.placing_guid.is_some()
+                && !self.hand_from_clipboard
+            {
+                let cur = self.place_direction;
+                self.place_direction = if mods.shift {
+                    let d = cur.rem_euclid(8);
+                    if self.allow_45_deg {
+                        (d + 7).rem_euclid(8)
+                    } else if d % 2 == 1 {
+                        (d + 7).rem_euclid(8)
+                    } else {
+                        (d + 6).rem_euclid(8)
+                    }
+                } else {
+                    self.next_direction(cur)
+                };
+                let label = self
+                    .placing_guid
+                    .map(|g| self.catalog.label(g, self.language))
+                    .unwrap_or_default();
+                self.refresh_place_status(&label);
+            } else if !mods.ctrl
                 && !mods.command
                 && ctx.input(|i| i.key_pressed(egui::Key::R))
                 && self.selected_building.is_some()
@@ -4763,8 +6788,17 @@ impl eframe::App for StampEditorApp {
             let (response, painter) =
                 ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
             let rect = response.rect;
+            // Build-bar band (same math as the overlay below) — canvas must not
+            // place/drag through mid/deep rows.
+            let build_band_top = (rect.max.y - build_bar_h).max(rect.min.y + 40.0);
+            let over_build_bar = response
+                .hover_pos()
+                .or_else(|| response.interact_pointer_pos())
+                .is_some_and(|p| p.y >= build_band_top);
             if let Some(pos) = response.hover_pos() {
-                self.last_pointer_world = Some(self.screen_to_world(rect, pos));
+                if !over_build_bar {
+                    self.last_pointer_world = Some(self.screen_to_world(rect, pos));
+                }
             }
             painter.rect_filled(rect, 0.0, Color32::from_rgb(28, 30, 34));
 
@@ -4846,6 +6880,35 @@ impl eframe::App for StampEditorApp {
                 }
             }
 
+            // Aqueducts (MeshGraph layer) — MinGround (Boden) vs MaxGround (hoch über Straße).
+            if let Some(doc) = self.open.as_ref().map(|o| &o.stamp.document) {
+                for (x, y, guid) in mesh_road_cells(doc) {
+                    if !is_aqueduct_brush_guid(guid) {
+                        continue;
+                    }
+                    let r = self.cell_screen_rect(rect, x, y);
+                    let (fill, stroke) = if is_aqueduct_maxground_guid(guid) {
+                        // Same blue family as MinGround; slightly brighter = raised over road.
+                        (
+                            Color32::from_rgba_unmultiplied(110, 195, 240, 185),
+                            Color32::from_rgb(160, 225, 255),
+                        )
+                    } else {
+                        (
+                            Color32::from_rgba_unmultiplied(70, 160, 210, 160),
+                            Color32::from_rgb(120, 200, 230),
+                        )
+                    };
+                    painter.rect_filled(r, 0.0, fill);
+                    painter.rect_stroke(
+                        r,
+                        0.0,
+                        Stroke::new(1.0_f32, stroke),
+                        egui::StrokeKind::Outside,
+                    );
+                }
+            }
+
             // Street-reach tint on top of roads (not a building-tile flood).
             for cell in &self.coverage.reachable_roads {
                 let r = self.cell_screen_rect(rect, cell.x, cell.y);
@@ -4862,8 +6925,24 @@ impl eframe::App for StampEditorApp {
                             stroke.cursor.0,
                             stroke.cursor.1,
                         );
+                        let brush_g = self.road_brush_guid.unwrap_or(0);
+                        let brush_aqueduct = is_aqueduct_brush_guid(brush_g);
+                        let brush_aq_max = is_aqueduct_maxground_guid(brush_g);
+                        let brush_stone = self.catalog.building(brush_g as u32).is_some_and(|d| {
+                            d.road_kind.as_deref() == Some("stone")
+                                || d.logistic_speed_factor.unwrap_or(0.0) >= 1.4
+                        });
                         let preview = if paint_on {
-                            Color32::from_rgba_unmultiplied(200, 170, 90, 150)
+                            if brush_aq_max {
+                                Color32::from_rgba_unmultiplied(110, 195, 240, 180)
+                            } else if brush_aqueduct {
+                                Color32::from_rgba_unmultiplied(70, 160, 210, 170)
+                            } else if brush_stone {
+                                // Match placed Stone tint (gray), not Dirt ochre.
+                                Color32::from_rgba_unmultiplied(150, 150, 165, 160)
+                            } else {
+                                Color32::from_rgba_unmultiplied(200, 170, 90, 150)
+                            }
                         } else {
                             Color32::from_rgba_unmultiplied(220, 80, 80, 140)
                         };
@@ -4871,6 +6950,73 @@ impl eframe::App for StampEditorApp {
                             let r = self.cell_screen_rect(rect, tx, ty);
                             painter.rect_filled(r, 0.0, preview);
                         }
+                    }
+                    StrokeKind::Field { paint_on } => {
+                        let (min_x, min_y, max_x, max_y) =
+                            rect_bounds(stroke.start, stroke.cursor);
+                        let area = rect_cells(min_x, min_y, max_x, max_y);
+                        let owner = self.field_brush_owner;
+                        let mut ok: HashSet<(i32, i32)> = HashSet::new();
+                        if paint_on {
+                            if let (Some(oid), Some(open)) = (owner, self.open.as_ref()) {
+                                let mut blocked: HashSet<(i32, i32)> = self
+                                    .coverage
+                                    .roads
+                                    .keys()
+                                    .map(|c| (c.x, c.y))
+                                    .collect();
+                                blocked.extend(foreign_field_cells(&open.stamp, oid));
+                                let region = open.region_guid;
+                                let drag = read_mesh_info(&open.stamp.document)
+                                    .map(|i| i.drag_center)
+                                    .unwrap_or((0.0, 0.0));
+                                for b in &open.stamp.buildings {
+                                    let def = self.catalog.building(b.guid);
+                                    if def.is_some_and(|d| d.category == "street") {
+                                        continue;
+                                    }
+                                    for c in footprint_cells_for_region(b, def, region, drag) {
+                                        blocked.insert((c.x, c.y));
+                                    }
+                                }
+                                let mut seeds = self.farm_main_connect_seeds(oid);
+                                seeds.extend(field_cells_of_owner(&open.stamp, oid));
+                                let cand: HashSet<(i32, i32)> = area
+                                    .iter()
+                                    .copied()
+                                    .filter(|c| !blocked.contains(c))
+                                    .collect();
+                                ok = connected_field_subset(&seeds, &cand);
+                            }
+                        } else {
+                            ok = area.iter().copied().collect();
+                        }
+                        for (tx, ty) in &area {
+                            let r = self.cell_screen_rect(rect, *tx, *ty);
+                            let fill = if !paint_on {
+                                Color32::from_rgba_unmultiplied(220, 100, 70, 120)
+                            } else if ok.contains(&(*tx, *ty)) {
+                                Color32::from_rgba_unmultiplied(110, 180, 90, 130)
+                            } else {
+                                // Blocked / foreign / not connected to farm.
+                                Color32::from_rgba_unmultiplied(180, 80, 80, 70)
+                            };
+                            painter.rect_filled(r, 0.0, fill);
+                        }
+                        let outline = self.cells_screen_rect(rect, min_x, min_y, max_x, max_y);
+                        painter.rect_stroke(
+                            outline,
+                            0.0,
+                            Stroke::new(
+                                1.75_f32,
+                                if paint_on {
+                                    Color32::from_rgb(140, 220, 120)
+                                } else {
+                                    Color32::from_rgb(240, 120, 80)
+                                },
+                            ),
+                            egui::StrokeKind::Outside,
+                        );
                     }
                     StrokeKind::DemolishRect => {
                         let (min_x, min_y, max_x, max_y) =
@@ -4883,10 +7029,7 @@ impl eframe::App for StampEditorApp {
                                 Color32::from_rgba_unmultiplied(220, 60, 50, 90),
                             );
                         }
-                        let outline = Rect::from_min_max(
-                            self.cell_screen_rect(rect, min_x, min_y).min,
-                            self.cell_screen_rect(rect, max_x, max_y).max,
-                        );
+                        let outline = self.cells_screen_rect(rect, min_x, min_y, max_x, max_y);
                         painter.rect_stroke(
                             outline,
                             0.0,
@@ -4905,10 +7048,7 @@ impl eframe::App for StampEditorApp {
                                 Color32::from_rgba_unmultiplied(70, 140, 255, 55),
                             );
                         }
-                        let outline = Rect::from_min_max(
-                            self.cell_screen_rect(rect, min_x, min_y).min,
-                            self.cell_screen_rect(rect, max_x, max_y).max,
-                        );
+                        let outline = self.cells_screen_rect(rect, min_x, min_y, max_x, max_y);
                         painter.rect_stroke(
                             outline,
                             0.0,
@@ -4925,18 +7065,20 @@ impl eframe::App for StampEditorApp {
                                     .iter()
                                     .find(|c| c.is_primary)
                                     .map(|p| self.clipboard_oriented_size(p))
-                                    .unwrap_or_else(|| self.building_size(guid, variation))
+                                    .unwrap_or_else(|| {
+                                        let (w0, h0) = self.building_size(guid, variation);
+                                        oriented_size(w0, h0, self.place_direction)
+                                    })
                             } else {
-                                self.building_size(guid, variation)
+                                let (w0, h0) = self.building_size(guid, variation);
+                                oriented_size(w0, h0, self.place_direction)
                             };
                             let bw_i = bw.round().max(1.0) as i32;
                             let bh_i = bh.round().max(1.0) as i32;
                             let (min_x, min_y, max_x, max_y) =
                                 rect_bounds(stroke.start, stroke.cursor);
-                            let outline = Rect::from_min_max(
-                                self.cell_screen_rect(rect, min_x, min_y).min,
-                                self.cell_screen_rect(rect, max_x, max_y).max,
-                            );
+                            let outline =
+                                self.cells_screen_rect(rect, min_x, min_y, max_x, max_y);
                             painter.rect_stroke(
                                 outline,
                                 0.0,
@@ -5019,7 +7161,7 @@ impl eframe::App for StampEditorApp {
                                             })
                                             .collect()
                                     } else {
-                                        vec![(guid, sx, sy, 0, variation)]
+                                        vec![(guid, sx, sy, self.place_direction, variation)]
                                     };
                                 for (g_guid, gx, gy, g_dir, g_var) in parts {
                                     let ghost = Building {
@@ -5031,11 +7173,26 @@ impl eframe::App for StampEditorApp {
                                         variation: g_var,
                                     };
                                     let def = self.catalog.building(g_guid);
-                                    for c in
-                                        footprint_cells_for_region(&ghost, def, region, drag)
-                                    {
+                                    let cells =
+                                        footprint_cells_for_region(&ghost, def, region, drag);
+                                    let mut min_x = i32::MAX;
+                                    let mut max_x = i32::MIN;
+                                    let mut min_y = i32::MAX;
+                                    let mut max_y = i32::MIN;
+                                    for c in &cells {
+                                        min_x = min_x.min(c.x);
+                                        max_x = max_x.max(c.x);
+                                        min_y = min_y.min(c.y);
+                                        max_y = max_y.max(c.y);
                                         let r = self.cell_screen_rect(rect, c.x, c.y);
                                         painter.rect_filled(r, 0.0, fill);
+                                    }
+                                    if def.is_some_and(|d| d.is_aqueduct_cistern())
+                                        && min_x <= max_x
+                                    {
+                                        self.paint_cistern_inlet_hint(
+                                            &painter, rect, min_x, max_x, min_y, max_y, g_dir,
+                                        );
                                     }
                                 }
                                 if from_clipboard {
@@ -5063,9 +7220,9 @@ impl eframe::App for StampEditorApp {
             if let Some(open) = self.open.clone() {
                 let affected_set: std::collections::HashSet<usize> =
                     self.coverage.affected.iter().copied().collect();
-                let hover_idx = response
-                    .hover_pos()
-                    .and_then(|p| self.building_at_pointer(rect, &open.stamp.buildings, p));
+                let hover_idx = response.hover_pos().and_then(|p| {
+                    self.selectable_at_pointer(rect, &open.stamp.buildings, p)
+                });
                 self.hover_building = hover_idx;
                 let focus_idx = self.selected_building.or(hover_idx);
                 let focus_group: HashSet<usize> = focus_idx
@@ -5108,11 +7265,41 @@ impl eframe::App for StampEditorApp {
                 }
 
                 // PlantFarm fields: each SubTileGrid bit → 1×1 tile with crop icon.
+                let (fdx, fdy) = if self.dragging_fields {
+                    self.drag_field_delta
+                } else {
+                    (0, 0)
+                };
+                // Tiles with no 4-path to their farm main → red warning (not auto-deleted).
+                let mut disconnected: HashSet<(i32, i32)> = HashSet::new();
+                {
+                    let owners: HashSet<u64> = open
+                        .stamp
+                        .polygon_cells
+                        .iter()
+                        .filter_map(|c| c.complex_owner_id.filter(|o| *o != 0))
+                        .collect();
+                    for oid in owners {
+                        let seeds = self.farm_main_connect_seeds(oid);
+                        disconnected
+                            .extend(disconnected_field_cells(&open.stamp, oid, &seeds));
+                    }
+                }
                 for cell in &open.stamp.polygon_cells {
+                    let selected = self.selected_fields.contains(&(cell.x, cell.y));
+                    // While dragging, hide selected tiles at origin (ghost drawn at target).
+                    if self.dragging_fields && selected {
+                        continue;
+                    }
                     let r = self.cell_screen_rect(rect, cell.x, cell.y);
+                    let orphan = disconnected.contains(&(cell.x, cell.y));
                     let linked =
                         focus_owner.is_some() && cell.complex_owner_id == focus_owner;
-                    let fill = if linked {
+                    let fill = if orphan {
+                        Color32::from_rgba_unmultiplied(220, 60, 50, 130)
+                    } else if selected {
+                        Color32::from_rgba_unmultiplied(80, 160, 255, 110)
+                    } else if linked {
                         Color32::from_rgba_unmultiplied(110, 150, 70, 90)
                     } else {
                         Color32::from_rgba_unmultiplied(75, 110, 60, 70)
@@ -5122,8 +7309,16 @@ impl eframe::App for StampEditorApp {
                         r,
                         0.0,
                         Stroke::new(
-                            if linked { 1.25_f32 } else { 0.75_f32 },
-                            if linked {
+                            if orphan || selected || linked {
+                                1.35_f32
+                            } else {
+                                0.75_f32
+                            },
+                            if orphan {
+                                Color32::from_rgb(255, 100, 90)
+                            } else if selected {
+                                Color32::from_rgb(140, 200, 255)
+                            } else if linked {
                                 Color32::from_rgb(230, 200, 90)
                             } else {
                                 Color32::from_rgba_unmultiplied(180, 200, 140, 120)
@@ -5139,6 +7334,23 @@ impl eframe::App for StampEditorApp {
                             .and_then(|o| owner_main_guid.get(&o).copied())
                             .unwrap_or(cell.guid);
                         let _ = self.paint_building_icon(ctx, &painter, r, icon_guid, 0.95);
+                    }
+                }
+                // Ghost of selected field tiles while dragging.
+                if self.dragging_fields {
+                    for &(x, y) in &self.drag_field_origins {
+                        let r = self.cell_screen_rect(rect, x + fdx, y + fdy);
+                        painter.rect_filled(
+                            r,
+                            0.0,
+                            Color32::from_rgba_unmultiplied(90, 180, 255, 120),
+                        );
+                        painter.rect_stroke(
+                            r,
+                            0.0,
+                            Stroke::new(1.5_f32, Color32::from_rgb(160, 220, 255)),
+                            egui::StrokeKind::Outside,
+                        );
                     }
                 }
 
@@ -5159,6 +7371,7 @@ impl eframe::App for StampEditorApp {
                     .collect();
                 for (idx, b) in draw_buildings {
                     let def = self.catalog.building(b.guid);
+                    let is_cistern = def.is_some_and(|d| d.is_aqueduct_cistern());
                     let is_poly_module = def.is_some_and(|d| {
                         is_module_building(d)
                             || d.category == "module"
@@ -5187,7 +7400,17 @@ impl eframe::App for StampEditorApp {
                     });
                     let is_group_main = idx.is_some() && idx == focus_main;
                     let in_cov = idx.map(|i| affected_set.contains(&i)).unwrap_or(false);
-                    let fill = if selected {
+                    let fill = if let Some(tier) = self.catalog.residence_tier_number(b.guid) {
+                        if in_cov && !selected {
+                            match self.coverage.mode {
+                                CoverageMode::Outgoing => Color32::from_rgb(60, 110, 150),
+                                CoverageMode::Incoming => Color32::from_rgb(120, 90, 150),
+                                CoverageMode::None => Self::residence_tier_fill(tier, false, false),
+                            }
+                        } else {
+                            Self::residence_tier_fill(tier, selected, false)
+                        }
+                    } else if selected {
                         Color32::from_rgb(90, 150, 220)
                     } else if in_cov {
                         match self.coverage.mode {
@@ -5225,10 +7448,7 @@ impl eframe::App for StampEditorApp {
                         let max_x = cells.iter().map(|c| c.x).max().unwrap();
                         let min_y = cells.iter().map(|c| c.y).min().unwrap();
                         let max_y = cells.iter().map(|c| c.y).max().unwrap();
-                        Some(Rect::from_min_max(
-                            self.cell_screen_rect(rect, min_x, min_y).min,
-                            self.cell_screen_rect(rect, max_x, max_y).max,
-                        ))
+                        Some(self.cells_screen_rect(rect, min_x, min_y, max_x, max_y))
                     } else {
                         None
                     };
@@ -5275,15 +7495,37 @@ impl eframe::App for StampEditorApp {
                         drew_icon = self.paint_building_icon(ctx, &painter, r, b.guid, 1.0);
                     }
 
+                    // Cistern water inlet (Dir → side); aqueduct must touch this edge.
+                    if is_cistern && !cells.is_empty() {
+                        let min_x = cells.iter().map(|c| c.x).min().unwrap();
+                        let max_x = cells.iter().map(|c| c.x).max().unwrap();
+                        let min_y = cells.iter().map(|c| c.y).min().unwrap();
+                        let max_y = cells.iter().map(|c| c.y).max().unwrap();
+                        self.paint_cistern_inlet_hint(
+                            &painter,
+                            rect,
+                            min_x,
+                            max_x,
+                            min_y,
+                            max_y,
+                            b.direction,
+                        );
+                    }
+
                     // Text only when no icon (or extremely zoomed-out fallback).
                     if !drew_icon && self.cell_px >= 12.0 {
-                        let label = self.catalog.label(b.guid);
+                        let label = self.catalog.label(b.guid, self.language);
                         let (ew, eh) = oriented_size(w, h, b.direction);
+                        let tier = self
+                            .catalog
+                            .residence_tier_tag(b.guid)
+                            .map(|t| format!("{t} · "))
+                            .unwrap_or_default();
                         let size_tag = if b.direction.rem_euclid(8) == 0 {
-                            format!("{label} {}×{}", ew as i32, eh as i32)
+                            format!("{tier}{label} {}×{}", ew as i32, eh as i32)
                         } else {
                             format!(
-                                "{label} {}×{} · Dir {}",
+                                "{tier}{label} {}×{} · Dir {}",
                                 ew as i32,
                                 eh as i32,
                                 b.direction.rem_euclid(8)
@@ -5306,7 +7548,7 @@ impl eframe::App for StampEditorApp {
                 }
 
                 // Have/need only on the focused complex main (hover or selection).
-                if self.cell_px >= 10.0 {
+                if self.cell_px >= 14.0 {
                     if let Some(main_i) = focus_main {
                         let b = &open.stamp.buildings[main_i];
                         let def = self.catalog.building(b.guid);
@@ -5400,6 +7642,7 @@ impl eframe::App for StampEditorApp {
                             Some(&open.stamp.document),
                             open.region_guid,
                             &open.stamp.polygon_cells,
+                            self.language,
                         );
                         // Seeds: selected/focused resource buildings with group + radius.
                         let mut seeds: Vec<(usize, f32, f32, f32, &'static str)> = Vec::new();
@@ -5586,44 +7829,83 @@ impl eframe::App for StampEditorApp {
                 }
 
                 // Bonus chips on canvas (selection coverage).
+                // Zoomed out: text chips bury the layout — use dots / hide until readable.
                 match self.coverage.mode {
                     CoverageMode::Outgoing => {
                         if let Some(hit) = self.coverage.hits.first() {
+                            let (r, g, bl) = kind_color(hit.service_kind.as_deref());
+                            let color = Color32::from_rgb(r, g, bl);
                             for &ai in &self.coverage.affected {
-                                if let Some(tb) = open.stamp.buildings.get(ai) {
+                                let Some(tb) = open.stamp.buildings.get(ai) else {
+                                    continue;
+                                };
+                                if self.cell_px >= 20.0 {
                                     let anchor =
                                         self.world_to_screen(rect, tb.x, tb.y - 0.9);
-                                    let (r, g, bl) = kind_color(hit.service_kind.as_deref());
                                     let short: Vec<String> = hit
                                         .bonuses
                                         .iter()
                                         .take(2)
-                                        .map(|b| Self::format_bonus_chip(&b.attr, b.value))
+                                        .map(|b| self.format_bonus_chip(&b.attr, b.value))
                                         .collect();
-                                    self.paint_bonus_label(
-                                        &painter,
-                                        anchor,
-                                        &short,
-                                        Color32::from_rgb(r, g, bl),
+                                    self.paint_bonus_label(&painter, anchor, &short, color);
+                                } else if self.cell_px >= 10.0 {
+                                    // Compact marker so coverage stays visible without clutter.
+                                    let c = self.world_to_screen(rect, tb.x, tb.y);
+                                    let rad = (self.cell_px * 0.22).clamp(2.5, 5.0);
+                                    painter.circle_filled(
+                                        c,
+                                        rad,
+                                        Color32::from_rgba_unmultiplied(r, g, bl, 220),
+                                    );
+                                    painter.circle_stroke(
+                                        c,
+                                        rad,
+                                        Stroke::new(1.0_f32, Color32::from_rgb(240, 245, 255)),
                                     );
                                 }
                             }
                         }
                     }
                     CoverageMode::Incoming => {
-                        if let Some(sel_i) = self.selected_building {
-                            if let Some(sel_b) = open.stamp.buildings.get(sel_i) {
-                                let lines =
-                                    Self::format_incoming_summary(&self.coverage.hits);
-                                if !lines.is_empty() {
-                                    let anchor =
-                                        self.world_to_screen(rect, sel_b.x, sel_b.y - 1.4);
-                                    self.paint_bonus_label(
-                                        &painter,
-                                        anchor,
-                                        &lines,
-                                        Color32::from_rgb(220, 230, 255),
-                                    );
+                        // One summary card — fine when zoomed out a bit; skip at min zoom.
+                        if self.cell_px >= 14.0 {
+                            if let Some(sel_i) = self.selected_building {
+                                if let Some(sel_b) = open.stamp.buildings.get(sel_i) {
+                                    let mut lines =
+                                        self.format_incoming_summary(&self.coverage.hits);
+                                    if let Some(report) = report_for_building(
+                                        &self.catalog,
+                                        &open.stamp.buildings,
+                                        sel_i,
+                                        &self.coverage,
+                                    ) {
+                                        if report.service_count() > 0 {
+                                            lines.insert(
+                                                0,
+                                                self.tf(
+                                                    "analyse.services_badge",
+                                                    &[
+                                                        ("met", &report.met_count().to_string()),
+                                                        (
+                                                            "total",
+                                                            &report.service_count().to_string(),
+                                                        ),
+                                                    ],
+                                                ),
+                                            );
+                                        }
+                                    }
+                                    if !lines.is_empty() {
+                                        let anchor = self
+                                            .world_to_screen(rect, sel_b.x, sel_b.y - 1.4);
+                                        self.paint_bonus_label(
+                                            &painter,
+                                            anchor,
+                                            &lines,
+                                            Color32::from_rgb(220, 230, 255),
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -5645,7 +7927,10 @@ impl eframe::App for StampEditorApp {
                                 b.variation,
                             );
                             if r.contains(pointer) {
-                                tip = Some((idx, self.catalog.name(b.guid).to_string()));
+                                tip = Some((
+                                    idx,
+                                    self.catalog.label(b.guid, self.language),
+                                ));
                                 break;
                             }
                         }
@@ -5662,7 +7947,8 @@ impl eframe::App for StampEditorApp {
                                 ))
                             };
                             let cov = live.as_ref().unwrap_or(&self.coverage);
-                            let mut extra: Vec<String> = Vec::new();
+                            let tip_dim = Color32::from_rgb(210, 220, 235);
+                            let mut extra: Vec<(String, Color32)> = Vec::new();
                             match cov.mode {
                                 CoverageMode::Outgoing => {
                                     if let Some(hit) = cov.hits.first() {
@@ -5670,22 +7956,81 @@ impl eframe::App for StampEditorApp {
                                             || cov.affected.contains(&idx)
                                         {
                                             for bns in hit.bonuses.iter().take(6) {
-                                                extra.push(Self::format_bonus_chip(
-                                                    &bns.attr, bns.value,
+                                                extra.push((
+                                                    self.format_bonus_chip(
+                                                        &bns.attr, bns.value,
+                                                    ),
+                                                    tip_dim,
                                                 ));
                                             }
-                                            extra.push(format!(
-                                                "→ {} Gebäude",
-                                                cov.affected.len()
+                                            extra.push((
+                                                self.tf(
+                                                    "buff.affects",
+                                                    &[(
+                                                        "n",
+                                                        &cov.affected.len().to_string(),
+                                                    )],
+                                                ),
+                                                tip_dim,
                                             ));
                                         }
                                     }
                                 }
                                 CoverageMode::Incoming => {
+                                    if let Some(report) = report_for_building(
+                                        &self.catalog,
+                                        &open.stamp.buildings,
+                                        idx,
+                                        cov,
+                                    ) {
+                                        if report.service_count() > 0 {
+                                            extra.push((
+                                                self.tf(
+                                                    "analyse.services_badge",
+                                                    &[
+                                                        (
+                                                            "met",
+                                                            &report.met_count().to_string(),
+                                                        ),
+                                                        (
+                                                            "total",
+                                                            &report
+                                                                .service_count()
+                                                                .to_string(),
+                                                        ),
+                                                    ],
+                                                ),
+                                                tip_dim,
+                                            ));
+                                            for s in &report.services {
+                                                let mark =
+                                                    if s.met { "[x]" } else { "[ ]" };
+                                                let color = if s.met {
+                                                    Color32::from_rgb(120, 200, 120)
+                                                } else {
+                                                    Color32::from_rgb(220, 120, 110)
+                                                };
+                                                extra.push((
+                                                    format!(
+                                                        "{mark} {}",
+                                                        s.need.label(self.language)
+                                                    ),
+                                                    color,
+                                                ));
+                                            }
+                                        }
+                                    }
                                     if cov.hits.is_empty() {
-                                        extra.push("Keine Buff-Quellen in Reichweite".into());
+                                        extra.push((
+                                            self.t("buff.no_sources").to_string(),
+                                            tip_dim,
+                                        ));
                                     } else {
-                                        extra.extend(Self::format_incoming_summary(&cov.hits));
+                                        for line in
+                                            self.format_incoming_summary(&cov.hits)
+                                        {
+                                            extra.push((line, tip_dim));
+                                        }
                                     }
                                 }
                                 CoverageMode::None => {
@@ -5693,7 +8038,7 @@ impl eframe::App for StampEditorApp {
                                         open.stamp.buildings[idx].guid,
                                         open.stamp.buildings[idx].variation,
                                     );
-                                    extra.push(format!("{bw:.0}×{bh:.0}"));
+                                    extra.push((format!("{bw:.0}×{bh:.0}"), tip_dim));
                                 }
                             }
                             egui::show_tooltip_at_pointer(
@@ -5704,17 +8049,15 @@ impl eframe::App for StampEditorApp {
                                 ),
                                 egui::Id::new("stamp_building_tip"),
                                 |ui| {
-                                    ui.set_max_width(220.0);
+                                    ui.set_max_width(280.0);
                                     ui.label(
                                         RichText::new(&name)
                                             .size(13.0)
                                             .strong(),
                                     );
-                                    for line in &extra {
+                                    for (line, color) in &extra {
                                         ui.label(
-                                            RichText::new(line)
-                                                .size(12.0)
-                                                .color(Color32::from_rgb(210, 220, 235)),
+                                            RichText::new(line).size(12.0).color(*color),
                                         );
                                     }
                                 },
@@ -5735,10 +8078,13 @@ impl eframe::App for StampEditorApp {
                                 .find(|c| c.is_primary)
                                 .map(|p| self.clipboard_oriented_size(p))
                                 .unwrap_or_else(|| {
-                                    self.building_size(guid, self.place_variation)
+                                    let (w0, h0) =
+                                        self.building_size(guid, self.place_variation);
+                                    oriented_size(w0, h0, self.place_direction)
                                 })
                         } else {
-                            self.building_size(guid, self.place_variation)
+                            let (w0, h0) = self.building_size(guid, self.place_variation);
+                            oriented_size(w0, h0, self.place_direction)
                         };
                         let (sx, sy) = if from_clipboard {
                             if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
@@ -5768,6 +8114,31 @@ impl eframe::App for StampEditorApp {
                                 }
                             }
                         }
+                        if !blocked {
+                            let occupied = self.occupied_footprint_cells(&[]);
+                            let ghost_check: Vec<(u32, f32, f32, i32, Option<u32>)> =
+                                if from_clipboard {
+                                    self.clipboard_building_centers(sx, sy)
+                                        .into_iter()
+                                        .map(|(c, cx, cy)| {
+                                            (c.guid, cx, cy, c.direction, c.variation)
+                                        })
+                                        .collect()
+                                } else {
+                                    vec![(
+                                        guid,
+                                        sx,
+                                        sy,
+                                        self.place_direction,
+                                        self.place_variation,
+                                    )]
+                                };
+                            blocked = ghost_check.iter().any(|(g, gx, gy, gd, gv)| {
+                                self.footprint_overlaps_occupied(
+                                    *g, *gx, *gy, *gd, *gv, &occupied,
+                                )
+                            });
+                        }
                         let fill = if blocked {
                             Color32::from_rgba_unmultiplied(220, 60, 50, 90)
                         } else {
@@ -5793,7 +8164,13 @@ impl eframe::App for StampEditorApp {
                                     })
                                     .collect()
                             } else {
-                                vec![(guid, sx, sy, 0, self.place_variation)]
+                                vec![(
+                                    guid,
+                                    sx,
+                                    sy,
+                                    self.place_direction,
+                                    self.place_variation,
+                                )]
                             };
 
                         for (g_guid, gx, gy, g_dir, g_var) in &ghost_parts {
@@ -5806,6 +8183,7 @@ impl eframe::App for StampEditorApp {
                                 variation: *g_var,
                             };
                             let def = self.catalog.building(*g_guid);
+                            let is_cistern = def.is_some_and(|d| d.is_aqueduct_cistern());
                             let cells = footprint_cells_for_region(
                                 &ghost,
                                 def,
@@ -5828,10 +8206,8 @@ impl eframe::App for StampEditorApp {
                                 );
                             }
                             if min_x <= max_x {
-                                let outline = Rect::from_min_max(
-                                    self.cell_screen_rect(rect, min_x, min_y).min,
-                                    self.cell_screen_rect(rect, max_x, max_y).max,
-                                );
+                                let outline =
+                                    self.cells_screen_rect(rect, min_x, min_y, max_x, max_y);
                                 painter.rect_stroke(
                                     outline,
                                     0.0,
@@ -5841,6 +8217,11 @@ impl eframe::App for StampEditorApp {
                                 self.paint_building_icon(
                                     ctx, &painter, outline, *g_guid, 0.85,
                                 );
+                                if is_cistern {
+                                    self.paint_cistern_inlet_hint(
+                                        &painter, rect, min_x, max_x, min_y, max_y, *g_dir,
+                                    );
+                                }
                             }
                         }
                         if from_clipboard {
@@ -5857,27 +8238,20 @@ impl eframe::App for StampEditorApp {
                 }
 
                 if let Some(pointer) = response.interact_pointer_pos() {
-                    if self.radial.is_none()
+                    if over_build_bar {
+                        // Clicks belong to the construction strip (mid/deep/bottom).
+                    } else if self.radial.is_none()
                         && response.clicked_by(egui::PointerButton::Primary)
                     {
-                        let mut hit = None;
-                        for (idx, b) in open.stamp.buildings.iter().enumerate() {
-                            let r = self.building_hit_rect(
-                                rect,
-                                b.x,
-                                b.y,
-                                b.guid,
-                                b.direction,
-                                b.variation,
-                            );
-                            if r.contains(pointer) {
-                                hit = Some(idx);
-                                break;
-                            }
-                        }
+                        let field_hit = self.field_tile_at_pointer(rect, pointer);
+                        let bld_hit =
+                            self.building_at_pointer(rect, &open.stamp.buildings, pointer);
                         if self.suppress_stroke_click {
                             self.suppress_stroke_click = false;
-                        } else if self.placing_guid.is_some() || self.road_tool_active() {
+                        } else if self.placing_guid.is_some()
+                            || self.road_tool_active()
+                            || self.field_tool_active()
+                        {
                             // Place/paint even if the click lands on an existing building.
                             if self.drag_stroke.is_none() {
                                 let (wx, wy) = self.screen_to_world(rect, pointer);
@@ -5885,16 +8259,35 @@ impl eframe::App for StampEditorApp {
                                 self.begin_drag_stroke(tx, ty);
                                 self.commit_drag_stroke();
                             }
-                        } else if hit.is_none() {
+                        } else if let Some(cell) = field_hit {
+                            // Prefer individual field tiles over the farm building.
+                            let ctrl =
+                                ui.input(|inp| inp.modifiers.ctrl || inp.modifiers.command);
+                            if ctrl {
+                                if self.selected_fields.contains(&cell) {
+                                    self.selected_fields.remove(&cell);
+                                } else {
+                                    self.selected_fields.insert(cell);
+                                }
+                            } else {
+                                self.select_fields_only([cell]);
+                            }
+                            self.drag_stroke = None;
+                            self.status = format!(
+                                "{} Feld-Zelle(n) markiert — ziehen / Entf",
+                                self.selected_fields.len()
+                            );
+                            self.refresh_coverage();
+                        } else if bld_hit.is_none() {
                             self.clear_canvas_selection();
                             self.refresh_coverage();
                         } else if self.road_erase_mode {
-                            if let Some(i) = hit {
+                            if let Some(i) = bld_hit {
                                 self.select_only(i);
                             }
                             self.drag_stroke = None;
                             self.delete_selection(false);
-                        } else if let Some(i) = hit {
+                        } else if let Some(i) = bld_hit {
                             let ctrl = ui.input(|inp| inp.modifiers.ctrl || inp.modifiers.command);
                             if ctrl {
                                 self.toggle_canvas_selection(i);
@@ -5905,20 +8298,31 @@ impl eframe::App for StampEditorApp {
                             if let Some(b) = open.stamp.buildings.get(i) {
                                 self.status = format!(
                                     "Ausgewählt: {} — Ctrl+C / Button „Kopieren“",
-                                    self.catalog.label(b.guid)
+                                    self.catalog.label(b.guid, self.language)
                                 );
                             }
                             self.refresh_coverage();
                         }
                     }
 
-                    if response.clicked_by(egui::PointerButton::Secondary) {
+                    if !over_build_bar
+                        && response.clicked_by(egui::PointerButton::Secondary)
+                    {
                         // Wheel already open → RMB anywhere = cancel, never reopen here.
                         if self.radial.is_some() {
                             self.dismiss_radial();
                         } else if self.hand_busy() {
-                            // Tool in hand → RMB drops it (Abriss/Wege/Gebäude).
+                            // Tool in hand → RMB drops it (Abriss/Wege/Gebäude/Feld-Pinsel).
                             self.clear_hand();
+                        } else if self.selected_building.is_some()
+                            || !self.selected_buildings.is_empty()
+                            || !self.selected_roads.is_empty()
+                            || !self.selected_fields.is_empty()
+                        {
+                            // Selection first: RMB clears it. Tool wheel only with empty hand.
+                            self.clear_canvas_selection();
+                            self.refresh_coverage();
+                            self.status = "Auswahl aufgehoben".into();
                         } else if let Some(new_guid) = self.palette_selected_guid {
                             // Palette-GUID swap when a palette pick is active.
                             let mut hit = None;
@@ -5959,7 +8363,6 @@ impl eframe::App for StampEditorApp {
                                 } else {
                                     (ox, oy)
                                 };
-                                let label = self.catalog.label(new_guid);
                                 if let Some(open_mut) = self.open.as_mut() {
                                     if let Ok(()) = open_mut.stamp.set_building_guid(idx, new_guid)
                                     {
@@ -5969,39 +8372,45 @@ impl eframe::App for StampEditorApp {
                                         open_mut.dirty = true;
                                         self.schedule_autosave();
                                         self.status = format!(
-                                            "GUID getauscht → {label} ({new_guid})"
+                                            "GUID getauscht → {} ({})",
+                                            self.catalog.label(new_guid, self.language),
+                                            new_guid
                                         );
                                         self.selected_building = Some(idx);
                                         self.refresh_coverage();
                                     }
                                 }
                             } else {
-                                self.open_radial(pointer);
+                                self.palette_selected_guid = None;
+                                self.status = "Palette abgewählt".into();
                             }
                         } else {
-                            // Empty hand → Anno-style quick-select wheel.
+                            // Truly empty hand → Anno-style quick-select wheel.
                             self.open_radial(pointer);
                         }
                     }
                 }
 
                 if self.radial.is_none()
+                    && !over_build_bar
                     && response.drag_started_by(egui::PointerButton::Primary)
                 {
                     if let Some(pointer) = response.interact_pointer_pos() {
-                        let mut on_building = false;
-                        let tool_drag = self.placing_guid.is_some() || self.road_tool_active();
+                        let mut on_target = false;
+                        let tool_drag = self.placing_guid.is_some()
+                            || self.road_tool_active()
+                            || self.field_tool_active();
                         if !tool_drag {
-                            for (idx, b) in open.stamp.buildings.iter().enumerate() {
-                                let r = self.building_hit_rect(
-                                    rect,
-                                    b.x,
-                                    b.y,
-                                    b.guid,
-                                    b.direction,
-                                    b.variation,
-                                );
-                                if r.contains(pointer) {
+                            if let Some(cell) = self.field_tile_at_pointer(rect, pointer) {
+                                // Already selected → move; otherwise fall through to marquee select.
+                                if self.selected_fields.contains(&cell) {
+                                    self.begin_field_drag(cell);
+                                    on_target = true;
+                                }
+                            } else if let Some(idx) =
+                                self.building_at_pointer(rect, &open.stamp.buildings, pointer)
+                            {
+                                if let Some(b) = open.stamp.buildings.get(idx) {
                                     let center = self.world_to_screen(rect, b.x, b.y);
                                     if !self.selected_buildings.contains(&idx) {
                                         self.select_only(idx);
@@ -6014,7 +8423,6 @@ impl eframe::App for StampEditorApp {
                                         Vec2::new(pointer.x - center.x, pointer.y - center.y);
                                     self.drag_stroke = None;
                                     self.history_drag_pushed = false;
-                                    // Multi-select (buildings and/or roads) → move whole group.
                                     if self.selected_buildings.len() > 1
                                         || !self.selected_roads.is_empty()
                                     {
@@ -6022,13 +8430,12 @@ impl eframe::App for StampEditorApp {
                                     } else {
                                         self.clear_selection_drag();
                                     }
-                                    on_building = true;
-                                    break;
+                                    on_target = true;
                                 }
                             }
                         }
                         // Tool strokes OR empty-hand marquee selection.
-                        if !on_building && (tool_drag || !self.hand_busy()) {
+                        if !on_target && (tool_drag || !self.hand_busy()) {
                             let (wx, wy) = self.screen_to_world(rect, pointer);
                             let (tx, ty) = self.stroke_anchor_tile(wx, wy);
                             self.begin_drag_stroke(tx, ty);
@@ -6037,7 +8444,18 @@ impl eframe::App for StampEditorApp {
                     }
                 }
                 if response.dragged_by(egui::PointerButton::Primary) {
-                    if let (Some(idx), Some(pointer)) =
+                    if self.dragging_fields {
+                        if let Some(pointer) = response.interact_pointer_pos() {
+                            if !self.history_drag_pushed {
+                                self.push_history();
+                                self.history_drag_pushed = true;
+                            }
+                            let (wx, wy) = self.screen_to_world(rect, pointer);
+                            let (tx, ty) = (wx.floor() as i32, wy.floor() as i32);
+                            let (ax, ay) = self.drag_field_anchor;
+                            self.drag_field_delta = (tx - ax, ty - ay);
+                        }
+                    } else if let (Some(idx), Some(pointer)) =
                         (self.dragging_building, response.interact_pointer_pos())
                     {
                         if !self.history_drag_pushed {
@@ -6067,7 +8485,32 @@ impl eframe::App for StampEditorApp {
                         };
 
                         if self.selection_drag_active() {
-                            self.apply_selection_drag(idx, sx, sy);
+                            let exclude: Vec<usize> =
+                                self.selected_buildings.iter().copied().collect();
+                            let occupied = self.occupied_footprint_cells(&exclude);
+                            let collides = self.open.as_ref().is_some_and(|o| {
+                                let (ox, oy) = self.drag_anchor_start;
+                                let dx = sx - ox;
+                                let dy = sy - oy;
+                                self.drag_group_origins.iter().any(|(&i, &(bx, by))| {
+                                    let Some(b) = o.stamp.buildings.get(i) else {
+                                        return false;
+                                    };
+                                    self.footprint_overlaps_occupied(
+                                        b.guid,
+                                        bx + dx,
+                                        by + dy,
+                                        b.direction,
+                                        b.variation,
+                                        &occupied,
+                                    )
+                                })
+                            });
+                            if collides {
+                                self.status = self.t("status.place_blocked").into();
+                            } else {
+                                self.apply_selection_drag(idx, sx, sy);
+                            }
                         } else {
                         // Farms with SubTileGrid fields: always move the complex together,
                         // otherwise GridOriginWS stays put and fields desync from the main.
@@ -6134,7 +8577,35 @@ impl eframe::App for StampEditorApp {
                                 }
                             }
                         }
-                        if let Some(open_mut) = self.open.as_mut() {
+                        // Reject moves that land on another building's footprint.
+                        let mut move_exclude: Vec<usize> = if move_linked {
+                            self.open
+                                .as_ref()
+                                .map(|o| {
+                                    complex_group_indices(&o.stamp.buildings, idx)
+                                })
+                                .unwrap_or_else(|| vec![idx])
+                        } else {
+                            vec![idx]
+                        };
+                        if self.selection_drag_active() {
+                            move_exclude.extend(self.selected_buildings.iter().copied());
+                        }
+                        move_exclude.sort_unstable();
+                        move_exclude.dedup();
+                        let occupied = self.occupied_footprint_cells(&move_exclude);
+                        let (g_guid, g_dir, g_var) = self
+                            .open
+                            .as_ref()
+                            .and_then(|o| o.stamp.buildings.get(idx))
+                            .map(|b| (b.guid, b.direction, b.variation))
+                            .unwrap_or((0, 0, None));
+                        let collides = self.footprint_overlaps_occupied(
+                            g_guid, sx, sy, g_dir, g_var, &occupied,
+                        );
+                        if collides {
+                            self.status = self.t("status.place_blocked").into();
+                        } else if let Some(open_mut) = self.open.as_mut() {
                             if open_mut
                                 .stamp
                                 .set_building_pos_ex(idx, sx, sy, move_linked)
@@ -6144,10 +8615,12 @@ impl eframe::App for StampEditorApp {
                                 self.schedule_autosave();
                             }
                         }
-                        if let Some(msg) = radius_clamp_msg {
-                            self.status = msg;
+                        if !collides {
+                            if let Some(msg) = radius_clamp_msg {
+                                self.status = msg;
+                            }
+                            self.refresh_coverage();
                         }
-                        self.refresh_coverage();
                         }
                     } else if self.drag_stroke.is_some() && self.dragging_building.is_none() {
                         if let Some(pointer) = response.interact_pointer_pos() {
@@ -6158,7 +8631,9 @@ impl eframe::App for StampEditorApp {
                     }
                 }
                 if response.drag_stopped() {
-                    if self.drag_stroke.is_some() && self.dragging_building.is_none() {
+                    if self.dragging_fields {
+                        self.commit_field_drag();
+                    } else if self.drag_stroke.is_some() && self.dragging_building.is_none() {
                         self.commit_drag_stroke();
                     }
                     self.dragging_building = None;
@@ -6176,7 +8651,7 @@ impl eframe::App for StampEditorApp {
                 painter.text(
                     rect.center(),
                     egui::Align2::CENTER_CENTER,
-                    "Neues Stamp — Wege/Gebäude aus der Baulette platzieren",
+                    self.t("empty.new_hint"),
                     egui::FontId::proportional(18.0),
                     Color32::from_gray(160),
                 );
@@ -6189,18 +8664,18 @@ impl eframe::App for StampEditorApp {
                 Pos2::new(rect.max.x, band_bottom),
             );
             painter.rect_filled(band, 0.0, Color32::from_rgb(24, 28, 36));
-            painter.text(
-                Pos2::new(rect.left() + 10.0, band.min.y - 8.0),
-                egui::Align2::LEFT_BOTTOM,
-                "LMB: wählen/ziehen · RMB: Tool fallen / (leer) Schnellwahl-Rad · Esc: Hand · MMB: pan · Scroll: zoom",
-                egui::FontId::proportional(12.0),
-                Color32::from_gray(180),
-            );
+            // Full click-sense: canvas allocate_painter is under us and would otherwise
+            // place buildings through empty gaps in the mid/deep rows.
+            // No on_hover_text here — that tooltip covered the whole 2nd row.
             ui.allocate_new_ui(egui::UiBuilder::new().max_rect(band), |ui| {
-
                 let panel_rect = ui.max_rect();
                 ui.painter()
                     .rect_filled(panel_rect, 0.0, Color32::from_rgb(24, 28, 36));
+                ui.interact(
+                    panel_rect,
+                    ui.id().with("build_bar_block"),
+                    Sense::click_and_drag(),
+                );
                 {
                     let style = ui.style_mut();
                     style.spacing.item_spacing = egui::vec2(6.0, 4.0);
@@ -6253,58 +8728,119 @@ impl eframe::App for StampEditorApp {
                 // Frame with equal top/bottom margin => circles mittig in each row.
                 let strip_h = BUILD_STRIP_H;
                 let tile_row_h = 48.0_f32;
-                let show_upper = need_mode || self.buildmenu_infra_entry.is_some();
+                let residence_tiers = self.residence_tier_guids.clone();
+                let show_mid = !content_entries.is_empty()
+                    || residence_tiers.as_ref().is_some_and(|c| c.len() > 1);
+                let deep_entry = self
+                    .buildmenu_entry
+                    .and_then(|ei| content_entries.get(ei));
+                let show_deep = residence_tiers.is_none()
+                    && (matches!(
+                        deep_entry,
+                        Some(MenuEntry::Chain { buildings, .. }) if !buildings.is_empty()
+                    ) || matches!(
+                        deep_entry,
+                        Some(MenuEntry::Category { entries, .. }) if !entries.is_empty()
+                    ));
                 let vpad_strip = ((strip_h - tile_row_h) * 0.5).max(0.0);
+                let row_h = BUILD_ROW_H;
+                let row_vpad = ((row_h - tile_row_h) * 0.5).max(0.0);
+                // Fixed label column so mid/deep icon columns share the same X
+                // (and frames stay full-width — no stair-step when deep opens).
+                const LABEL_COL_W: f32 = 122.0;
 
+                ui.spacing_mut().item_spacing.y = BUILD_ROW_GAP;
                 ui.vertical(|ui| {
-                    if show_upper && !content_entries.is_empty() {
-                        let upper_h = 60.0_f32;
-                        let vpad = ((upper_h - tile_row_h) * 0.5).max(0.0);
-                        egui::Frame::new()
-                            .fill(Color32::from_rgb(32, 36, 46))
-                            .corner_radius(4.0)
-                            .inner_margin(egui::Margin {
-                                left: 4,
-                                right: 4,
-                                top: vpad as i8,
-                                bottom: vpad as i8,
-                            })
-                            .show(ui, |ui| {
-                                ui.set_min_height(tile_row_h);
-                                ui.set_max_height(tile_row_h);
-                                ui.horizontal(|ui| {
-                                    if let Some(ei) = self.buildmenu_entry {
-                                        if let Some(entry) = content_entries.get(ei) {
-                                            match entry {
+                    let full_w = ui.available_width();
+
+                    // Row 3 (top): leaf items of selected chain/group.
+                    if show_deep {
+                        if let Some(entry) = deep_entry {
+                            egui::Frame::new()
+                                .fill(Color32::from_rgb(36, 40, 52))
+                                .corner_radius(4.0)
+                                .inner_margin(egui::Margin {
+                                    left: 4,
+                                    right: 4,
+                                    top: row_vpad as i8,
+                                    bottom: row_vpad as i8,
+                                })
+                                .show(ui, |ui| {
+                                    ui.set_min_width(full_w);
+                                    ui.set_width(full_w);
+                                    ui.set_min_height(tile_row_h);
+                                    ui.set_max_height(tile_row_h);
+                                    ui.with_layout(
+                                        egui::Layout::left_to_right(egui::Align::Center)
+                                            .with_main_wrap(false),
+                                        |ui| {
+                                            ui.style_mut().wrap_mode =
+                                                Some(egui::TextWrapMode::Extend);
+                                            let (lbl_text, color) = match entry {
                                                 MenuEntry::Chain {
-                                                    buildings,
-                                                    short_name,
-                                                    name,
-                                                    ..
+                                                    short_name, name, ..
                                                 } => {
                                                     let chain_lbl = short_name
                                                         .clone()
                                                         .unwrap_or_else(|| {
                                                             name.replace("&amp;", "&")
                                                         });
+                                                    (
+                                                        self.tf(
+                                                            "buildmenu.chain",
+                                                            &[("name", &chain_lbl)],
+                                                        ),
+                                                        Color32::from_rgb(230, 210, 160),
+                                                    )
+                                                }
+                                                MenuEntry::Category {
+                                                    short_name, name, ..
+                                                } => {
+                                                    let cat_lbl = short_name
+                                                        .clone()
+                                                        .unwrap_or_else(|| {
+                                                            name.replace("&amp;", "&")
+                                                        });
+                                                    (
+                                                        self.tf(
+                                                            "buildmenu.group",
+                                                            &[("name", &cat_lbl)],
+                                                        ),
+                                                        Color32::from_rgb(230, 210, 160),
+                                                    )
+                                                }
+                                                MenuEntry::Building { .. } => {
+                                                    (String::new(), Color32::GRAY)
+                                                }
+                                            };
+                                            ui.allocate_ui_with_layout(
+                                                Vec2::new(LABEL_COL_W, tile_row_h),
+                                                egui::Layout::left_to_right(
+                                                    egui::Align::Center,
+                                                ),
+                                                |ui| {
+                                                    ui.set_min_width(LABEL_COL_W);
                                                     ui.label(
-                                                        RichText::new(format!(
-                                                            "Kette: {chain_lbl}"
-                                                        ))
-                                                        .size(13.0)
-                                                        .color(Color32::from_rgb(
-                                                            230, 210, 160,
-                                                        )),
+                                                        RichText::new(lbl_text)
+                                                            .size(13.0)
+                                                            .color(color),
                                                     );
-                                                    ui.add_space(6.0);
+                                                },
+                                            );
+                                            match entry {
+                                                MenuEntry::Chain { buildings, .. } => {
                                                     for &bg in buildings {
-                                                        let lbl = self.catalog.label(bg);
+                                                        let lbl = self
+                                                            .catalog
+                                                            .label(bg, self.language);
                                                         let icon = self
                                                             .buildmenu
                                                             .building_icon(bg)
                                                             .map(|s| s.to_string());
-                                                        let sel =
-                                                            self.placing_guid == Some(bg);
+                                                        let sel = self.placing_guid
+                                                            == Some(bg)
+                                                            || self.road_brush_guid
+                                                                == Some(bg as i32);
                                                         if self
                                                             .goods_tile(
                                                                 ui,
@@ -6312,6 +8848,7 @@ impl eframe::App for StampEditorApp {
                                                                 icon.as_deref(),
                                                                 sel,
                                                                 &lbl,
+                                                                None,
                                                             )
                                                             .clicked()
                                                         {
@@ -6320,31 +8857,14 @@ impl eframe::App for StampEditorApp {
                                                             );
                                                         }
                                                     }
-                                                    ui.separator();
                                                 }
                                                 MenuEntry::Category {
-                                                    entries: nested,
-                                                    short_name,
-                                                    name,
-                                                    ..
+                                                    entries: nested, ..
                                                 } => {
-                                                    let cat_lbl = short_name
-                                                        .clone()
-                                                        .unwrap_or_else(|| {
-                                                            name.replace("&amp;", "&")
-                                                        });
-                                                    ui.label(
-                                                        RichText::new(format!(
-                                                            "Gruppe: {cat_lbl}"
-                                                        ))
-                                                        .size(13.0)
-                                                        .color(Color32::from_rgb(
-                                                            230, 210, 160,
-                                                        )),
-                                                    );
-                                                    ui.add_space(6.0);
                                                     for nest in nested {
                                                         let tip = nest.label();
+                                                        let icon =
+                                                            self.resolve_menu_icon(nest);
                                                         let sel = matches!(
                                                             nest,
                                                             MenuEntry::Building {
@@ -6352,14 +8872,17 @@ impl eframe::App for StampEditorApp {
                                                                 ..
                                                             } if self.placing_guid
                                                                 == Some(*guid)
+                                                                || self.road_brush_guid
+                                                                    == Some(*guid as i32)
                                                         );
                                                         if self
                                                             .goods_tile(
                                                                 ui,
                                                                 ctx,
-                                                                nest.icon(),
+                                                                icon.as_deref(),
                                                                 sel,
                                                                 &tip,
+                                                                None,
                                                             )
                                                             .clicked()
                                                         {
@@ -6370,7 +8893,10 @@ impl eframe::App for StampEditorApp {
                                                                 } => {
                                                                     let lbl = self
                                                                         .catalog
-                                                                        .label(*guid);
+                                                                        .label(
+                                                                            *guid,
+                                                                            self.language,
+                                                                        );
                                                                     self.activate_menu_building(
                                                                         *guid, &lbl,
                                                                     );
@@ -6384,7 +8910,10 @@ impl eframe::App for StampEditorApp {
                                                                     {
                                                                         let lbl = self
                                                                             .catalog
-                                                                            .label(bg);
+                                                                            .label(
+                                                                                bg,
+                                                                                self.language,
+                                                                            );
                                                                         self.activate_menu_building(
                                                                             bg, &lbl,
                                                                         );
@@ -6396,62 +8925,171 @@ impl eframe::App for StampEditorApp {
                                                             }
                                                         }
                                                     }
-                                                    ui.separator();
                                                 }
                                                 MenuEntry::Building { .. } => {}
                                             }
-                                        }
-                                    }
-
-                                    ui.label(
-                                        RichText::new(if need_mode {
-                                            "Needs / Ketten"
-                                        } else {
-                                            "Gebäude / Gruppen"
-                                        })
-                                        .size(12.0)
-                                        .weak(),
+                                        },
                                     );
-                                    ui.add_space(6.0);
-                                    for (ei, entry) in content_entries.iter().enumerate() {
-                                        let sel = self.buildmenu_entry == Some(ei);
-                                        let tip = entry.label();
-                                        if self
-                                            .goods_tile(
-                                                ui, ctx, entry.icon(), sel, &tip,
-                                            )
-                                            .clicked()
-                                        {
-                                            self.buildmenu_entry = Some(ei);
-                                            match entry {
-                                                MenuEntry::Building { guid, .. } => {
-                                                    let lbl = self.catalog.label(*guid);
-                                                    self.activate_menu_building(
-                                                        *guid, &lbl,
-                                                    );
+                                });
+                        }
+                    }
+
+                    // Row 2 (mid): categories / chains / needs / residence tiers.
+                    if show_mid {
+                        egui::Frame::new()
+                            .fill(Color32::from_rgb(32, 36, 46))
+                            .corner_radius(4.0)
+                            .inner_margin(egui::Margin {
+                                left: 4,
+                                right: 4,
+                                top: row_vpad as i8,
+                                bottom: row_vpad as i8,
+                            })
+                            .show(ui, |ui| {
+                                ui.set_min_width(full_w);
+                                ui.set_width(full_w);
+                                ui.set_min_height(tile_row_h);
+                                ui.set_max_height(tile_row_h);
+                                ui.with_layout(
+                                    egui::Layout::left_to_right(egui::Align::Center)
+                                        .with_main_wrap(false),
+                                    |ui| {
+                                        ui.style_mut().wrap_mode =
+                                            Some(egui::TextWrapMode::Extend);
+                                        let mid_lbl = if residence_tiers.is_some() {
+                                            self.t("buildmenu.residence_tiers")
+                                        } else if need_mode {
+                                            self.t("buildmenu.needs")
+                                        } else {
+                                            self.t("buildmenu.buildings")
+                                        };
+                                        ui.allocate_ui_with_layout(
+                                            Vec2::new(LABEL_COL_W, tile_row_h),
+                                            egui::Layout::left_to_right(
+                                                egui::Align::Center,
+                                            ),
+                                            |ui| {
+                                                ui.set_min_width(LABEL_COL_W);
+                                                ui.label(
+                                                    RichText::new(mid_lbl)
+                                                        .size(12.0)
+                                                        .weak(),
+                                                );
+                                            },
+                                        );
+                                        if let Some(tiers) = &residence_tiers {
+                                            for (ti, &tg) in tiers.iter().enumerate() {
+                                                let def = self.catalog.building(tg);
+                                                let lbl =
+                                                    self.catalog.label(tg, self.language);
+                                                let icon = def
+                                                    .and_then(|d| {
+                                                        d.residence_display_icon()
+                                                            .map(|s| s.to_string())
+                                                    })
+                                                    .or_else(|| {
+                                                        self.buildmenu
+                                                            .building_icon(tg)
+                                                            .map(|s| s.to_string())
+                                                    });
+                                                let sel = self.placing_guid == Some(tg);
+                                                let tier_n = self
+                                                    .catalog
+                                                    .residence_tier_tag(tg)
+                                                    .unwrap_or_else(|| format!("T{}", ti + 1));
+                                                if self
+                                                    .goods_tile(
+                                                        ui,
+                                                        ctx,
+                                                        icon.as_deref(),
+                                                        sel,
+                                                        &lbl,
+                                                        Some(&tier_n),
+                                                    )
+                                                    .clicked()
+                                                {
+                                                    self.activate_menu_building(tg, &lbl);
                                                 }
-                                                MenuEntry::Chain { .. } => {
-                                                    self.placing_guid = None;
-                                                    self.road_brush_guid = None;
-                                                    self.status = format!(
-                                                        "Kette „{tip}“ — Gebäude oben wählen"
-                                                    );
-                                                }
-                                                MenuEntry::Category { .. } => {
-                                                    self.placing_guid = None;
-                                                    self.status =
-                                                        format!("Gruppe „{tip}“");
+                                            }
+                                        } else {
+                                            for (ei, entry) in
+                                                content_entries.iter().enumerate()
+                                            {
+                                                let tip = entry.label();
+                                                let icon = self.resolve_menu_icon(entry);
+                                                let sel = match entry {
+                                                    MenuEntry::Building { guid, .. } => {
+                                                        self.road_brush_guid
+                                                            == Some(*guid as i32)
+                                                            || self.placing_guid
+                                                                == Some(*guid)
+                                                            || self.buildmenu_entry
+                                                                == Some(ei)
+                                                    }
+                                                    _ => {
+                                                        self.buildmenu_entry == Some(ei)
+                                                    }
+                                                };
+                                                if self
+                                                    .goods_tile(
+                                                        ui,
+                                                        ctx,
+                                                        icon.as_deref(),
+                                                        sel,
+                                                        &tip,
+                                                        None,
+                                                    )
+                                                    .clicked()
+                                                {
+                                                    self.buildmenu_entry = Some(ei);
+                                                    match entry {
+                                                        MenuEntry::Building {
+                                                            guid, ..
+                                                        } => {
+                                                            let lbl = self
+                                                                .catalog
+                                                                .label(
+                                                                    *guid,
+                                                                    self.language,
+                                                                );
+                                                            self.activate_menu_building(
+                                                                *guid, &lbl,
+                                                            );
+                                                        }
+                                                        MenuEntry::Chain { .. } => {
+                                                            self.placing_guid = None;
+                                                            self.road_brush_guid = None;
+                                                            self.road_erase_mode = false;
+                                                            self.residence_tier_guids =
+                                                                None;
+                                                            self.status = self.tf(
+                                                                "buildmenu.pick_chain",
+                                                                &[("name", &tip)],
+                                                            );
+                                                        }
+                                                        MenuEntry::Category { .. } => {
+                                                            self.placing_guid = None;
+                                                            self.road_brush_guid = None;
+                                                            self.road_erase_mode = false;
+                                                            self.residence_tier_guids =
+                                                                None;
+                                                            self.status = self.tf(
+                                                                "buildmenu.pick_group",
+                                                                &[("name", &tip)],
+                                                            );
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-                                });
+                                    },
+                                );
                             });
-                        ui.add_space(2.0);
-                        ui.separator();
-                        ui.add_space(2.0);
                     }
 
+                    // Row 1 (bottom): infrastructure + residents — single line only.
+                    // Nested right_to_left + Hand label made egui wrap Residents onto
+                    // a second strip row when a building was in hand.
                     egui::Frame::new()
                         .fill(Color32::from_rgb(32, 36, 46))
                         .corner_radius(4.0)
@@ -6462,123 +9100,162 @@ impl eframe::App for StampEditorApp {
                             bottom: vpad_strip as i8,
                         })
                         .show(ui, |ui| {
+                            ui.set_min_width(full_w);
+                            ui.set_width(full_w);
                             ui.set_min_height(tile_row_h);
                             ui.set_max_height(tile_row_h);
-                            ui.horizontal(|ui| {
-                                if let Some(infra) = infra_tab.as_ref() {
-                                    for (ei, entry) in infra.entries.iter().enumerate() {
-                                        let sel = match entry {
-                                            MenuEntry::Building { guid, .. } => {
-                                                self.road_brush_guid
-                                                    == Some(*guid as i32)
-                                                    || self.placing_guid == Some(*guid)
-                                            }
-                                            MenuEntry::Category { .. } => {
-                                                self.buildmenu_infra_entry == Some(ei)
-                                            }
-                                            MenuEntry::Chain { buildings, .. } => {
-                                                self.buildmenu_infra_entry == Some(ei)
-                                                    || buildings.iter().any(|g| {
-                                                        self.placing_guid == Some(*g)
-                                                    })
-                                            }
-                                        };
-                                        let tip = entry.label();
-                                        if self
-                                            .goods_tile(
-                                                ui, ctx, entry.icon(), sel, &tip,
-                                            )
-                                            .clicked()
+                            ui.allocate_ui_with_layout(
+                                Vec2::new(full_w - 8.0, tile_row_h),
+                                egui::Layout::left_to_right(egui::Align::Center)
+                                    .with_main_wrap(false),
+                                |ui| {
+                                    ui.style_mut().wrap_mode =
+                                        Some(egui::TextWrapMode::Extend);
+                                    if let Some(infra) = infra_tab.as_ref() {
+                                        for (ei, entry) in infra.entries.iter().enumerate()
                                         {
-                                            if let Some(i) = tabs
-                                                .iter()
-                                                .position(|t| t.is_infrastructure())
-                                            {
-                                                self.buildmenu_tab = Some(i);
-                                            }
-                                            match entry {
+                                            let sel = match entry {
                                                 MenuEntry::Building { guid, .. } => {
-                                                    self.buildmenu_infra_entry = Some(ei);
-                                                    self.buildmenu_entry = None;
-                                                    let lbl = self.catalog.label(*guid);
-                                                    self.activate_menu_building(
-                                                        *guid, &lbl,
-                                                    );
+                                                    self.road_brush_guid
+                                                        == Some(*guid as i32)
+                                                        || self.placing_guid == Some(*guid)
                                                 }
                                                 MenuEntry::Category { .. } => {
-                                                    self.buildmenu_infra_entry = Some(ei);
-                                                    self.buildmenu_entry = None;
-                                                    self.placing_guid = None;
-                                                    self.status =
-                                                        format!("Kategorie: {tip}");
+                                                    self.buildmenu_infra_entry == Some(ei)
                                                 }
                                                 MenuEntry::Chain { buildings, .. } => {
-                                                    self.buildmenu_infra_entry = Some(ei);
-                                                    self.buildmenu_entry = Some(0);
-                                                    if let Some(&bg) = buildings.first() {
-                                                        let lbl = self.catalog.label(bg);
+                                                    self.buildmenu_infra_entry == Some(ei)
+                                                        || buildings.iter().any(|g| {
+                                                            self.placing_guid == Some(*g)
+                                                        })
+                                                }
+                                            };
+                                            let tip = entry.label();
+                                            let icon = self.resolve_menu_icon(entry);
+                                            if self
+                                                .goods_tile(
+                                                    ui,
+                                                    ctx,
+                                                    icon.as_deref(),
+                                                    sel,
+                                                    &tip,
+                                                    None,
+                                                )
+                                                .clicked()
+                                            {
+                                                if let Some(i) = tabs
+                                                    .iter()
+                                                    .position(|t| t.is_infrastructure())
+                                                {
+                                                    self.buildmenu_tab = Some(i);
+                                                }
+                                                match entry {
+                                                    // Leaf tool (road etc.): no mid row —
+                                                    // clear infra_entry so we don't reserve
+                                                    // empty mid height / dual-highlight.
+                                                    MenuEntry::Building { guid, .. } => {
+                                                        self.buildmenu_infra_entry = None;
+                                                        self.buildmenu_entry = None;
+                                                        let lbl = self
+                                                            .catalog
+                                                            .label(*guid, self.language);
                                                         self.activate_menu_building(
-                                                            bg, &lbl,
+                                                            *guid, &lbl,
                                                         );
+                                                    }
+                                                    MenuEntry::Category { .. } => {
+                                                        self.buildmenu_infra_entry =
+                                                            Some(ei);
+                                                        self.buildmenu_entry = None;
+                                                        self.placing_guid = None;
+                                                        self.road_brush_guid = None;
+                                                        self.road_erase_mode = false;
+                                                        self.residence_tier_guids = None;
+                                                        self.status =
+                                                            format!("Kategorie: {tip}");
+                                                    }
+                                                    MenuEntry::Chain {
+                                                        buildings, ..
+                                                    } => {
+                                                        self.buildmenu_infra_entry =
+                                                            Some(ei);
+                                                        self.buildmenu_entry = Some(0);
+                                                        self.road_brush_guid = None;
+                                                        self.road_erase_mode = false;
+                                                        if let Some(&bg) =
+                                                            buildings.first()
+                                                        {
+                                                            let lbl = self
+                                                                .catalog
+                                                                .label(bg, self.language);
+                                                            self.activate_menu_building(
+                                                                bg, &lbl,
+                                                            );
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                }
 
-                                ui.add_space(10.0);
-                                ui.separator();
-                                ui.add_space(8.0);
-                                ui.label(RichText::new("Einwohner").size(12.0).weak());
-                                ui.add_space(4.0);
+                                    ui.add_space(10.0);
+                                    ui.separator();
+                                    ui.add_space(8.0);
+                                    ui.label(
+                                        RichText::new(self.t("buildmenu.residents"))
+                                            .size(12.0)
+                                            .weak(),
+                                    );
+                                    ui.add_space(4.0);
 
-                                for &i in &need_indices {
-                                    let t = &tabs[i];
-                                    let selected =
-                                        need_mode && self.buildmenu_tab == Some(i);
-                                    if self
-                                        .portrait_tile(
-                                            ui,
-                                            ctx,
-                                            t.category_icon.as_deref(),
-                                            t.tier_mark(),
-                                            selected,
-                                            &t.short_tier_label(),
-                                        )
-                                        .clicked()
-                                    {
-                                        self.buildmenu_tab = Some(i);
-                                        self.buildmenu_entry = None;
-                                        self.buildmenu_infra_entry = None;
-                                        self.road_brush_guid = None;
-                                        self.status =
-                                            format!("Tier: {}", t.short_tier_label());
-                                    }
-                                }
-
-                                ui.with_layout(
-                                    egui::Layout::right_to_left(egui::Align::Center),
-                                    |ui| {
-                                        ui.add_space(8.0);
-                                        if let Some(g) = self.placing_guid {
-                                            ui.label(
-                                                RichText::new(format!(
-                                                    "Hand: {}",
-                                                    self.catalog.label(g)
-                                                ))
-                                                .size(13.0)
-                                                .color(Color32::from_rgb(170, 205, 255)),
+                                    for &i in &need_indices {
+                                        let t = &tabs[i];
+                                        let selected = need_mode
+                                            && self.buildmenu_tab == Some(i);
+                                        if self
+                                            .portrait_tile(
+                                                ui,
+                                                ctx,
+                                                t.category_icon.as_deref(),
+                                                t.tier_mark(),
+                                                selected,
+                                                &t.short_tier_label(),
+                                            )
+                                            .clicked()
+                                        {
+                                            self.buildmenu_tab = Some(i);
+                                            self.buildmenu_entry = None;
+                                            self.buildmenu_infra_entry = None;
+                                            self.road_brush_guid = None;
+                                            self.residence_tier_guids = None;
+                                            self.status = format!(
+                                                "Tier: {}",
+                                                t.short_tier_label()
                                             );
                                         }
-                                        ui.label(
-                                            RichText::new(self.region_filter.label())
+                                    }
+
+                                    // Region only (Hand already in top status — kept
+                                    // out of this strip so it cannot force a wrap).
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(
+                                            egui::Align::Center,
+                                        )
+                                        .with_main_wrap(false),
+                                        |ui| {
+                                            ui.add_space(8.0);
+                                            ui.label(
+                                                RichText::new(
+                                                    self.region_filter
+                                                        .label_lang(self.language),
+                                                )
                                                 .size(12.0)
                                                 .weak(),
-                                        );
-                                    },
-                                );
-                            });
+                                            );
+                                        },
+                                    );
+                                },
+                            );
                         });
                 });
             });
@@ -6588,6 +9265,7 @@ impl eframe::App for StampEditorApp {
         });
 
         self.show_complex_module_ui(ctx);
+        self.show_residence_needs_ui(ctx);
     }
 }
 

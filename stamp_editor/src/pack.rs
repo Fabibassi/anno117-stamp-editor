@@ -59,7 +59,17 @@ pub fn load_pack(path: &Path) -> Result<StampPackJson, PackError> {
 }
 
 pub fn save_pack(path: &Path, pack: &StampPackJson) -> Result<(), PackError> {
+    // Game stamp JSONs use 4-space indent (serde's to_string_pretty is 2-space).
     let text = serde_json::to_string_pretty(pack)?;
+    let text = text
+        .lines()
+        .map(|line| {
+            let spaces = line.bytes().take_while(|&b| b == b' ').count();
+            let indent_levels = spaces / 2;
+            format!("{}{}", " ".repeat(indent_levels * 4), &line[spaces..])
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
     fs::write(path, text + "\n")?;
     Ok(())
 }
@@ -138,8 +148,24 @@ pub fn list_stamp_names(path: &Path) -> Result<Vec<String>, PackError> {
     Ok(list_stamps(path)?.into_iter().map(|s| s.name).collect())
 }
 
+fn icon_guid_for_save(open: &OpenStamp) -> u32 {
+    if open.icon_guid != 0 {
+        return open.icon_guid;
+    }
+    // In-game stamps always carry a building IconGUID; 0 is rejected/ignored.
+    open.stamp
+        .buildings
+        .first()
+        .map(|b| b.guid)
+        .unwrap_or(0)
+}
+
 pub fn save_open_stamp(open: &OpenStamp) -> Result<(), PackError> {
-    let encoded = encode_pipette_b64(&open.stamp)?;
+    // Mutating via clone so `&OpenStamp` callers still work; Variation must exist.
+    let mut stamp = open.stamp.clone();
+    stamp.ensure_building_variations();
+    let encoded = encode_pipette_b64(&stamp)?;
+    let icon_guid = icon_guid_for_save(open);
     if open.is_new || !open.pack_path.exists() {
         if let Some(parent) = open.pack_path.parent() {
             fs::create_dir_all(parent)?;
@@ -151,7 +177,7 @@ pub fn save_open_stamp(open: &OpenStamp) -> Result<(), PackError> {
                 folder_name: String::new(),
                 region_guid: open.region_guid,
                 pipette_data: encoded,
-                icon_guid: open.icon_guid,
+                icon_guid,
                 creation_time: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|d| d.as_secs())
@@ -175,10 +201,13 @@ pub fn save_open_stamp(open: &OpenStamp) -> Result<(), PackError> {
     };
     entry.pipette_data = encoded;
     entry.region_guid = open.region_guid;
+    if entry.icon_guid == 0 && icon_guid != 0 {
+        entry.icon_guid = icon_guid;
+    }
     save_pack(&open.pack_path, &pack)
 }
 
-/// In-memory blank stamp; file is created on first Speichern.
+/// In-memory blank stamp; file is created on first Speichern / first edit.
 pub fn new_blank_stamp(
     pack_path: std::path::PathBuf,
     name: impl Into<String>,
@@ -192,7 +221,8 @@ pub fn new_blank_stamp(
         region_guid,
         icon_guid: 0,
         stamp,
-        dirty: true,
+        // Not dirty: boot / cancel must not flush empty packs to disk.
+        dirty: false,
         is_new: true,
     })
 }
@@ -283,6 +313,78 @@ pub fn duplicate_stamp(path: &Path, name: &str) -> Result<OpenStamp, PackError> 
         dirty: false,
         is_new: false,
     })
+}
+
+/// Rename a stamp entry. For single-stamp packs, also renames the `.json` file when useful.
+/// Returns `(pack_path, new_name)` — path may change when the pack file was renamed.
+pub fn rename_stamp_entry(
+    path: &Path,
+    old_name: &str,
+    new_name: &str,
+) -> Result<(std::path::PathBuf, String), PackError> {
+    let new_name = new_name.trim();
+    if new_name.is_empty() {
+        return Err(PackError::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "empty name",
+        )));
+    }
+    let mut pack = load_pack(path)?;
+    let Some(idx) = pack.stamps.iter().position(|s| s.name == old_name) else {
+        return Err(PackError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("stamp not found: {old_name}"),
+        )));
+    };
+    let final_name = if pack
+        .stamps
+        .iter()
+        .enumerate()
+        .any(|(i, s)| i != idx && s.name == new_name)
+    {
+        unique_stamp_name(&pack, new_name)
+    } else {
+        new_name.to_string()
+    };
+    if pack.stamps[idx].name == final_name {
+        return Ok((path.to_path_buf(), final_name));
+    }
+    pack.stamps[idx].name = final_name.clone();
+    save_pack(path, &pack)?;
+
+    let mut out_path = path.to_path_buf();
+    if pack.stamps.len() == 1 {
+        if let Some(parent) = path.parent() {
+            let desired = parent.join(format!("{final_name}.json"));
+            if desired != path {
+                let dest = if desired.exists() {
+                    // Avoid clobbering another pack; keep unique sibling name.
+                    let mut n = 2;
+                    loop {
+                        let c = parent.join(format!("{final_name} {n}.json"));
+                        if !c.exists() {
+                            break c;
+                        }
+                        n += 1;
+                        if n > 10_000 {
+                            break parent.join(format!(
+                                "{final_name} {}.json",
+                                std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .map(|d| d.as_secs())
+                                    .unwrap_or(0)
+                            ));
+                        }
+                    }
+                } else {
+                    desired
+                };
+                fs::rename(path, &dest)?;
+                out_path = dest;
+            }
+        }
+    }
+    Ok((out_path, final_name))
 }
 
 /// Remove a stamp entry from a pack (deletes pack file if it becomes empty).
