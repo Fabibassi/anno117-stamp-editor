@@ -13,6 +13,8 @@ backups/
 # Proprietary / derived game data — regenerate locally, never push
 _gamedata/
 *.png
+!docs/screenshots/
+!docs/screenshots/*.png
 *.dds
 *.bin
 *.rda

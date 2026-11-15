@@ -9,6 +9,7 @@ All notable changes to the Anno 117 Stamp Editor are documented here.
 - **First-run setup wizard**: choose game install (icons), game stamps folder, and editor library before anything else runs
 - Portable config next to the EXE (or `%LOCALAPPDATA%\Anno117StampEditor`) so a standalone ZIP works without Python
 - Menu entry **Datei → Erste Einrichtung…** to re-open the wizard
+- README screenshots (setup, Hauptfenster, Menü Datei) + clearer Ubisoft vs. MIT rights split
 
 ### Fixed
 

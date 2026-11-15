@@ -2,7 +2,37 @@
 
 Community-Tool (Rust / egui) zum **Öffnen, Bearbeiten und Speichern** von Anno-117-Stamp-Packs (Blueprints).
 
-Kein offizielles Ubisoft-Produkt. Du brauchst ein legales Anno-117-Spiel, um Stamps und UI-Daten zu nutzen.
+> **Kein offizielles Ubisoft-Produkt.** Anno 117, Marken, Spielassets und spielbezogene Inhalte gehören **Ubisoft** bzw. den Rechteinhabern. Der **Editor-Quellcode** in diesem Repo steht unter der **MIT-Lizenz** (siehe [`LICENSE`](LICENSE)) und darf entsprechend frei genutzt, verändert und weitergegeben werden. Details: [Rechtliches](#rechtliches--fair-play).
+
+---
+
+## Screenshots
+
+### Erste Einrichtung (Setup)
+
+Beim ersten Start (oder über **Datei → Erste Einrichtung…**) legst du drei Pfade fest: Spielinstallation (Icons), Spiel-Stamps und die sichere Editor-Bibliothek.
+
+![Erste Einrichtung](docs/screenshots/01-setup.png)
+
+### Hauptfenster
+
+Links die Bibliothek (Packs/Stamps), in der Mitte die Stamp-Canvas, rechts/unten Baulette und Analyse.
+
+![Hauptfenster](docs/screenshots/02-main.png)
+
+### Menü Datei
+
+| Eintrag | Funktion |
+|--------|----------|
+| Erste Einrichtung… | Pfade erneut setzen (Spiel, Stamps, Bibliothek) |
+| Anno-Spielordner verknüpfen… | Installation für Icons |
+| Bibliothek-Ordner… | Sicheren Editor-Ordner wählen |
+| Vom Spiel importieren / Zum Spiel exportieren… | Sync zwischen Bibliothek und Documents-Stamps |
+| Auch in Spielordner speichern | Beim Speichern zusätzlich ins Spiel spiegeln |
+| Pack-Datei öffnen… / Speichern | Einzelnes Pack laden / speichern |
+| Katalog neu laden | `editor_catalog.json` neu einlesen |
+
+![Menü Datei](docs/screenshots/03-menu-file.png)
 
 ---
 
@@ -112,10 +142,16 @@ Kurz: Code ist Code. Nützlich oder nicht — das entscheidet die Nutzung, nicht
 
 ## Rechtliches / Fair Play
 
-- MIT-Lizenz für den Editor-Code (siehe `LICENSE`)
-- Anno 117, Assets, Texte und Marken gehören Ubisoft / den Rechteinhabern
-- Dieses Repo enthält **keine** entpackten UI-Texturen, keine `assets.xml` und keine abgeleiteten Katalog-JSONs
-- Nutze den Editor nur mit Daten aus **deiner** legalen Spielinstallation
+Zwei getrennte Dinge:
+
+1. **Spielbindung (Anno 117)** — Alle Rechte an *Anno 117 – Pax Romana*, zugehörigen Marken, Logos, Texturen, Sounds, Texten, GUIDs/Spieldaten und ähnlichen Inhalten liegen bei **Ubisoft** bzw. den jeweiligen Rechteinhabern. Dieses Projekt erhebt **keinen** Anspruch darauf und ist **kein** offizielles Ubisoft-Produkt.
+2. **Diese Software (Stamp Editor)** — Der Quellcode und die gebauten Binaries dieses Repos gehören dem Projektautor und stehen unter der **[MIT-Lizenz](LICENSE)**: Nutzung, Änderung, Fork und Weitergabe sind erlaubt, solange der License-Hinweis erhalten bleibt. Das betrifft **nur** den Editor — nicht Spielassets.
+
+Zusätzlich:
+
+- Dieses Repo enthält **keine** entpackten UI-Texturen, keine `assets.xml` und keine abgeleiteten Katalog-JSONs (`_gamedata/` bleibt lokal).
+- Nutze den Editor nur mit Daten aus **deiner** legalen Spielinstallation.
+- Screenshots im Repo zeigen die Editor-UI; sichtbare Spiel-Icons/Assets unterliegen weiterhin den Rechten von Ubisoft.
 
 ---
 
