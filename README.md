@@ -59,6 +59,19 @@ Links die Bibliothek (Packs/Stamps), in der Mitte die Stamp-Canvas, rechts/unten
 
 Optional für volle Baulette: `editor_catalog.json` neben die EXE legen (oder unter `_gamedata\`). Ohne Katalog startet der Editor trotzdem.
 
+### Windows SmartScreen („Windows hat den PC geschützt“)
+
+Die Release-EXE ist derzeit **nicht codesigniert**. Windows Defender SmartScreen kennt neue/unsignierte Community-Tools oft noch nicht und zeigt den blauen Hinweis.
+
+**So startest du trotzdem:**
+
+1. Auf **Weitere Informationen** klicken  
+2. Dann **Trotzdem ausführen**
+
+Das ist bei unsigned Open-Source-Downloads üblich und **kein** Nachweis für Malware. Quellcode liegt öffentlich auf GitHub; wer will, baut selbst mit `cargo build --release`. Eine kostenpflichtige Codesignatur (OV-Zertifikat) kann die Warnung mit der Zeit abmildern — sie ist für dieses Hobby-Projekt optional.
+
+**VirusTotal (v0.2.1 Release-ZIP):** [Report](https://www.virustotal.com/gui/file/c6ea5d773732c08bbb14bfa8b0cca05612456bc2204b74c91e089d9a849ba374) — **0 / 67** Detections (keine Engine meldet Malware). SHA256 `C6EA5D773732C08BBB14BFA8B0CCA05612456BC2204B74C91E089D9A849BA374`. Die ZIP enthält u. a. `stamp_editor.exe` (siehe Relations auf VT).
+
 ---
 
 ## Bauen aus dem Quellcode
