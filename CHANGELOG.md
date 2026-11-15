@@ -16,7 +16,7 @@ All notable changes to the Anno 117 Stamp Editor (Rusticus) are documented here.
 
 ### Fixed
 
-- **Aqueduct cistern +1 tile offset**: BuildBlocker pivot sits 1 tile left of the geometric center (`Pos` for flush TL is `1.5`, not centered `2.5`). Size is forced to 3×3 (AABB catalog guesses of 4–5 caused the same +1 gap). Known cistern GUIDs (19753 / 29526) always win over catalog `blocker_min`. GUID-swap re-anchors Pos. **Build from branch `cursor/cistern-pos-offset-84ae` — not merged to `master`.**
+- **Aqueduct cistern +1 tile offset**: BuildBlocker pivot sits 1 tile left of the geometric center (`Pos` for flush TL is `1.5`, not centered `2.5`). Size is forced to 3×3. Known cistern GUIDs (19753 / 29526) always win over catalog `blocker_min`. GUID-swap re-anchors Pos. **Load-time migrate** rewrites legacy centered `Pos` (road-flush heuristic / unmarked → decentered) and marks `RusticusCisternPivot`; open sets dirty so Save persists the fix. CLI: `cargo run -- --fix-cisterns <dir|pack.json>` batch-rewrites packs.
 - Half-tile paste offset (clipboard uses footprint top-left deltas).
 - PlaceRect grid sized by clipboard group span (not primary footprint alone).
 - Delete removes selected roads as well as buildings.

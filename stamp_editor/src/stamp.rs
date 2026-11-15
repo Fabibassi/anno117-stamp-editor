@@ -1,13 +1,21 @@
-use crate::filedb::{dump, load, Attrib, DocumentOrdered, Node, Tag};
+use crate::catalog::{
+    blocker_min_for, is_aqueduct_cistern, oriented_blocker, AQUEDUCT_CISTERN_SIZE,
+};
+use crate::filedb::{dump, load, Attrib, DocumentOrdered, Node, Tag, NONE_ATTRIB_ID};
 use crate::meshgraph::{
-    clear_roads, clone_polygon_for_new_building, recompute_bounds, sync_after_building_move,
+    clear_roads, clone_polygon_for_new_building, read_mesh_info, recompute_bounds,
+    relative_to_tile, sync_after_building_move,
 };
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
+use std::collections::HashSet;
 use std::io::{Read, Write};
 use thiserror::Error;
+
+/// BuildingInfo marker: cistern Pos already uses the decentered pivot (not TL+size/2).
+const CISTERN_PIVOT_ATTRIB: &str = "RusticusCisternPivot";
 
 #[derive(Debug, Error)]
 pub enum StampError {
@@ -52,6 +60,17 @@ pub struct Stamp {
     /// (4 horizontal quarter-bits = 1 tile). Prefer over `polygon_cells.len()` for progress.
     pub polygon_area: std::collections::HashMap<u64, u32>,
     pub stamp_version: i32,
+    /// How many aqueduct cisterns were pivot-corrected during the last migrate/decode.
+    pub cistern_fixes_on_load: usize,
+}
+
+/// How to rewrite legacy centered cistern Pos → decentered pivot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CisternMigrateMode {
+    /// Road-flush heuristic + `RusticusCisternPivot` marker (safe default).
+    Auto,
+    /// Always re-anchor unmarked cisterns (centered TL → decentered Pos).
+    Force,
 }
 
 fn u32_le(data: &[u8]) -> u32 {
@@ -397,14 +416,93 @@ pub fn decode_pipette_bytes(raw: &[u8]) -> Result<Stamp, StampError> {
     let buildings = extract_buildings(&document);
     let (polygon_modules, polygon_cells, polygon_area) = extract_polygon_modules(&document);
     let polygon_cells = filter_field_cells_off_roads(&document, polygon_cells);
-    Ok(Stamp {
+    let mut stamp = Stamp {
         document,
         buildings,
         polygon_modules,
         polygon_cells,
         polygon_area,
         stamp_version,
-    })
+        cistern_fixes_on_load: 0,
+    };
+    // Legacy editor wrote cistern Pos as geometric center (TL+1.5) → +1 tile in-game.
+    stamp.migrate_cistern_pivots(CisternMigrateMode::Auto);
+    Ok(stamp)
+}
+
+fn write_f32x2_attrib(attrib: &mut Attrib, x: f32, y: f32) {
+    let mut bytes = vec![0u8; 8];
+    bytes[0..4].copy_from_slice(&x.to_le_bytes());
+    bytes[4..8].copy_from_slice(&y.to_le_bytes());
+    attrib.content = bytes;
+}
+
+fn entry_has_cistern_pivot_mark(entry: &Tag) -> bool {
+    find_attrib(&entry.children, CISTERN_PIVOT_ATTRIB).is_some()
+}
+
+/// Register (or reuse) a FileDB attrib id for `name`. Ids must have bit 0x8000 set;
+/// id 0 is the end-of-tag sentinel and must never be written as an attrib.
+fn ensure_attrib_id(doc: &mut DocumentOrdered, name: &str) -> u16 {
+    if let Some((id, _)) = doc.attribs.items.iter().find(|(_, n)| n == name) {
+        return *id;
+    }
+    let mut used: HashSet<u16> = doc.attribs.items.iter().map(|(id, _)| *id).collect();
+    used.insert(NONE_ATTRIB_ID);
+    let mut id = 0x8001u16;
+    loop {
+        if !used.contains(&id) {
+            doc.attribs.items.push((id, name.to_string()));
+            return id;
+        }
+        id = id.wrapping_add(1);
+        if id < 0x8000 {
+            id = 0x8001;
+        }
+    }
+}
+
+fn ensure_cistern_pivot_mark(entry: &mut Tag, attrib_id: u16) {
+    if entry_has_cistern_pivot_mark(entry) {
+        return;
+    }
+    entry.children.push(Node::Attrib(Attrib {
+        id: attrib_id,
+        name: CISTERN_PIVOT_ATTRIB.into(),
+        content: 1u32.to_le_bytes().to_vec(),
+    }));
+}
+
+fn strip_cistern_pivot_mark(entry: &mut Tag) {
+    entry
+        .children
+        .retain(|n| !matches!(n, Node::Attrib(a) if a.name == CISTERN_PIVOT_ATTRIB));
+}
+
+fn footprint_tl_from_pos(x: f32, y: f32, mx: f32, my: f32, drag: (f32, f32)) -> (i32, i32) {
+    (
+        relative_to_tile(x + mx, drag.0),
+        relative_to_tile(y + my, drag.1),
+    )
+}
+
+fn pos_from_tl(tx: i32, ty: i32, mx: f32, my: f32) -> (f32, f32) {
+    (tx as f32 - mx, ty as f32 - my)
+}
+
+fn footprint_touches_road(tl: (i32, i32), w: i32, h: i32, roads: &HashSet<(i32, i32)>) -> bool {
+    for dy in 0..h {
+        for dx in 0..w {
+            let x = tl.0 + dx;
+            let y = tl.1 + dy;
+            for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
+                if roads.contains(&(nx, ny)) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 /// Half-tile bits can touch the road frame; never paint fields on streets.
@@ -477,6 +575,7 @@ impl Stamp {
         stamp.polygon_modules.clear();
         stamp.polygon_cells.clear();
         stamp.polygon_area.clear();
+        stamp.cistern_fixes_on_load = 0;
         // Seed pipette still carries MeshGraph streets — wipe them for a true blank.
         let _ = clear_roads(&mut stamp.document, &stamp.buildings);
         recompute_bounds(&mut stamp.document, &stamp.buildings);
@@ -489,6 +588,113 @@ impl Stamp {
         self.polygon_modules = mods;
         self.polygon_cells = filter_field_cells_off_roads(&self.document, cells);
         self.polygon_area = area;
+    }
+
+    /// Rewrite legacy centered aqueduct-cistern `Pos` to the decentered pivot.
+    ///
+    /// Old editor: `Pos = TL + 1.5` → game footprint at TL+1 (one grass gap).
+    /// New: `Pos = TL + 0.5`. Returns how many buildings were moved.
+    ///
+    /// `Auto` uses roads when present (flush under centered math but not under
+    /// decentered → migrate). Already-marked entries are left alone (idempotent
+    /// after save). `Force` re-anchors every unmarked cistern.
+    pub fn migrate_cistern_pivots(&mut self, mode: CisternMigrateMode) -> usize {
+        let drag = read_mesh_info(&self.document)
+            .map(|i| i.drag_center)
+            .unwrap_or((0.0, 0.0));
+        let roads: HashSet<(i32, i32)> = crate::meshgraph::mesh_road_cells(&self.document)
+            .into_iter()
+            .map(|(x, y, _)| (x, y))
+            .collect();
+        let has_roads = !roads.is_empty();
+        let (w0, h0) = (AQUEDUCT_CISTERN_SIZE[0], AQUEDUCT_CISTERN_SIZE[1]);
+        let mark_id = ensure_attrib_id(&mut self.document, CISTERN_PIVOT_ATTRIB);
+
+        let mut fixed = 0usize;
+        let mut idx = 0usize;
+        for root in &mut self.document.roots {
+            let Node::Tag(pipette) = root else { continue };
+            if pipette.name != "PipetteData" {
+                continue;
+            }
+            let Some(info) = find_tag_mut(&mut pipette.children, "BuildingInfo") else {
+                continue;
+            };
+            for child in &mut info.children {
+                let Node::Tag(entry) = child else { continue };
+                if entry.name != "None" {
+                    continue;
+                }
+                let guid = find_attrib(&entry.children, "GUID")
+                    .map(|a| u32_le(&a.content))
+                    .unwrap_or(0);
+                if !is_aqueduct_cistern(guid) {
+                    idx += 1;
+                    continue;
+                }
+                if entry_has_cistern_pivot_mark(entry) {
+                    idx += 1;
+                    continue;
+                }
+
+                let direction = read_direction(entry);
+                let pos = find_attrib(&entry.children, "Pos")
+                    .and_then(|a| f32x2(&a.content))
+                    .unwrap_or((0.0, 0.0));
+
+                let (mx_c0, my_c0) = (-w0 * 0.5, -h0 * 0.5);
+                let (mx_d0, my_d0) = blocker_min_for(guid, w0, h0, None, None);
+                let (mx_c, my_c, _, _) = oriented_blocker(mx_c0, my_c0, w0, h0, direction);
+                let (mx_d, my_d, ow, oh) = oriented_blocker(mx_d0, my_d0, w0, h0, direction);
+                let fw = ow.round().max(1.0) as i32;
+                let fh = oh.round().max(1.0) as i32;
+                let tl_centered = footprint_tl_from_pos(pos.0, pos.1, mx_c, my_c, drag);
+                let tl_decentered = footprint_tl_from_pos(pos.0, pos.1, mx_d, my_d, drag);
+                let new_pos = pos_from_tl(tl_centered.0, tl_centered.1, mx_d, my_d);
+
+                let flush_c = has_roads && footprint_touches_road(tl_centered, fw, fh, &roads);
+                let flush_d = has_roads && footprint_touches_road(tl_decentered, fw, fh, &roads);
+
+                // Unmarked = pre-pivot-fix file (new placements always get the mark).
+                // With roads: only move when centered math is flush and decentered is not.
+                // Without roads: assume centered Pos (same as Force).
+                let should_move = match mode {
+                    CisternMigrateMode::Force => true,
+                    CisternMigrateMode::Auto => {
+                        if !has_roads {
+                            true
+                        } else {
+                            flush_c && !flush_d
+                        }
+                    }
+                };
+
+                if should_move {
+                    let dx = (new_pos.0 - pos.0).abs();
+                    let dy = (new_pos.1 - pos.1).abs();
+                    if dx > 1e-4 || dy > 1e-4 {
+                        if let Some(p) = find_attrib_mut(&mut entry.children, "Pos") {
+                            write_f32x2_attrib(p, new_pos.0, new_pos.1);
+                        }
+                        if let Some(b) = self.buildings.get_mut(idx) {
+                            b.x = new_pos.0;
+                            b.y = new_pos.1;
+                        }
+                        fixed += 1;
+                    }
+                    ensure_cistern_pivot_mark(entry, mark_id);
+                } else if flush_d {
+                    // Already correct under decentered math — mark so we never shift it.
+                    ensure_cistern_pivot_mark(entry, mark_id);
+                }
+                idx += 1;
+            }
+        }
+        self.cistern_fixes_on_load = fixed;
+        if fixed > 0 {
+            recompute_bounds(&mut self.document, &self.buildings);
+        }
+        fixed
     }
 
     /// BuildingInfo entries plus polygon-stored field modules (for paint / occupancy).
@@ -739,6 +945,8 @@ impl Stamp {
         direction: i32,
         variation: Option<u32>,
     ) -> Result<(), StampError> {
+        let cistern_mark_id = is_aqueduct_cistern(guid)
+            .then(|| ensure_attrib_id(&mut self.document, CISTERN_PIVOT_ATTRIB));
         for root in &mut self.document.roots {
             let Node::Tag(pipette) = root else { continue };
             if pipette.name != "PipetteData" {
@@ -802,6 +1010,11 @@ impl Stamp {
                     .children
                     .retain(|n| !matches!(n, Node::Attrib(a) if a.name == "Variation"));
             }
+            if let Some(mark_id) = cistern_mark_id {
+                ensure_cistern_pivot_mark(&mut entry, mark_id);
+            } else {
+                strip_cistern_pivot_mark(&mut entry);
+            }
             info.children.push(Node::Tag(entry));
             self.buildings.push(Building {
                 guid,
@@ -820,6 +1033,11 @@ impl Stamp {
     }
 
     pub fn set_building_guid(&mut self, index: usize, guid: u32) -> Result<(), StampError> {
+        let mark_id = if is_aqueduct_cistern(guid) {
+            Some(ensure_attrib_id(&mut self.document, CISTERN_PIVOT_ATTRIB))
+        } else {
+            None
+        };
         let mut count = 0usize;
         for root in &mut self.document.roots {
             let Node::Tag(pipette) = root else { continue };
@@ -844,6 +1062,11 @@ impl Stamp {
                     }
                     content[0..4].copy_from_slice(&guid.to_le_bytes());
                     g.content = content;
+                    if let Some(id) = mark_id {
+                        ensure_cistern_pivot_mark(entry, id);
+                    } else {
+                        strip_cistern_pivot_mark(entry);
+                    }
                     if let Some(b) = self.buildings.get_mut(index) {
                         b.guid = guid;
                     }
@@ -1011,6 +1234,123 @@ mod cistern_roundtrip {
             .expect("cistern");
         assert!((b.x - 1.5).abs() < 1e-5 && (b.y - 1.5).abs() < 1e-5);
         assert_eq!(footprint_cells(b, None).iter().map(|c| c.x).min(), Some(1));
+    }
+
+    fn strip_all_cistern_marks(stamp: &mut Stamp) {
+        for root in &mut stamp.document.roots {
+            let Node::Tag(pipette) = root else { continue };
+            if pipette.name != "PipetteData" {
+                continue;
+            }
+            let Some(info) = find_tag_mut(&mut pipette.children, "BuildingInfo") else {
+                continue;
+            };
+            for child in &mut info.children {
+                let Node::Tag(entry) = child else { continue };
+                strip_cistern_pivot_mark(entry);
+            }
+        }
+    }
+
+    fn raw_cistern_pos(stamp: &Stamp, guid: u32) -> (f32, f32) {
+        for root in &stamp.document.roots {
+            let Node::Tag(pipette) = root else { continue };
+            if pipette.name != "PipetteData" {
+                continue;
+            }
+            let Some(info) = find_tag(&pipette.children, "BuildingInfo") else {
+                continue;
+            };
+            for child in &info.children {
+                let Node::Tag(entry) = child else { continue };
+                if entry.name != "None" {
+                    continue;
+                }
+                let g = find_attrib(&entry.children, "GUID")
+                    .map(|a| u32_le(&a.content))
+                    .unwrap_or(0);
+                if g != guid {
+                    continue;
+                }
+                return find_attrib(&entry.children, "Pos")
+                    .and_then(|a| f32x2(&a.content))
+                    .unwrap_or((0.0, 0.0));
+            }
+        }
+        panic!("cistern {guid} missing");
+    }
+
+    /// Legacy editor wrote Pos=(2.5,1.5) for TL≈(1,0). Load must re-anchor to
+    /// Pos=(1.5,1.5); next encode must persist the corrected bytes.
+    #[test]
+    fn legacy_centered_cistern_pos_migrates_on_load_and_save() {
+        for guid in [19753u32, 29526u32] {
+            let mut stamp = Stamp::blank().expect("blank");
+            stamp
+                .add_building_from_template(guid, 2.5, 1.5, 0, None)
+                .expect("add legacy-centered pos");
+            // Simulate a pre-fix file: centered Pos, no pivot mark.
+            strip_all_cistern_marks(&mut stamp);
+            // Road column at x=0 → flush under centered TL=1, gap under decentered TL=2.
+            for y in 0..3 {
+                assert!(crate::meshgraph::set_road_cell(
+                    &mut stamp.document,
+                    &stamp.buildings,
+                    0,
+                    y,
+                    true,
+                    crate::meshgraph::ROAD_GUID_DIRT,
+                ));
+            }
+
+            let encoded = encode_pipette_b64(&stamp).expect("encode legacy");
+            let loaded = decode_pipette_b64(&encoded).expect("decode migrates");
+            assert_eq!(
+                loaded.cistern_fixes_on_load, 1,
+                "GUID {guid}: expected one pivot fix on load"
+            );
+            let b = loaded
+                .buildings
+                .iter()
+                .find(|b| b.guid == guid)
+                .expect("cistern building");
+            assert!(
+                (b.x - 1.5).abs() < 1e-5 && (b.y - 1.5).abs() < 1e-5,
+                "GUID {guid}: Pos after load must be (1.5,1.5), got ({},{})",
+                b.x,
+                b.y
+            );
+            assert_eq!(
+                footprint_cells(b, None).iter().map(|c| c.x).min(),
+                Some(1),
+                "GUID {guid}: footprint TL.x must be 1"
+            );
+
+            let saved = encode_pipette_b64(&loaded).expect("save corrected");
+            let reloaded = decode_pipette_b64(&saved).expect("reload after save");
+            assert_eq!(
+                reloaded.cistern_fixes_on_load, 0,
+                "GUID {guid}: migrate must be idempotent after save"
+            );
+            let (px, py) = raw_cistern_pos(&reloaded, guid);
+            assert!(
+                (px - 1.5).abs() < 1e-5 && (py - 1.5).abs() < 1e-5,
+                "GUID {guid}: saved Pos must be (1.5,1.5), got ({px},{py})"
+            );
+        }
+    }
+
+    #[test]
+    fn force_migrate_rewrites_unmarked_centered_pos_without_roads() {
+        let mut stamp = Stamp::blank().expect("blank");
+        stamp
+            .add_building_from_template(19753, 2.5, 1.5, 0, None)
+            .expect("add");
+        strip_all_cistern_marks(&mut stamp);
+        let n = stamp.migrate_cistern_pivots(CisternMigrateMode::Force);
+        assert_eq!(n, 1);
+        let (px, py) = raw_cistern_pos(&stamp, 19753);
+        assert!((px - 1.5).abs() < 1e-5 && (py - 1.5).abs() < 1e-5);
     }
 }
 

@@ -1,4 +1,6 @@
-use crate::stamp::{decode_pipette_b64, encode_pipette_b64, Stamp, StampError};
+use crate::stamp::{
+    decode_pipette_b64, encode_pipette_b64, CisternMigrateMode, Stamp, StampError,
+};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -69,6 +71,7 @@ pub fn open_first_real_stamp(path: &Path) -> Result<OpenStamp, PackError> {
             continue;
         }
         let stamp = decode_pipette_b64(&entry.pipette_data)?;
+        let dirty = stamp.cistern_fixes_on_load > 0;
         return Ok(OpenStamp {
             pack_path: path.to_path_buf(),
             entry_index: idx,
@@ -76,7 +79,7 @@ pub fn open_first_real_stamp(path: &Path) -> Result<OpenStamp, PackError> {
             region_guid: entry.region_guid,
             icon_guid: entry.icon_guid,
             stamp,
-            dirty: false,
+            dirty,
             is_new: false,
         });
     }
@@ -91,6 +94,7 @@ pub fn open_named_stamp(path: &Path, name: &str) -> Result<OpenStamp, PackError>
     for (idx, entry) in pack.stamps.iter().enumerate() {
         if entry.name == name && !entry.pipette_data.is_empty() {
             let stamp = decode_pipette_b64(&entry.pipette_data)?;
+            let dirty = stamp.cistern_fixes_on_load > 0;
             return Ok(OpenStamp {
                 pack_path: path.to_path_buf(),
                 entry_index: idx,
@@ -98,7 +102,7 @@ pub fn open_named_stamp(path: &Path, name: &str) -> Result<OpenStamp, PackError>
                 region_guid: entry.region_guid,
                 icon_guid: entry.icon_guid,
                 stamp,
-                dirty: false,
+                dirty,
                 is_new: false,
             });
         }
@@ -344,5 +348,115 @@ pub fn copy_stamp_to_pack(
     dest.stamps.push(copy);
     save_pack(dest_pack, &dest)?;
     Ok(out_name)
+}
+
+/// Result of a batch cistern-pivot repair over stamp packs.
+#[derive(Debug, Clone, Default)]
+pub struct CisternFixReport {
+    pub packs_scanned: usize,
+    pub stamps_scanned: usize,
+    pub stamps_rewritten: usize,
+    pub buildings_fixed: usize,
+    pub errors: Vec<String>,
+}
+
+/// Scan `root` recursively for `*.json` stamp packs, Force-migrate unmarked
+/// aqueduct cisterns, and rewrite packs that changed.
+pub fn fix_cistern_pivots_in_tree(root: &Path) -> CisternFixReport {
+    let mut report = CisternFixReport::default();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let entries = match fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(err) => {
+                report
+                    .errors
+                    .push(format!("{}: {err}", dir.display()));
+                continue;
+            }
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            match fix_cistern_pivots_in_pack(&path) {
+                Ok((stamps, rewritten, fixed)) => {
+                    report.packs_scanned += 1;
+                    report.stamps_scanned += stamps;
+                    report.stamps_rewritten += rewritten;
+                    report.buildings_fixed += fixed;
+                }
+                Err(err) => {
+                    // Not every JSON under the library is a stamp pack.
+                    let msg = err.to_string();
+                    if msg.contains("missing field")
+                        || msg.contains("Stamps")
+                        || msg.contains("expected")
+                    {
+                        continue;
+                    }
+                    report
+                        .errors
+                        .push(format!("{}: {msg}", path.display()));
+                }
+            }
+        }
+    }
+    report
+}
+
+fn fix_cistern_pivots_in_pack(path: &Path) -> Result<(usize, usize, usize), PackError> {
+    let mut pack = load_pack(path)?;
+    let mut stamps = 0usize;
+    let mut rewritten = 0usize;
+    let mut fixed = 0usize;
+    let mut changed = false;
+    for entry in &mut pack.stamps {
+        if entry.pipette_data.is_empty() {
+            continue;
+        }
+        stamps += 1;
+        let original = entry.pipette_data.clone();
+        let mut stamp = decode_pipette_b64(&original)?;
+        let auto_fixed = stamp.cistern_fixes_on_load;
+        // Catch unmarked cisterns Auto left alone (e.g. roads touch both TLs).
+        let force_fixed = stamp.migrate_cistern_pivots(CisternMigrateMode::Force);
+        let encoded = encode_pipette_b64(&stamp)?;
+        if encoded != original {
+            entry.pipette_data = encoded;
+            rewritten += 1;
+            fixed += auto_fixed + force_fixed;
+            changed = true;
+        }
+    }
+    if changed {
+        save_pack(path, &pack)?;
+    }
+    Ok((stamps, rewritten, fixed))
+}
+
+/// Convenience for CLI: fix one pack path (file) or a directory tree.
+pub fn fix_cistern_pivots_path(path: &Path) -> CisternFixReport {
+    if path.is_file() {
+        let mut report = CisternFixReport::default();
+        match fix_cistern_pivots_in_pack(path) {
+            Ok((stamps, rewritten, fixed)) => {
+                report.packs_scanned = 1;
+                report.stamps_scanned = stamps;
+                report.stamps_rewritten = rewritten;
+                report.buildings_fixed = fixed;
+            }
+            Err(err) => {
+                report.errors.push(format!("{}: {err}", path.display()));
+            }
+        }
+        return report;
+    }
+    fix_cistern_pivots_in_tree(path)
 }
 

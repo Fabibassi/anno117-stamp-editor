@@ -25,6 +25,8 @@ $env:Path = "$env:USERPROFILE\.cargo\bin;" + $env:Path
 cargo run --release
 # optional: Pack direkt öffnen
 cargo run --release -- --open "..\..\Documents\Anno 117 - Pax Romana\stamps\Region Roman\latium.json"
+# legacy Zisternen-Pos in allen Packs unter Ordner korrigieren + speichern
+cargo run --release -- --fix-cisterns "..\..\Documents\Anno 117 - Pax Romana\stamps"
 ```
 
 Katalog (lokal, **nicht** im Repo): `..\_gamedata\editor_catalog.json` — aus eigener `assets.xml` erzeugen:

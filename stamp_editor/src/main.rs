@@ -2,8 +2,10 @@ mod app;
 
 use app::StampEditorApp;
 use eframe::egui;
+use stamp_editor::pack::fix_cistern_pivots_path;
 use std::env;
 use std::path::PathBuf;
+use std::process;
 
 fn main() -> eframe::Result<()> {
     let catalog = PathBuf::from(
@@ -11,10 +13,18 @@ fn main() -> eframe::Result<()> {
     );
     let mut open_path: Option<PathBuf> = None;
     let mut open_stamp: Option<String> = None;
+    let mut fix_cisterns: Option<PathBuf> = None;
     let mut args = env::args().skip(1).peekable();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--open" => open_path = args.next().map(PathBuf::from),
+            "--fix-cisterns" => {
+                fix_cisterns = args
+                    .next()
+                    .map(PathBuf::from)
+                    .or_else(|| open_path.clone())
+                    .or_else(|| env::current_dir().ok());
+            }
             "--stamp" => {
                 // Join tokens until the next flag so "Olive Oil x3 v2" survives
                 // shells that split on spaces without proper quoting.
@@ -33,6 +43,22 @@ fn main() -> eframe::Result<()> {
             _ => {}
         }
     }
+
+    if let Some(root) = fix_cisterns {
+        let report = fix_cistern_pivots_path(&root);
+        println!(
+            "Cistern pivot fix: packs={} stamps={} rewritten={} buildings_fixed={}",
+            report.packs_scanned,
+            report.stamps_scanned,
+            report.stamps_rewritten,
+            report.buildings_fixed
+        );
+        for err in &report.errors {
+            eprintln!("  warn: {err}");
+        }
+        process::exit(if report.errors.is_empty() { 0 } else { 1 });
+    }
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1400.0, 900.0])
@@ -55,4 +81,3 @@ fn main() -> eframe::Result<()> {
         }),
     )
 }
-

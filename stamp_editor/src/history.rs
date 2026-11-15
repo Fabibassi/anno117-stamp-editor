@@ -79,6 +79,7 @@ mod tests {
             polygon_cells: vec![],
             polygon_area: Default::default(),
             stamp_version: 1,
+            cistern_fixes_on_load: 0,
         }
     }
 

@@ -2700,12 +2700,21 @@ impl StampEditorApp {
         self.module_parent_index = None;
         // Only auto-pick region when opening a pack (global filter stays user-controlled after).
         self.region_filter = RegionFilter::from_region_guid(open.region_guid);
+        let cistern_note = if open.stamp.cistern_fixes_on_load > 0 {
+            format!(
+                " · {} Zisternen-Pos korrigiert (Speichern schreibt Fix)",
+                open.stamp.cistern_fixes_on_load
+            )
+        } else {
+            String::new()
+        };
         self.status = format!(
-            "Geöffnet: {} ({}) — {} Gebäude · Filter {}",
+            "Geöffnet: {} ({}) — {} Gebäude · Filter {}{}",
             open.entry_name,
             path.display(),
             open.stamp.buildings.len(),
-            self.region_filter.label()
+            self.region_filter.label(),
+            cistern_note
         );
         // Prefer selecting a farm main that already has a ComplexOwner group.
         self.selected_building = (0..open.stamp.buildings.len()).find(|&i| {
