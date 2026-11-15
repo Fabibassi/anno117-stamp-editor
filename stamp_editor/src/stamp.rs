@@ -608,7 +608,37 @@ impl Stamp {
             .collect();
         let has_roads = !roads.is_empty();
         let (w0, h0) = (AQUEDUCT_CISTERN_SIZE[0], AQUEDUCT_CISTERN_SIZE[1]);
-        let mark_id = ensure_attrib_id(&mut self.document, CISTERN_PIVOT_ATTRIB);
+
+        // Only register the FileDB attrib when unmarked cisterns exist — otherwise
+        // every stamp dump would grow an unused dictionary entry on batch fix.
+        let has_unmarked_cistern = {
+            let mut found = false;
+            'scan: for root in &self.document.roots {
+                let Node::Tag(pipette) = root else { continue };
+                if pipette.name != "PipetteData" {
+                    continue;
+                }
+                let Some(info) = find_tag(&pipette.children, "BuildingInfo") else {
+                    continue;
+                };
+                for child in &info.children {
+                    let Node::Tag(entry) = child else { continue };
+                    let guid = find_attrib(&entry.children, "GUID")
+                        .map(|a| u32_le(&a.content))
+                        .unwrap_or(0);
+                    if is_aqueduct_cistern(guid) && !entry_has_cistern_pivot_mark(entry) {
+                        found = true;
+                        break 'scan;
+                    }
+                }
+            }
+            found
+        };
+        let mark_id = if has_unmarked_cistern {
+            Some(ensure_attrib_id(&mut self.document, CISTERN_PIVOT_ATTRIB))
+        } else {
+            None
+        };
 
         let mut fixed = 0usize;
         let mut idx = 0usize;
@@ -682,10 +712,14 @@ impl Stamp {
                         }
                         fixed += 1;
                     }
-                    ensure_cistern_pivot_mark(entry, mark_id);
+                    if let Some(id) = mark_id {
+                        ensure_cistern_pivot_mark(entry, id);
+                    }
                 } else if flush_d {
                     // Already correct under decentered math — mark so we never shift it.
-                    ensure_cistern_pivot_mark(entry, mark_id);
+                    if let Some(id) = mark_id {
+                        ensure_cistern_pivot_mark(entry, id);
+                    }
                 }
                 idx += 1;
             }

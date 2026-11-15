@@ -426,11 +426,13 @@ fn fix_cistern_pivots_in_pack(path: &Path) -> Result<(usize, usize, usize), Pack
         let auto_fixed = stamp.cistern_fixes_on_load;
         // Catch unmarked cisterns Auto left alone (e.g. roads touch both TLs).
         let force_fixed = stamp.migrate_cistern_pivots(CisternMigrateMode::Force);
-        let encoded = encode_pipette_b64(&stamp)?;
-        if encoded != original {
-            entry.pipette_data = encoded;
+        let n = auto_fixed + force_fixed;
+        // Only rewrite when a cistern Pos actually moved — avoid zlib/pretty
+        // re-encoding of unrelated stamps.
+        if n > 0 {
+            entry.pipette_data = encode_pipette_b64(&stamp)?;
             rewritten += 1;
-            fixed += auto_fixed + force_fixed;
+            fixed += n;
             changed = true;
         }
     }
