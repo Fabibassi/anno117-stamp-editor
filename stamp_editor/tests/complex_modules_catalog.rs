@@ -90,7 +90,10 @@ fn sheep_stamp_with_three_wool_modules_is_ready() {
             creation_time: 0,
         }],
     };
-    let out = PathBuf::from(r"C:\Users\fabi_\Documents\Anno 117 - Pax Romana\stamps\Region Roman\sheep pasture 3-3.json");
+    let dir = std::env::temp_dir().join("anno117_stamp_editor_tests");
+    let _ = std::fs::create_dir_all(&dir);
+    let out = dir.join("sheep pasture 3-3.json");
     save_pack(&out, &pack).expect("save sheep pack");
     assert!(out.is_file());
+    let _ = std::fs::remove_file(&out);
 }

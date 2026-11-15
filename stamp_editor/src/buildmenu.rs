@@ -1,10 +1,12 @@
 //! Ingame-like construction menu hierarchy (from assets.xml extract).
 
 use crate::catalog::RegionFilter;
+use crate::library::EditorConfig;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConstructionMenuFile {
@@ -190,10 +192,27 @@ impl ConstructionMenu {
     }
 
     pub fn load_default() -> Self {
-        let path = Path::new(
-            r"C:\Users\fabi_\Projects\anno117-stamp-editor\_gamedata\construction_menu.json",
+        let mut candidates: Vec<PathBuf> = Vec::new();
+        if let Ok(exe) = env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                candidates.push(dir.join("_gamedata").join("construction_menu.json"));
+                candidates.push(dir.join("construction_menu.json"));
+            }
+        }
+        candidates.push(
+            EditorConfig::config_dir()
+                .join("_gamedata")
+                .join("construction_menu.json"),
         );
-        Self::load(path).unwrap_or_default()
+        if let Ok(cwd) = env::current_dir() {
+            candidates.push(cwd.join("_gamedata").join("construction_menu.json"));
+            candidates.push(cwd.join("..").join("_gamedata").join("construction_menu.json"));
+        }
+        candidates
+            .into_iter()
+            .find(|p| p.is_file())
+            .and_then(|p| Self::load(&p).ok())
+            .unwrap_or_default()
     }
 
     pub fn region_key(filter: RegionFilter) -> Option<&'static str> {

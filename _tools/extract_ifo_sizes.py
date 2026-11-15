@@ -7,12 +7,32 @@ from __future__ import annotations
 
 import json
 import mmap
+import os
 import re
 import struct
 import zlib
 from pathlib import Path
 
-MAINDATA = Path(r"G:\Program Files (x86)\Steam\steamapps\common\Anno 117 - Pax Romana\maindata")
+
+def _guess_maindata() -> Path:
+    env = Path(os.environ.get("ANNO117_INSTALL", "")).expanduser()
+    if env.is_dir() and (env / "maindata").is_dir():
+        return env / "maindata"
+    for drive in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+        for rel in (
+            rf"{drive}:\Program Files (x86)\Steam\steamapps\common\Anno 117 - Pax Romana\maindata",
+            rf"{drive}:\SteamLibrary\steamapps\common\Anno 117 - Pax Romana\maindata",
+        ):
+            p = Path(rel)
+            if p.is_dir():
+                return p
+    raise SystemExit(
+        "Anno maindata not found. Set ANNO117_INSTALL to the game root "
+        r"(folder containing maindata\)."
+    )
+
+
+MAINDATA = _guess_maindata()
 OUT = Path(__file__).resolve().parent.parent / "_gamedata" / "cfg_build_sizes.json"
 ENTRY = 560
 

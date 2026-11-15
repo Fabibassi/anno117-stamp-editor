@@ -2,6 +2,13 @@
 
 All notable changes to the Anno 117 Stamp Editor are documented here.
 
+## [0.2.2] — 2026-11-15
+
+### Fixed
+
+- Removed machine-specific `C:\Users\…` / Steam-drive hardcodes from editor sources, tools, and tests (portable `_gamedata` lookup only)
+- Dropped personal one-shot example/patch scripts from the public tree
+
 ## [0.2.1] — 2026-11-15
 
 ### Added

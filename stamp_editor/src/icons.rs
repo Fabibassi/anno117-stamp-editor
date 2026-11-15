@@ -1,5 +1,6 @@
 //! Load Anno UI icons: PNG cache under `_gamedata/ui_png`, filled from `ui.rda` (lazy + bulk).
 
+use crate::library::EditorConfig;
 use crate::rda::{
     cache_rel_from_rda_key, candidate_rda_keys, is_bulk_icon_key, open_ui_rda, RdaSet, SharedRda,
 };
@@ -7,13 +8,32 @@ use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions};
 use image::imageops::FilterType;
 use image::{DynamicImage, RgbaImage};
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-const UI_PNG_ROOT: &str = r"C:\Users\fabi_\Projects\anno117-stamp-editor\_gamedata\ui_png";
+/// PNG icon cache: next to EXE / config / cwd `_gamedata/ui_png` (no machine-specific paths).
+fn resolve_ui_png_root() -> PathBuf {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Ok(exe) = env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.join("_gamedata").join("ui_png"));
+            candidates.push(dir.join("ui_png"));
+        }
+    }
+    candidates.push(EditorConfig::config_dir().join("_gamedata").join("ui_png"));
+    if let Ok(cwd) = env::current_dir() {
+        candidates.push(cwd.join("_gamedata").join("ui_png"));
+        candidates.push(cwd.join("..").join("_gamedata").join("ui_png"));
+    }
+    candidates
+        .into_iter()
+        .find(|p| p.is_dir())
+        .unwrap_or_else(|| EditorConfig::config_dir().join("_gamedata").join("ui_png"))
+}
 
 pub const ICON_CRANE: &str =
     "data/ui/fhd/base/icon_content/infrastructure/icon_3d_construction_crane.png";
@@ -55,7 +75,7 @@ impl UiIcons {
         Self {
             textures: HashMap::new(),
             missing: HashSet::new(),
-            root: PathBuf::from(UI_PNG_ROOT),
+            root: resolve_ui_png_root(),
             rda: None,
             status: Arc::new(Mutex::new(IconExtractStatus::default())),
             bulk_started: Arc::new(AtomicBool::new(false)),

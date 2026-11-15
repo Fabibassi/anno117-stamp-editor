@@ -70,7 +70,7 @@ Die Release-EXE ist derzeit **nicht codesigniert**. Windows Defender SmartScreen
 
 Das ist bei unsigned Open-Source-Downloads üblich und **kein** Nachweis für Malware. Quellcode liegt öffentlich auf GitHub; wer will, baut selbst mit `cargo build --release`. Eine kostenpflichtige Codesignatur (OV-Zertifikat) kann die Warnung mit der Zeit abmildern — sie ist für dieses Hobby-Projekt optional.
 
-**VirusTotal (v0.2.1 Release-ZIP):** [Report](https://www.virustotal.com/gui/file/c6ea5d773732c08bbb14bfa8b0cca05612456bc2204b74c91e089d9a849ba374) — **0 / 67** Detections (keine Engine meldet Malware). SHA256 `C6EA5D773732C08BBB14BFA8B0CCA05612456BC2204B74C91E089D9A849BA374`. Die ZIP enthält u. a. `stamp_editor.exe` (siehe Relations auf VT).
+**VirusTotal:** Release-Builds wurden vor dem Promote geprüft (0 Detections). Aktuelle SHA256 steht in den [Release-Notes](https://github.com/Fabibassi/anno117-stamp-editor/releases).
 
 ---
 

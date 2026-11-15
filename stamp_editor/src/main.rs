@@ -29,10 +29,6 @@ fn resolve_catalog_path() -> PathBuf {
         candidates.push(cwd.join("_gamedata").join("editor_catalog.json"));
         candidates.push(cwd.join("..").join("_gamedata").join("editor_catalog.json"));
     }
-    // Dev machine fallback (optional).
-    candidates.push(PathBuf::from(
-        r"C:\Users\fabi_\Projects\anno117-stamp-editor\_gamedata\editor_catalog.json",
-    ));
     candidates
         .into_iter()
         .find(|p| p.is_file())
