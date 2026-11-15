@@ -4,6 +4,10 @@ All notable changes to the Anno 117 Stamp Editor are documented here.
 
 ## [0.2.2] — 2026-11-15
 
+### Changed
+
+- Public docs and screenshots switched to **English** (README, crate README, issue template)
+
 ### Fixed
 
 - Removed machine-specific `C:\Users\…` / Steam-drive hardcodes from editor sources, tools, and tests (portable `_gamedata` lookup only)
@@ -15,12 +19,12 @@ All notable changes to the Anno 117 Stamp Editor are documented here.
 
 - **First-run setup wizard**: choose game install (icons), game stamps folder, and editor library before anything else runs
 - Portable config next to the EXE (or `%LOCALAPPDATA%\Anno117StampEditor`) so a standalone ZIP works without Python
-- Menu entry **Datei → Erste Einrichtung…** to re-open the wizard
-- README screenshots (setup, Hauptfenster, Menü Datei) + clearer Ubisoft vs. MIT rights split
+- Menu entry **File → First-time setup…** to re-open the wizard
+- README screenshots (setup, main window, File menu) + clearer Ubisoft vs. MIT rights split
 
 ### Fixed
 
-- No auto-import of Documents stamps / library seed **before** setup is confirmed (empty library until „Fertig“)
+- No auto-import of Documents stamps / library seed **before** setup is confirmed (empty library until Finish)
 - Dimmed modal overlay so the wizard cannot be missed on first launch
 - Catalog path resolution for release EXE vs. local `_gamedata` without hardcoding one PC
 

@@ -1,18 +1,18 @@
 # stamp_editor (crate)
 
-Rust/egui-Implementierung. **Projektübersicht, Release & KI-Hinweis:** siehe [../README.md](../README.md).
+Rust/egui implementation. **Project overview, release & AI note:** see [../README.md](../README.md).
 
-## Start
+## Run
 
 ```powershell
 cargo run --release
-# optional: Pack direkt öffnen
+# optional: open a pack directly
 cargo run --release -- --open "..\..\Documents\Anno 117 - Pax Romana\stamps\Region Roman\latium.json"
-# legacy Zisternen-Pos in allen Packs unter Ordner korrigieren + speichern
+# rewrite legacy cistern Pos under a folder and save
 cargo run --release -- --fix-cisterns "..\..\Documents\Anno 117 - Pax Romana\stamps"
 ```
 
-Katalog lokal unter `../_gamedata/editor_catalog.json` (nicht im Repo). Neu bauen:
+Local catalog at `../_gamedata/editor_catalog.json` (not in the repo). Rebuild:
 
 ```powershell
 python ..\_tools\rebuild_editor_catalog.py
@@ -26,14 +26,14 @@ cargo test --release
 
 Fixtures: `testdata/`.
 
-## Module (Kurz)
+## Modules (short)
 
-| Modul | Rolle |
-|-------|------|
+| Module | Role |
+|--------|------|
 | `filedb` | FileDB V3 |
-| `stamp` / `pack` | Pipette + Pack-JSON |
-| `catalog` | GUIDs, Größen, Needs, Tiers |
-| `meshgraph` | Straßen / Aquädukte |
-| `coverage` / `economy` / `needs` | Analyse |
-| `library` | Bibliothek + Mirror |
+| `stamp` / `pack` | Pipette + pack JSON |
+| `catalog` | GUIDs, sizes, needs, tiers |
+| `meshgraph` | Roads / aqueducts |
+| `coverage` / `economy` / `needs` | Analysis |
+| `library` | Library + mirror |
 | `app` | egui UI |

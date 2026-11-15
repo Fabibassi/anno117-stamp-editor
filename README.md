@@ -1,92 +1,92 @@
 # Anno 117 Stamp Editor
 
-Community-Tool (Rust / egui) zum **Öffnen, Bearbeiten und Speichern** von Anno-117-Stamp-Packs (Blueprints).
+Community tool (Rust / egui) to **open, edit, and save** Anno 117 stamp packs (blueprints).
 
-> **Kein offizielles Ubisoft-Produkt.** Anno 117, Marken, Spielassets und spielbezogene Inhalte gehören **Ubisoft** bzw. den Rechteinhabern. Der **Editor-Quellcode** in diesem Repo steht unter der **MIT-Lizenz** (siehe [`LICENSE`](LICENSE)) und darf entsprechend frei genutzt, verändert und weitergegeben werden. Details: [Rechtliches](#rechtliches--fair-play).
+> **Not an official Ubisoft product.** Anno 117, trademarks, game assets, and game-related content belong to **Ubisoft** / the respective rights holders. The **editor source code** in this repo is **MIT-licensed** (see [`LICENSE`](LICENSE)) and may be used, modified, and shared accordingly. Details: [Legal](#legal--fair-use).
 
 ---
 
 ## Screenshots
 
-### Erste Einrichtung (Setup)
+### First-time setup
 
-Beim ersten Start (oder über **Datei → Erste Einrichtung…**) legst du drei Pfade fest: Spielinstallation (Icons), Spiel-Stamps und die sichere Editor-Bibliothek.
+On first launch (or via **File → First-time setup…**) you set three paths: game install (icons), game stamps folder, and a safe editor library.
 
-![Erste Einrichtung](docs/screenshots/01-setup.png)
+![First-time setup](docs/screenshots/01-setup.png)
 
-### Hauptfenster
+### Main window
 
-Links die Bibliothek (Packs/Stamps), in der Mitte die Stamp-Canvas, rechts/unten Baulette und Analyse.
+Library on the left (packs/stamps), stamp canvas in the center, build menu / analysis along the bottom.
 
-![Hauptfenster](docs/screenshots/02-main.png)
+![Main window](docs/screenshots/02-main.png)
 
-### Menü Datei
+### File menu
 
-| Eintrag | Funktion |
-|--------|----------|
-| Erste Einrichtung… | Pfade erneut setzen (Spiel, Stamps, Bibliothek) |
-| Anno-Spielordner verknüpfen… | Installation für Icons |
-| Bibliothek-Ordner… | Sicheren Editor-Ordner wählen |
-| Vom Spiel importieren / Zum Spiel exportieren… | Sync zwischen Bibliothek und Documents-Stamps |
-| Auch in Spielordner speichern | Beim Speichern zusätzlich ins Spiel spiegeln |
-| Pack-Datei öffnen… / Speichern | Einzelnes Pack laden / speichern |
-| Katalog neu laden | `editor_catalog.json` neu einlesen |
+| Entry | What it does |
+|--------|----------------|
+| First-time setup… | Set paths again (game, stamps, library) |
+| Link Anno game folder… | Install folder for icons |
+| Library folder… | Choose the safe editor library |
+| Import from game / Export to game… | Sync between library and Documents stamps |
+| Also save into game folder | Mirror saves into the game stamps folder |
+| Open pack file… / Save | Load / save a pack |
+| Reload catalog | Re-read `editor_catalog.json` |
 
-![Menü Datei](docs/screenshots/03-menu-file.png)
-
----
-
-## Was kann der Editor?
-
-- Stamp-Packs (JSON + Pipette/FileDB) laden und speichern
-- Gebäude platzieren, verschieben, drehen, kopieren
-- Straßen & Aquädukte malen (inkl. Hochführung über Straßen)
-- Farmen / Felder (SubTileGrid), Coverage, Produktionsketten
-- Bibliothek außerhalb des Spiel-Sync-Ordners + Mirror ins Spiel
-- Residenz-Stufen **T1–T4** im Editor sichtbar (Hinweis: das Spiel speichert in Blueprints oft nur die Basis-GUID)
+![File menu](docs/screenshots/03-menu-file.png)
 
 ---
 
-## Schnellstart (Release-Binary)
+## Features
 
-1. Unter [Releases](https://github.com/Fabibassi/anno117-stamp-editor/releases) die Windows-ZIP laden
-2. `stamp_editor.exe` starten — **kein Python, keine Extra-Runtime** (standalone)
-3. Beim **ersten Start** öffnet sich die Einrichtung:
-   - Anno-Spielordner (Installation mit `maindata\ui.rda`) — für Icons
-   - Spiel-Stamps — oft schon `Documents\Anno 117 - Pax Romana\stamps` (wird erkannt, wenn vorhanden)
-   - Editor-Bibliothek — sicherer Ordner **außerhalb** des Sync-Ordners
-4. Später erneut: **Datei → Erste Einrichtung…**
-
-Optional für volle Baulette: `editor_catalog.json` neben die EXE legen (oder unter `_gamedata\`). Ohne Katalog startet der Editor trotzdem.
-
-### Windows SmartScreen („Windows hat den PC geschützt“)
-
-Die Release-EXE ist derzeit **nicht codesigniert**. Windows Defender SmartScreen kennt neue/unsignierte Community-Tools oft noch nicht und zeigt den blauen Hinweis.
-
-**So startest du trotzdem:**
-
-1. Auf **Weitere Informationen** klicken  
-2. Dann **Trotzdem ausführen**
-
-Das ist bei unsigned Open-Source-Downloads üblich und **kein** Nachweis für Malware. Quellcode liegt öffentlich auf GitHub; wer will, baut selbst mit `cargo build --release`. Eine kostenpflichtige Codesignatur (OV-Zertifikat) kann die Warnung mit der Zeit abmildern — sie ist für dieses Hobby-Projekt optional.
-
-**VirusTotal:** Release-Builds wurden vor dem Promote geprüft (0 Detections). Aktuelle SHA256 steht in den [Release-Notes](https://github.com/Fabibassi/anno117-stamp-editor/releases).
+- Load and save stamp packs (JSON + Pipette / FileDB)
+- Place, move, rotate, and copy buildings
+- Paint roads and aqueducts (including elevated spans over roads)
+- Farms / fields (SubTileGrid), coverage, production chains
+- Library outside the game sync folder + optional mirror into the game
+- Residence tiers **T1–T4** visible in the editor (note: in-game blueprints often store only the base GUID)
 
 ---
 
-## Bauen aus dem Quellcode
+## Quick start (release binary)
 
-Voraussetzungen: [Rust](https://rustup.rs/) (stable), Windows.
+1. Download the Windows ZIP from [Releases](https://github.com/Fabibassi/anno117-stamp-editor/releases)
+2. Run `stamp_editor.exe` — **no Python, no extra runtime** (standalone)
+3. On **first launch**, the setup wizard opens:
+   - Anno game folder (install with `maindata\ui.rda`) — for icons
+   - Game stamps — often `Documents\Anno 117 - Pax Romana\stamps` (auto-detected when present)
+   - Editor library — a safe folder **outside** the sync folder
+4. Later again: **File → First-time setup…**
+
+Optional for a full build menu: place `editor_catalog.json` next to the EXE (or under `_gamedata\`). The editor still starts without a catalog.
+
+### Windows SmartScreen (“Windows protected your PC”)
+
+The release EXE is currently **not code-signed**. SmartScreen often warns on new/unsigned community tools.
+
+**To run anyway:**
+
+1. Click **More info**
+2. Then **Run anyway**
+
+That is normal for unsigned open-source downloads and is **not** proof of malware. Source is public on GitHub; you can also build with `cargo build --release`. A paid code-signing certificate (OV) can soften the warning over time — optional for this hobby project.
+
+**VirusTotal:** Release builds were checked before promotion (0 detections). Current SHA256 is in the [release notes](https://github.com/Fabibassi/anno117-stamp-editor/releases).
+
+---
+
+## Build from source
+
+Requirements: [Rust](https://rustup.rs/) (stable), Windows.
 
 ```powershell
 cd stamp_editor
 cargo run --release
 ```
 
-Optional Pack direkt öffnen:
+Open a pack directly:
 
 ```powershell
-cargo run --release -- --open "C:\Pfad\zu\dein\stamp.json"
+cargo run --release -- --open "C:\path\to\your\stamp.json"
 ```
 
 Tests:
@@ -95,81 +95,87 @@ Tests:
 cargo test --release
 ```
 
-Legacy-Zisternen-Pos in Packs korrigieren:
+Fix legacy cistern positions in packs:
 
 ```powershell
-cargo run --release -- --fix-cisterns "C:\Pfad\zu\stamps"
+cargo run --release -- --fix-cisterns "C:\path\to\stamps"
 ```
 
-### Katalog & Icons (lokal)
-
-Abgeleitete Spieldaten gehören **nicht** auf GitHub (`_gamedata/` ist ignoriert).
+Clean release ZIP (strips local home paths from the binary):
 
 ```powershell
-# Beispiel — Pfade an deine Installation anpassen
+.\scripts\build-release.ps1
+```
+
+### Catalog & icons (local)
+
+Derived game data does **not** belong on GitHub (`_gamedata/` is ignored).
+
+```powershell
+# Example — adjust paths to your install
 python _tools\rebuild_editor_catalog.py
 ```
 
-Spiel-Stamps typischerweise unter:
+Game stamps are typically under:
 
 `Documents\Anno 117 - Pax Romana\stamps\`
 
 ---
 
-## Bedienung (Kurz)
+## Controls (short)
 
-| Aktion | Steuerung |
-|--------|-----------|
-| Bibliothek | Linke Leiste; speichern spiegelt optional ins Spiel |
-| Pan | Mausrad-Taste / RMB auf leerem Feld |
+| Action | Input |
+|--------|--------|
+| Library | Left panel; save can optionally mirror to the game |
+| Pan | Middle mouse / RMB on empty space |
 | Zoom | Scroll |
-| Platzieren | Gebäude wählen → LMB |
-| Verschieben | LMB ziehen |
-| Wege / Aquädukt | Straßen-Werkzeug / Aquädukt-Pinsel |
-| Land/Marsh | **V** (wo unterstützt, z. B. Lager) |
+| Place | Pick a building → LMB |
+| Move | LMB drag |
+| Roads / aqueduct | Road tool / aqueduct brush |
+| Land / marsh | **V** (where supported, e.g. warehouses) |
 
-Mehr Details: [`stamp_editor/README.md`](stamp_editor/README.md)
-
----
-
-## Hinweis zu Residenz-Stufen
-
-Anno 117 unterscheidet in vielen Blueprint-Dateien **nicht** zwischen Upgrade-Stufen — oft steht nur die T1-GUID (z. B. Liberti). Der Editor kann T1–T4 setzen und anzeigen; aus dem Spiel übernommene Stamps sind häufig alles T1.
+More detail: [`stamp_editor/README.md`](stamp_editor/README.md)
 
 ---
 
-## Über KI-Unterstützung beim Coden
+## Residence tiers
 
-Große Teile dieses Projekts entstanden **mit Hilfe von KI** (Cursor / Coding-Assistenten) und menschlicher Steuerung: Ziele setzen, prüfen, verwerfen, freigeben.
-
-### Bitte kein Drama wegen „AI-Code“
-
-- Das ist ein **Hobby-/Community-Tool**, kein Wettbewerb um Jobs oder Prestige.
-- **Niemand verliert etwas**, nur weil KI mitgeschrieben hat — und **niemand „gewinnt“** dadurch etwas von dir weg. Es entsteht nur ein Werkzeug, das vorher so nicht da war.
-- Wenn dich der Ansatz stört: fork, ignoriere es, oder schreibe deinen eigenen Editor. Beides ist okay.
-- Kritik an **Bugs und UX** ist willkommen. Moralische Entrüstung darüber, *wie* der Code entstanden ist, hilft niemandem weiter.
-
-Kurz: Code ist Code. Nützlich oder nicht — das entscheidet die Nutzung, nicht die Tastaturgeschichte.
+Anno 117 often does **not** distinguish upgrade tiers in blueprint files — many stamps only store the T1 GUID (e.g. Liberti). The editor can set and show T1–T4; stamps imported from the game are frequently all T1.
 
 ---
 
-## Rechtliches / Fair Play
+## About AI-assisted coding
 
-Zwei getrennte Dinge:
+Large parts of this project were built **with AI help** (Cursor / coding assistants) under human direction: set goals, review, reject, approve.
 
-1. **Spielbindung (Anno 117)** — Alle Rechte an *Anno 117 – Pax Romana*, zugehörigen Marken, Logos, Texturen, Sounds, Texten, GUIDs/Spieldaten und ähnlichen Inhalten liegen bei **Ubisoft** bzw. den jeweiligen Rechteinhabern. Dieses Projekt erhebt **keinen** Anspruch darauf und ist **kein** offizielles Ubisoft-Produkt.
-2. **Diese Software (Stamp Editor)** — Der Quellcode und die gebauten Binaries dieses Repos gehören dem Projektautor und stehen unter der **[MIT-Lizenz](LICENSE)**: Nutzung, Änderung, Fork und Weitergabe sind erlaubt, solange der License-Hinweis erhalten bleibt. Das betrifft **nur** den Editor — nicht Spielassets.
+### Please don’t start drama over “AI code”
 
-Zusätzlich:
+- This is a **hobby / community tool**, not a job contest.
+- **Nobody loses anything** because AI helped write it — and **nobody “takes” anything** from you. You only get a tool that did not exist before.
+- If you dislike the approach: fork it, ignore it, or write your own editor. All fine.
+- Feedback on **bugs and UX** is welcome. Moral outrage about *how* the code was written helps nobody.
 
-- Dieses Repo enthält **keine** entpackten UI-Texturen, keine `assets.xml` und keine abgeleiteten Katalog-JSONs (`_gamedata/` bleibt lokal).
-- Nutze den Editor nur mit Daten aus **deiner** legalen Spielinstallation.
-- Screenshots im Repo zeigen die Editor-UI; sichtbare Spiel-Icons/Assets unterliegen weiterhin den Rechten von Ubisoft.
+Short version: code is code. Useful or not is decided by use, not by the keyboard story.
 
 ---
 
-## Mitmachen
+## Legal / fair use
 
-Issues und PRs sind willkommen — Bugs, Ideen, Korrekturen. Siehe auch das Issue zur Projekt-/KI-Haltung im Repo.
+Two separate things:
+
+1. **Game connection (Anno 117)** — All rights to *Anno 117 – Pax Romana*, related trademarks, logos, textures, audio, text, GUIDs/game data, and similar content belong to **Ubisoft** / the respective rights holders. This project claims **no** ownership of those and is **not** an official Ubisoft product.
+2. **This software (Stamp Editor)** — Source and binaries in this repo belong to the project author and are under the **[MIT License](LICENSE)**: use, modify, fork, and redistribute are allowed if the license notice is preserved. That covers **only** the editor — not game assets.
+
+Also:
+
+- This repo contains **no** unpacked UI textures, no `assets.xml`, and no derived catalog JSONs (`_gamedata/` stays local).
+- Use the editor only with data from **your** legal game install.
+- Screenshots show the editor UI; any visible game icons/assets remain Ubisoft’s IP.
+
+---
+
+## Contributing
+
+Issues and PRs welcome — bugs, ideas, fixes. See also the project/AI stance issue in the repo.
 
 Changelog: [`CHANGELOG.md`](CHANGELOG.md)

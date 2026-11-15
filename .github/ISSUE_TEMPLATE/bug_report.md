@@ -1,24 +1,24 @@
 ---
 name: Bug report
-about: Etwas funktioniert nicht wie erwartet
+about: Something does not work as expected
 title: "[Bug] "
 labels: bug
 ---
 
-**Was passiert?**
+**What happens?**
 
 
-**Was sollte passieren?**
+**What should happen?**
 
 
-**Schritte**
+**Steps**
 1.
 2.
 
-**Umgebung**
-- Editor-Version / Commit:
+**Environment**
+- Editor version / commit:
 - OS:
-- Stamp (falls möglich, ohne große Privat-Layouts):
+- Stamp (if possible, without large private layouts):
 
 **Screenshots**
 (optional)
