@@ -83,21 +83,20 @@ pub fn footprint_cells_for_region(
     _region_guid: u32,
     drag: (f32, f32),
 ) -> Vec<Cell> {
-    let (mut w, mut h) = def
+    let (w0, h0) = def
         .map(|d| {
             let s = d.size_for_variation(b.variation);
             (s[0].max(1.0), s[1].max(1.0))
         })
         .unwrap_or((1.0, 1.0));
-    let dir = b.direction.rem_euclid(8);
-    if dir == 2 || dir == 6 {
-        std::mem::swap(&mut w, &mut h);
-    }
+    let (mx0, my0) = crate::catalog::blocker_min_for(b.guid, w0, h0, def, b.variation);
+    let (mx, my, w, h) = crate::catalog::oriented_blocker(mx0, my0, w0, h0, b.direction);
     let ww = w.round().max(1.0) as i32;
     let hh = h.round().max(1.0) as i32;
-    // Snap geometric top-left through absolute tile space (see relative_to_tile).
-    let x0 = relative_to_tile(b.x - w * 0.5, drag.0);
-    let y0 = relative_to_tile(b.y - h * 0.5, drag.1);
+    // Snap BuildBlocker top-left through absolute tile space (see relative_to_tile).
+    // Must use blocker_min — not center−size/2 — for decentered pivots (cistern).
+    let x0 = relative_to_tile(b.x + mx, drag.0);
+    let y0 = relative_to_tile(b.y + my, drag.1);
     let mut cells = Vec::with_capacity((ww * hh) as usize);
     for dy in 0..hh {
         for dx in 0..ww {
@@ -655,6 +654,7 @@ mod regression_footprint {
             category: "public".into(),
             size: [w, h],
             size_marsh: None,
+            blocker_min: None,
             outputs: vec![],
             inputs: vec![],
             cycle_ms: None,
@@ -724,6 +724,28 @@ mod regression_footprint {
         let min_x = cells.iter().map(|c| c.x).min().unwrap();
         let max_x = cells.iter().map(|c| c.x).max().unwrap();
         assert_eq!(max_x - min_x + 1, 5);
+    }
+
+    #[test]
+    fn aqueduct_cistern_decentered_blocker_flush_to_road() {
+        // Game-correct Pos for a 3×3 cistern with TL at x=1 (road at x=0): Pos.x = 1.5.
+        // Old centered math used Pos.x = TL+1.5 = 2.5 → +1 tile gap in-game.
+        let mut cistern = building(1.5, 1.5);
+        cistern.guid = 19753;
+        let mut d = def(3.0, 3.0);
+        d.guid = 19753;
+        let cells = footprint_cells(&cistern, Some(&d));
+        assert_eq!(cells.iter().map(|c| c.x).min(), Some(1));
+        assert_eq!(cells.iter().map(|c| c.x).max(), Some(3));
+        assert_eq!(cells.iter().map(|c| c.y).min(), Some(0));
+        assert_eq!(cells.iter().map(|c| c.y).max(), Some(2));
+
+        // Centered write would have been Pos=(2.5, 1.5) for the same editor TL —
+        // that footprint must start at x=2 (one tile off the road).
+        let mut wrong = building(2.5, 1.5);
+        wrong.guid = 19753;
+        let wrong_cells = footprint_cells(&wrong, Some(&d));
+        assert_eq!(wrong_cells.iter().map(|c| c.x).min(), Some(2));
     }
 }
 

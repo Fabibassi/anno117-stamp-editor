@@ -16,6 +16,7 @@ All notable changes to the Anno 117 Stamp Editor (Rusticus) are documented here.
 
 ### Fixed
 
+- **Aqueduct cistern +1 tile offset**: BuildBlocker is decentered (pivot ≠ footprint center). Pos is now derived from `blocker_min` so a road-flush placement in the editor stays flush in-game (GUIDs 19753 / 29526).
 - Half-tile paste offset (clipboard uses footprint top-left deltas).
 - PlaceRect grid sized by clipboard group span (not primary footprint alone).
 - Delete removes selected roads as well as buildings.

@@ -1,5 +1,5 @@
 ﻿use stamp_editor::buildmenu::{ConstructionMenu, MenuEntry};
-use stamp_editor::catalog::{Catalog, RegionFilter};
+use stamp_editor::catalog::{blocker_min_for, oriented_blocker, Catalog, RegionFilter};
 use stamp_editor::icons::{chrome, UiIcons};
 use stamp_editor::coverage::{
     build_road_map_region, compute_coverage_region, compute_roads_only_region,
@@ -181,11 +181,22 @@ fn rect_cells(min_x: i32, min_y: i32, max_x: i32, max_y: i32) -> Vec<(i32, i32)>
     out
 }
 
-/// Building center so the footprint's top-left tile is `(tx, ty)`.
+/// Pipette `Pos` so the BuildBlocker top-left tile is `(tx, ty)`.
+/// Centered buildings: `Pos = TL + size/2`. Decentered (cistern): uses blocker_min.
 fn place_center_from_top_left(tx: i32, ty: i32, bw: i32, bh: i32) -> (f32, f32) {
-    let bw = bw.max(1) as f32;
-    let bh = bh.max(1) as f32;
-    (tx as f32 + bw * 0.5, ty as f32 + bh * 0.5)
+    place_pos_from_top_left(tx, ty, bw as f32, bh as f32, -bw as f32 * 0.5, -bh as f32 * 0.5)
+}
+
+fn place_pos_from_top_left(
+    tx: i32,
+    ty: i32,
+    w: f32,
+    h: f32,
+    mx: f32,
+    my: f32,
+) -> (f32, f32) {
+    let _ = (w, h);
+    (tx as f32 - mx, ty as f32 - my)
 }
 
 /// Catalog size after 90° direction (2/6 swap axes). Diagonals keep catalog order for AABB.
@@ -198,10 +209,16 @@ fn oriented_size(w: f32, h: f32, direction: i32) -> (f32, f32) {
     }
 }
 
-fn footprint_top_left(x: f32, y: f32, w: f32, h: f32, drag: (f32, f32)) -> (i32, i32) {
+fn footprint_top_left_blocker(
+    x: f32,
+    y: f32,
+    mx: f32,
+    my: f32,
+    drag: (f32, f32),
+) -> (i32, i32) {
     (
-        relative_to_tile(x - w * 0.5, drag.0),
-        relative_to_tile(y - h * 0.5, drag.1),
+        relative_to_tile(x + mx, drag.0),
+        relative_to_tile(y + my, drag.1),
     )
 }
 
@@ -1156,11 +1173,7 @@ impl StampEditorApp {
             return false;
         };
         let drag = self.stamp_drag();
-        let (ppw, pph) = {
-            let (w0, h0) = self.building_size(primary.guid, primary.variation);
-            oriented_size(w0, h0, primary.direction)
-        };
-        let (ptx, pty) = footprint_top_left(primary.x, primary.y, ppw, pph, drag);
+        let (ptx, pty) = self.footprint_tl_building(&primary);
 
         let mut clip = vec![ClipboardBuilding {
             guid: primary.guid,
@@ -1182,8 +1195,15 @@ impl StampEditorApp {
                     (s[0].max(1.0), s[1].max(1.0))
                 })
                 .unwrap_or((2.0, 2.0));
-            let (bw, bh) = oriented_size(w0, h0, m.direction);
-            let (tx, ty) = footprint_top_left(m.x, m.y, bw, bh, drag);
+            let (mx0, my0) = blocker_min_for(
+                m.guid,
+                w0,
+                h0,
+                catalog.building(m.guid),
+                m.variation,
+            );
+            let (mx, my, _, _) = oriented_blocker(mx0, my0, w0, h0, m.direction);
+            let (tx, ty) = footprint_top_left_blocker(m.x, m.y, mx, my, drag);
             clip.push(ClipboardBuilding {
                 guid: m.guid,
                 direction: m.direction,
@@ -1324,27 +1344,30 @@ impl StampEditorApp {
         oriented_size(w0, h0, c.direction)
     }
 
-    /// Primary footprint top-left implied by a snapped primary center.
+    /// Primary footprint top-left implied by a snapped primary Pos.
     fn clipboard_primary_top_left(&self, primary_cx: f32, primary_cy: f32) -> (i32, i32) {
         let Some(p) = self.clipboard.iter().find(|c| c.is_primary) else {
             return (primary_cx.floor() as i32, primary_cy.floor() as i32);
         };
-        let (pw, ph) = self.clipboard_oriented_size(p);
-        footprint_top_left(primary_cx, primary_cy, pw, ph, self.stamp_drag())
+        let (mx, my, _, _) =
+            self.building_oriented_blocker(p.guid, p.variation, p.direction);
+        footprint_top_left_blocker(primary_cx, primary_cy, mx, my, self.stamp_drag())
     }
 
-    /// Resolve clipboard buildings to world centers from a snapped primary center.
+    /// Resolve clipboard buildings to pipette Pos from a snapped primary Pos.
     fn clipboard_building_centers(&self, primary_cx: f32, primary_cy: f32) -> Vec<(ClipboardBuilding, f32, f32)> {
         let (ptx, pty) = self.clipboard_primary_top_left(primary_cx, primary_cy);
         self.clipboard
             .iter()
             .cloned()
             .map(|c| {
-                let (bw, bh) = self.clipboard_oriented_size(&c);
-                let bw_i = bw.round().max(1.0) as i32;
-                let bh_i = bh.round().max(1.0) as i32;
-                let (cx, cy) =
-                    place_center_from_top_left(ptx + c.dtx, pty + c.dty, bw_i, bh_i);
+                let (cx, cy) = self.place_pos_for_tl(
+                    ptx + c.dtx,
+                    pty + c.dty,
+                    c.guid,
+                    c.variation,
+                    c.direction,
+                );
                 (c, cx, cy)
             })
             .collect()
@@ -1452,7 +1475,15 @@ impl StampEditorApp {
         });
         if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
             let (bw, bh) = self.clipboard_oriented_size(p);
-            return self.snap_place_center(wx, wy, bw, bh);
+            return self.snap_place_pos(
+                wx,
+                wy,
+                p.guid,
+                p.variation,
+                p.direction,
+                bw,
+                bh,
+            );
         }
         (wx.round(), wy.round())
     }
@@ -1818,24 +1849,53 @@ impl StampEditorApp {
                 } else {
                     (bw_i, bh_i)
                 };
+                let place_dir = 0i32;
                 let mut centers = Vec::new();
                 let mut gy = min_y;
                 while gy + step_h - 1 <= max_y {
                     let mut gx = min_x;
                     while gx + step_w - 1 <= max_x {
-                        centers.push(place_center_from_top_left(gx, gy, bw_i, bh_i));
+                        if from_clipboard {
+                            if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
+                                centers.push(self.place_pos_for_tl(
+                                    gx,
+                                    gy,
+                                    p.guid,
+                                    p.variation,
+                                    p.direction,
+                                ));
+                            } else {
+                                centers.push(place_center_from_top_left(gx, gy, bw_i, bh_i));
+                            }
+                        } else {
+                            centers.push(self.place_pos_for_tl(
+                                gx, gy, guid, variation, place_dir,
+                            ));
+                        }
                         gx += step_w;
                     }
                     gy += step_h;
                 }
                 if centers.is_empty() {
                     // start/cursor are footprint top-left tiles — never treat them as centers.
-                    centers.push(place_center_from_top_left(
-                        stroke.start.0,
-                        stroke.start.1,
-                        bw_i,
-                        bh_i,
-                    ));
+                    let (sx, sy) = (stroke.start.0, stroke.start.1);
+                    if from_clipboard {
+                        if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
+                            centers.push(self.place_pos_for_tl(
+                                sx,
+                                sy,
+                                p.guid,
+                                p.variation,
+                                p.direction,
+                            ));
+                        } else {
+                            centers.push(place_center_from_top_left(sx, sy, bw_i, bh_i));
+                        }
+                    } else {
+                        centers.push(self.place_pos_for_tl(
+                            sx, sy, guid, variation, place_dir,
+                        ));
+                    }
                 }
                 let mut placed = 0usize;
                 let mut blocked = 0usize;
@@ -1888,7 +1948,6 @@ impl StampEditorApp {
                     return;
                 }
 
-                let place_dir = 0;
                 let parent_idx = self.module_parent_index;
                 if let Some(open_mut) = self.open.as_mut() {
                     let parent_pos_r = parent_idx.and_then(|pi| {
@@ -2247,15 +2306,51 @@ impl StampEditorApp {
         )
     }
 
-    /// Snap mouse → building center (cursor stays in the middle of the footprint).
+    /// Snap mouse → pipette Pos (cursor stays in the middle of the footprint).
     fn snap_place_center(&self, wx: f32, wy: f32, bw: f32, bh: f32) -> (f32, f32) {
-        let bw_i = bw.round().max(1.0) as i32;
-        let bh_i = bh.round().max(1.0) as i32;
+        // Legacy path (unknown GUID): assume centered blocker.
+        self.snap_place_pos(wx, wy, 0, None, 0, bw, bh)
+    }
+
+    /// `wx,wy` = geometric footprint center under the cursor (place / ghost).
+    fn snap_place_pos(
+        &self,
+        wx: f32,
+        wy: f32,
+        guid: u32,
+        variation: Option<u32>,
+        direction: i32,
+        bw: f32,
+        bh: f32,
+    ) -> (f32, f32) {
         if self.allow_45_deg {
             return self.snap_world(wx, wy);
         }
         let (tx, ty) = self.place_top_left_from_mouse(wx, wy, bw, bh);
-        place_center_from_top_left(tx, ty, bw_i, bh_i)
+        if guid != 0 {
+            self.place_pos_for_tl(tx, ty, guid, variation, direction)
+        } else {
+            let bw_i = bw.round().max(1.0) as i32;
+            let bh_i = bh.round().max(1.0) as i32;
+            place_center_from_top_left(tx, ty, bw_i, bh_i)
+        }
+    }
+
+    /// Snap an existing pipette `Pos` onto the tile grid without shifting decentered pivots.
+    fn snap_existing_pos(
+        &self,
+        px: f32,
+        py: f32,
+        guid: u32,
+        variation: Option<u32>,
+        direction: i32,
+    ) -> (f32, f32) {
+        if self.allow_45_deg {
+            return self.snap_world(px, py);
+        }
+        let (mx, my, w, h) = self.building_oriented_blocker(guid, variation, direction);
+        let (tx, ty) = footprint_top_left_blocker(px, py, mx, my, self.stamp_drag());
+        place_pos_from_top_left(tx, ty, w, h, mx, my)
     }
 
     /// Tile under the cursor for the current tool (place = footprint anchor, else cell).
@@ -2769,6 +2864,42 @@ impl StampEditorApp {
             .unwrap_or((2.0, 2.0))
     }
 
+    /// Oriented BuildBlocker `(min_x, min_y, w, h)` relative to pipette Pos.
+    fn building_oriented_blocker(
+        &self,
+        guid: u32,
+        variation: Option<u32>,
+        direction: i32,
+    ) -> (f32, f32, f32, f32) {
+        let (w0, h0) = self.building_size(guid, variation);
+        let (mx0, my0) = blocker_min_for(
+            guid,
+            w0,
+            h0,
+            self.catalog.building(guid),
+            variation,
+        );
+        oriented_blocker(mx0, my0, w0, h0, direction)
+    }
+
+    fn footprint_tl_building(&self, b: &Building) -> (i32, i32) {
+        let (mx, my, _, _) =
+            self.building_oriented_blocker(b.guid, b.variation, b.direction);
+        footprint_top_left_blocker(b.x, b.y, mx, my, self.stamp_drag())
+    }
+
+    fn place_pos_for_tl(
+        &self,
+        tx: i32,
+        ty: i32,
+        guid: u32,
+        variation: Option<u32>,
+        direction: i32,
+    ) -> (f32, f32) {
+        let (mx, my, w, h) = self.building_oriented_blocker(guid, variation, direction);
+        place_pos_from_top_left(tx, ty, w, h, mx, my)
+    }
+
     fn building_hit_rect(
         &self,
         rect: Rect,
@@ -2787,8 +2918,8 @@ impl StampEditorApp {
             let s = (w + h) * 0.5 * std::f32::consts::SQRT_2;
             return Rect::from_center_size(center, Vec2::splat(s * self.cell_px));
         }
-        let (w, h) = oriented_size(w0, h0, dir);
-        let (x0, y0) = footprint_top_left(x, y, w, h, self.stamp_drag());
+        let (mx, my, w, h) = self.building_oriented_blocker(guid, variation, dir);
+        let (x0, y0) = footprint_top_left_blocker(x, y, mx, my, self.stamp_drag());
         let bw = w.round().max(1.0) as i32;
         let bh = h.round().max(1.0) as i32;
         Rect::from_min_max(
@@ -4568,26 +4699,25 @@ impl eframe::App for StampEditorApp {
                         let allow_45 = self.allow_45_deg;
                         self.push_history();
                         // Keep top-left tile stable so 4×5 → 5×4 doesn't jump by a full cell.
-                        let (old_w0, old_h0) = self
+                        let (guid, variation, ox, oy) = self
                             .open
                             .as_ref()
                             .and_then(|o| o.stamp.buildings.get(idx))
-                            .map(|b| self.building_size(b.guid, b.variation))
-                            .unwrap_or((1.0, 1.0));
-                        let (ox, oy) = self
-                            .open
-                            .as_ref()
-                            .and_then(|o| o.stamp.buildings.get(idx))
-                            .map(|b| (b.x, b.y))
-                            .unwrap_or((0.0, 0.0));
-                        let (ow, oh) = oriented_size(old_w0, old_h0, cur);
-                        let (tx, ty) = footprint_top_left(ox, oy, ow, oh, self.stamp_drag());
+                            .map(|b| (b.guid, b.variation, b.x, b.y))
+                            .unwrap_or((0, None, 0.0, 0.0));
+                        let (old_w0, old_h0) = self.building_size(guid, variation);
+                        let (tx, ty) = {
+                            let (mx, my, _, _) =
+                                self.building_oriented_blocker(guid, variation, cur);
+                            footprint_top_left_blocker(ox, oy, mx, my, self.stamp_drag())
+                        };
                         let (nw, nh) = oriented_size(old_w0, old_h0, next);
-                        let (nx, ny) = place_center_from_top_left(
+                        let (nx, ny) = self.place_pos_for_tl(
                             tx,
                             ty,
-                            nw.round().max(1.0) as i32,
-                            nh.round().max(1.0) as i32,
+                            guid,
+                            variation,
+                            next,
                         );
                         if let Some(open) = self.open.as_mut() {
                             match open.stamp.set_building_direction(idx, next) {
@@ -4816,20 +4946,46 @@ impl eframe::App for StampEditorApp {
                             while gy + step_h - 1 <= max_y {
                                 let mut gx = min_x;
                                 while gx + step_w - 1 <= max_x {
-                                    centers.push(place_center_from_top_left(
-                                        gx, gy, bw_i, bh_i,
-                                    ));
+                                    if from_clipboard {
+                                        if let Some(p) =
+                                            self.clipboard.iter().find(|c| c.is_primary)
+                                        {
+                                            centers.push(self.place_pos_for_tl(
+                                                gx, gy, p.guid, p.variation, p.direction,
+                                            ));
+                                        } else {
+                                            centers.push(place_center_from_top_left(
+                                                gx, gy, bw_i, bh_i,
+                                            ));
+                                        }
+                                    } else {
+                                        centers.push(self.place_pos_for_tl(
+                                            gx, gy, guid, variation, 0,
+                                        ));
+                                    }
                                     gx += step_w;
                                 }
                                 gy += step_h;
                             }
                             if centers.is_empty() {
-                                centers.push(place_center_from_top_left(
-                                    stroke.start.0,
-                                    stroke.start.1,
-                                    bw_i,
-                                    bh_i,
-                                ));
+                                let (sx0, sy0) = (stroke.start.0, stroke.start.1);
+                                if from_clipboard {
+                                    if let Some(p) =
+                                        self.clipboard.iter().find(|c| c.is_primary)
+                                    {
+                                        centers.push(self.place_pos_for_tl(
+                                            sx0, sy0, p.guid, p.variation, p.direction,
+                                        ));
+                                    } else {
+                                        centers.push(place_center_from_top_left(
+                                            sx0, sy0, bw_i, bh_i,
+                                        ));
+                                    }
+                                } else {
+                                    centers.push(self.place_pos_for_tl(
+                                        sx0, sy0, guid, variation, 0,
+                                    ));
+                                }
                             }
                             let center_count = centers.len();
                             let region = self
@@ -5573,7 +5729,25 @@ impl eframe::App for StampEditorApp {
                         } else {
                             self.building_size(guid, self.place_variation)
                         };
-                        let (sx, sy) = self.snap_place_center(wx, wy, bw, bh);
+                        let (sx, sy) = if from_clipboard {
+                            if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
+                                self.snap_place_pos(
+                                    wx, wy, p.guid, p.variation, p.direction, bw, bh,
+                                )
+                            } else {
+                                self.snap_place_center(wx, wy, bw, bh)
+                            }
+                        } else {
+                            self.snap_place_pos(
+                                wx,
+                                wy,
+                                guid,
+                                self.place_variation,
+                                0,
+                                bw,
+                                bh,
+                            )
+                        };
                         let mut blocked = false;
                         if let Some(pi) = self.module_parent_index {
                             if let Some(parent) = open.stamp.buildings.get(pi) {
@@ -5840,17 +6014,23 @@ impl eframe::App for StampEditorApp {
                             rect,
                             Pos2::new(pointer.x - self.drag_offset.x, pointer.y - self.drag_offset.y),
                         );
-                        let (bw, bh) = self
+                        let (guid, variation, direction, bw, bh) = self
                             .open
                             .as_ref()
                             .and_then(|o| o.stamp.buildings.get(idx))
                             .map(|b| {
                                 let (w0, h0) = self.building_size(b.guid, b.variation);
-                                oriented_size(w0, h0, b.direction)
+                                let (ow, oh) = oriented_size(w0, h0, b.direction);
+                                (b.guid, b.variation, b.direction, ow, oh)
                             })
-                            .unwrap_or((1.0, 1.0));
-                        let (mut sx, mut sy) =
-                            self.snap_place_center(world.0, world.1, bw, bh);
+                            .unwrap_or((0, None, 0, 1.0, 1.0));
+                        let (mut sx, mut sy) = if guid != 0 {
+                            self.snap_existing_pos(
+                                world.0, world.1, guid, variation, direction,
+                            )
+                        } else {
+                            self.snap_place_center(world.0, world.1, bw, bh)
+                        };
 
                         if self.selection_drag_active() {
                             self.apply_selection_drag(idx, sx, sy);
@@ -5902,8 +6082,13 @@ impl eframe::App for StampEditorApp {
                                                 let scale = r / dist;
                                                 let cx = main.x + (sx - main.x) * scale;
                                                 let cy = main.y + (sy - main.y) * scale;
-                                                let snapped =
-                                                    self.snap_place_center(cx, cy, bw, bh);
+                                                let snapped = if guid != 0 {
+                                                    self.snap_existing_pos(
+                                                        cx, cy, guid, variation, direction,
+                                                    )
+                                                } else {
+                                                    self.snap_place_center(cx, cy, bw, bh)
+                                                };
                                                 sx = snapped.0;
                                                 sy = snapped.1;
                                                 radius_clamp_msg = Some(format!(

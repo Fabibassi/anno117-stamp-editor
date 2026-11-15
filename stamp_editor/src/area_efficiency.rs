@@ -471,6 +471,7 @@ mod tests {
             category: "production".into(),
             size,
             size_marsh: None,
+            blocker_min: None,
             outputs: vec![],
             inputs: vec![],
             cycle_ms: Some(60.0),

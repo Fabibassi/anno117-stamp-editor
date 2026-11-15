@@ -27,6 +27,11 @@ pub struct BuildingDef {
     /// Marsh-terrain footprint (Albion). When set, prefer over `size` on region 6626.
     #[serde(default)]
     pub size_marsh: Option<[f32; 2]>,
+    /// BuildBlocker min corner `(xf, zf)` relative to pipette `Pos` (mesh pivot).
+    /// When absent, the footprint is assumed centered: `(-w/2, -h/2)`.
+    /// Aqueduct cisterns are *not* centered — see [`blocker_min_for`].
+    #[serde(default)]
+    pub blocker_min: Option<[f32; 2]>,
     pub outputs: Vec<IoAmount>,
     pub inputs: Vec<IoAmount>,
     pub cycle_ms: Option<f32>,
@@ -64,6 +69,85 @@ pub struct BuildingDef {
     /// Game AssociatedRegions / name hints: Celtic, Roman, Egyptian, …
     #[serde(default)]
     pub regions: Vec<String>,
+}
+
+/// Latium (19753) / Celtic (29526) Aqueduct Cistern — `AqueductDistributor`.
+/// IFO BuildBlocker is ~`[-0.5, 2.5] × [-h/2, h/2]`: pivot sits 1 tile left of the
+/// geometric footprint center. Treating Pos as center then writing TL+w/2 shifts the
+/// building +1 tile right in-game while the editor still looks flush.
+pub const AQUEDUCT_CISTERN_GUIDS: &[u32] = &[19753, 29526];
+
+/// BuildBlocker min corner relative to pipette Pos for known decentered assets.
+pub fn known_blocker_min(guid: u32, w: f32, h: f32) -> Option<(f32, f32)> {
+    if AQUEDUCT_CISTERN_GUIDS.contains(&guid) {
+        // width 3 → min.x = -0.5 (not -1.5); height stays centered.
+        Some((-0.5, -h * 0.5))
+    } else {
+        let _ = w;
+        None
+    }
+}
+
+/// Resolve BuildBlocker min corner `(mx, my)` for footprint ↔ Pos conversion.
+pub fn blocker_min_for(
+    guid: u32,
+    w: f32,
+    h: f32,
+    def: Option<&BuildingDef>,
+    variation: Option<u32>,
+) -> (f32, f32) {
+    if let Some(d) = def {
+        if let Some(m) = d.blocker_min {
+            return (m[0], m[1]);
+        }
+        let s = d.size_for_variation(variation);
+        if let Some(m) = known_blocker_min(d.guid, s[0], s[1]) {
+            return m;
+        }
+        return (-s[0] * 0.5, -s[1] * 0.5);
+    }
+    known_blocker_min(guid, w, h).unwrap_or((-w * 0.5, -h * 0.5))
+}
+
+/// Rotate BuildBlocker min + size for pipette Dir (0/2/4/6). Diagonals keep catalog order.
+pub fn oriented_blocker(
+    mx: f32,
+    my: f32,
+    w: f32,
+    h: f32,
+    direction: i32,
+) -> (f32, f32, f32, f32) {
+    match direction.rem_euclid(8) {
+        2 => (-(my + h), mx, h, w),
+        4 => (-(mx + w), -(my + h), w, h),
+        6 => (my, -(mx + w), h, w),
+        _ => (mx, my, w, h),
+    }
+}
+
+#[cfg(test)]
+mod blocker_offset_tests {
+    use super::*;
+
+    #[test]
+    fn cistern_blocker_min_is_decentered_on_x() {
+        let (mx, my) = known_blocker_min(19753, 3.0, 3.0).expect("latium");
+        assert!((mx - (-0.5)).abs() < 1e-5);
+        assert!((my - (-1.5)).abs() < 1e-5);
+        assert!(known_blocker_min(3310, 6.0, 6.0).is_none());
+    }
+
+    #[test]
+    fn place_pos_from_flush_tl_is_not_geometric_center() {
+        let (mx, my) = blocker_min_for(19753, 3.0, 3.0, None, None);
+        let pos_x = 1.0_f32 - mx; // TL x=1 (road at 0)
+        let pos_y = 0.0_f32 - my;
+        assert!(
+            (pos_x - 1.5).abs() < 1e-5,
+            "want Pos.x=1.5 (not centered 2.5), got {pos_x}"
+        );
+        assert!((pos_y - 1.5).abs() < 1e-5);
+    }
 }
 
 impl BuildingDef {

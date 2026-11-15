@@ -63,6 +63,17 @@ def normalize_key(path: str) -> str:
 
 
 def size_from_ifo(text: str) -> list[float] | None:
+    info = size_and_min_from_ifo(text)
+    return None if info is None else info[0]
+
+
+def size_and_min_from_ifo(text: str) -> tuple[list[float], list[float]] | None:
+    """Return (size [w,h], blocker_min [xf,zf]) from the first BuildBlocker rect.
+
+    Pipette `Pos` is the mesh pivot, not necessarily the footprint center. Decentered
+    blockers (e.g. aqueduct cistern ~[-0.5,2.5]×[-1.5,1.5]) must keep `blocker_min`
+    so the editor writes the correct Pos for a chosen top-left tile.
+    """
     m = re.search(r"<BuildBlocker>(.*?)</BuildBlocker>", text, re.S)
     if not m:
         return None
@@ -70,15 +81,29 @@ def size_from_ifo(text: str) -> list[float] | None:
     zs = [float(z) for z in re.findall(r"<zf>([^<]+)</zf>", m.group(1))]
     if len(xs) < 2 or len(zs) < 2:
         return None
+    # Prefer the first rectangle (4 corners) when a second DummyBuildBlocker exists.
+    if len(xs) >= 8 and len(zs) >= 8:
+        xs0, zs0 = xs[:4], zs[:4]
+        xs1, zs1 = xs[4:8], zs[4:8]
+        d0 = (max(xs0) - min(xs0)) ** 2 + (max(zs0) - min(zs0)) ** 2
+        d1 = (max(xs1) - min(xs1)) ** 2 + (max(zs1) - min(zs1)) ** 2
+        if d1 > d0 + 0.01:
+            xs, zs = xs0, zs0
+        else:
+            xs, zs = xs0, zs0
     tw = max(1.0, float(round(max(xs) - min(xs))))
     th = max(1.0, float(round(max(zs) - min(zs))))
     if tw > 64 or th > 64:
         return None
-    return [tw, th]
+    return [tw, th], [float(min(xs)), float(min(zs))]
+
+
+MINS_OUT = OUT.with_name("cfg_blocker_mins.json")
 
 
 def main() -> None:
     sizes: dict[str, list[float]] = {}
+    mins: dict[str, list[float]] = {}
     scanned = 0
     for name in RDAS:
         path = MAINDATA / name
@@ -105,23 +130,27 @@ def main() -> None:
                         text = blob.decode("utf-8", "replace")
                     except Exception:
                         continue
-                    sz = size_from_ifo(text)
-                    if not sz:
+                    info = size_and_min_from_ifo(text)
+                    if not info:
                         continue
+                    sz, bmin = info
                     key = normalize_key(fpath)
                     # Map .ifo → .cfg key so catalog Filename matching still works.
                     cfg_key = re.sub(r"\.ifo$", ".cfg", key)
-                    sizes[cfg_key] = sz
-                    sizes["#" + Path(cfg_key).name] = sz
-                    sizes[key] = sz
-                    sizes["#" + Path(key).name] = sz
+                    for k in (cfg_key, "#" + Path(cfg_key).name, key, "#" + Path(key).name):
+                        sizes[k] = sz
+                        # Only store mins that differ from a centered blocker (ε = 0.05).
+                        if abs(bmin[0] + sz[0] * 0.5) > 0.05 or abs(bmin[1] + sz[1] * 0.5) > 0.05:
+                            mins[k] = [round(bmin[0], 4), round(bmin[1], 4)]
                     n += 1
             finally:
                 mm.close()
         print(f"  ifo sizes from {name}: {n}")
 
     OUT.write_text(json.dumps(sizes, indent=0), encoding="utf-8")
+    MINS_OUT.write_text(json.dumps(mins, indent=0), encoding="utf-8")
     print(f"wrote {OUT} entries={len(sizes)} scanned_ifo={scanned}")
+    print(f"wrote {MINS_OUT} decentered entries={len(mins)}")
     for probe in (
         "#craft_chassis.cfg",
         "#culture_chariots.cfg",
@@ -129,7 +158,7 @@ def main() -> None:
         "#residence_tier01_estate01.cfg",
         "#institution_01.cfg",
     ):
-        print(probe, sizes.get(probe))
+        print(probe, sizes.get(probe), "min", mins.get(probe))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "_gamedata" / "assets.xml"
 OUT = ROOT / "_gamedata" / "editor_catalog.json"
 CFG_SIZES = ROOT / "_gamedata" / "cfg_build_sizes.json"
+CFG_BLOCKER_MINS = ROOT / "_gamedata" / "cfg_blocker_mins.json"
 
 PREFIX_RES = [
     re.compile(r"^Production Construction\s+", re.I),
@@ -98,6 +99,31 @@ def load_cfg_sizes() -> dict[str, list[float]]:
             continue
         out[normalize_cfg_key(k)] = [float(v[0]), float(v[1])]
     return out
+
+
+def load_cfg_blocker_mins() -> dict[str, list[float]]:
+    if not CFG_BLOCKER_MINS.exists():
+        return {}
+    raw = json.loads(CFG_BLOCKER_MINS.read_text(encoding="utf-8"))
+    out: dict[str, list[float]] = {}
+    for k, v in raw.items():
+        if not isinstance(v, list) or len(v) < 2:
+            continue
+        out[normalize_cfg_key(k)] = [float(v[0]), float(v[1])]
+    return out
+
+
+def blocker_min_from_cfg(
+    chunk: str, cfg_mins: dict[str, list[float]]
+) -> list[float] | None:
+    for m in re.finditer(r"<Filename>([^<]+\.cfg)</Filename>", chunk, re.I):
+        if is_marsh_variant(m.group(1)):
+            continue
+        key = normalize_cfg_key(m.group(1))
+        bmin = cfg_mins.get(key) or cfg_mins.get("#" + key.split("/")[-1])
+        if bmin:
+            return bmin
+    return None
 
 
 def is_marsh_variant(path: str) -> bool:
@@ -409,7 +435,9 @@ def main() -> None:
     buildings: dict[str, dict] = {}
     products: dict[str, dict] = {}
     cfg_sizes = load_cfg_sizes()
+    cfg_mins = load_cfg_blocker_mins()
     print(f"cfg size entries: {len(cfg_sizes)}")
+    print(f"cfg blocker_min entries: {len(cfg_mins)}")
     print("indexing effects/buffs…")
     effects = index_effect_assets(text)
     print(f"effect assets: {len(effects)}")
@@ -550,6 +578,7 @@ def main() -> None:
         # If only marsh exists, size already is marsh; don't duplicate.
         if marsh_sz == size:
             marsh_sz = None
+        blocker_min = blocker_min_from_cfg(chunk, cfg_mins)
 
         if category == "production" and outputs and cycle is None:
             cycle = 30.0
@@ -562,6 +591,7 @@ def main() -> None:
             "category": category,
             "size": size,
             "size_marsh": marsh_sz,
+            "blocker_min": blocker_min,
             "outputs": outputs,
             "inputs": inputs,
             "cycle_ms": cycle,

@@ -387,6 +387,7 @@ mod tests {
             category: category.into(),
             size: [3.0, 3.0],
             size_marsh: None,
+            blocker_min: None,
             outputs: vec![],
             inputs: vec![],
             cycle_ms: None,

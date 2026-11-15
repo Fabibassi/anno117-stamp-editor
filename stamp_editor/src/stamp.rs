@@ -758,11 +758,22 @@ impl Stamp {
             let template_guid = find_attrib(&entry.children, "GUID")
                 .map(|a| u32_le(&a.content))
                 .unwrap_or(guid);
+            // Always write Pos — warehouse templates omit it (game treats as 0,0),
+            // but aqueduct cisterns and every other placed building need an explicit Pos.
             if let Some(pos) = find_attrib_mut(&mut entry.children, "Pos") {
                 let mut bytes = vec![0u8; 8];
                 bytes[0..4].copy_from_slice(&x.to_le_bytes());
                 bytes[4..8].copy_from_slice(&y.to_le_bytes());
                 pos.content = bytes;
+            } else {
+                let mut bytes = vec![0u8; 8];
+                bytes[0..4].copy_from_slice(&x.to_le_bytes());
+                bytes[4..8].copy_from_slice(&y.to_le_bytes());
+                entry.children.push(Node::Attrib(Attrib {
+                    id: 0,
+                    name: "Pos".into(),
+                    content: bytes,
+                }));
             }
             if let Some(g) = find_attrib_mut(&mut entry.children, "GUID") {
                 let mut content = g.content.clone();
@@ -893,4 +904,28 @@ impl Stamp {
         Err(StampError::MissingField)
     }
 }
+
+#[cfg(test)]
+mod cistern_roundtrip {
+    use super::*;
+    use crate::coverage::footprint_cells;
+
+    #[test]
+    fn cistern_pos_survives_encode_decode() {
+        let mut stamp = Stamp::blank().expect("blank");
+        stamp
+            .add_building_from_template(19753, 1.5, 1.5, 0, None)
+            .expect("add");
+        let encoded = encode_pipette_b64(&stamp).expect("encode");
+        let reloaded = decode_pipette_b64(&encoded).expect("decode");
+        let b = reloaded
+            .buildings
+            .iter()
+            .find(|b| b.guid == 19753)
+            .expect("cistern");
+        assert!((b.x - 1.5).abs() < 1e-5 && (b.y - 1.5).abs() < 1e-5);
+        assert_eq!(footprint_cells(b, None).iter().map(|c| c.x).min(), Some(1));
+    }
+}
+
 

@@ -142,8 +142,8 @@ fn footprint_uses_relative_to_tile_not_naive_floor() {
         "relative_to_tile must exist — floor(rel) breaks when DragRectCenter is *.5"
     );
     assert!(
-        cov.contains("relative_to_tile(b.x - w * 0.5")
-            && cov.contains("relative_to_tile(b.y - h * 0.5"),
-        "footprint must snap via relative_to_tile (abs-aware), not floor/ceil/round on relative floats"
+        cov.contains("relative_to_tile(b.x + mx")
+            && cov.contains("relative_to_tile(b.y + my"),
+        "footprint must snap via relative_to_tile on BuildBlocker min (abs-aware), not floor on relative floats"
     );
 }
