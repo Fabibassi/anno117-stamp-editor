@@ -157,15 +157,21 @@ Game stamps are typically under:
 
 | Action | Input |
 |--------|--------|
-| Library | Left panel; save can optionally mirror to the game |
 | Pan | Middle mouse / RMB on empty space |
-| Zoom | Scroll |
-| Place | Pick a building → LMB |
-| Move | LMB drag |
-| Roads / aqueduct | Road tool / aqueduct brush |
-| Land / marsh | **V** (where supported, e.g. warehouses) |
+| Zoom | Scroll (toward cursor) |
+| Center / fit stamp | **F** / **Shift+F** |
+| Rotate | **R** / **Shift+R** (also multi-select & clipboard hand) |
+| Nudge selection | Arrow keys (Shift = 5 tiles) |
+| Select all / deselect | **Ctrl+A** / **Esc** (staged: radial → hand → selection) |
+| Undo / redo | **Ctrl+Z** / **Ctrl+Y** |
+| Copy / paste | **Ctrl+C** / **Ctrl+V** (Shift+V = paste under cursor) |
+| Tools | **1** dirt road · **2** stone · **3** move · **D** demolish |
+| Panels / search | **B** build search · **L** analysis · **Ctrl+F** library filter |
+| Shortcut list | **F1** |
+| Land / marsh | **V** (where supported) |
+| Recent packs | **File → Recent** |
 
-More detail: [`stamp_editor/README.md`](stamp_editor/README.md)
+More detail: [`stamp_editor/README.md`](stamp_editor/README.md) · in-app: **F1**
 
 ---
 

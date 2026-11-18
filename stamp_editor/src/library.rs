@@ -38,7 +38,13 @@ pub struct EditorConfig {
     /// Missing field in old configs → `true` (no forced re-wizard). Fresh install → `false`.
     #[serde(default = "default_true")]
     pub setup_complete: bool,
+    /// Most-recently opened pack paths (newest first, capped + deduped).
+    #[serde(default)]
+    pub recent_packs: Vec<PathBuf>,
 }
+
+/// Max number of entries kept in `EditorConfig::recent_packs`.
+pub const RECENT_PACKS_MAX: usize = 8;
 
 fn default_true() -> bool {
     true
@@ -162,7 +168,15 @@ impl EditorConfig {
             language: default_language(),
             // Only brand-new installs (no config file) open the wizard.
             setup_complete: false,
+            recent_packs: Vec::new(),
         }
+    }
+
+    /// Insert `path` at the front of the recent list, dedupe, and cap to [`RECENT_PACKS_MAX`].
+    pub fn push_recent_pack(&mut self, path: &Path) {
+        self.recent_packs.retain(|p| p != path);
+        self.recent_packs.insert(0, path.to_path_buf());
+        self.recent_packs.truncate(RECENT_PACKS_MAX);
     }
 
     pub fn save(&self) -> std::io::Result<()> {
