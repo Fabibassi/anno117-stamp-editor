@@ -41,10 +41,18 @@ pub struct EditorConfig {
     /// Most-recently opened pack paths (newest first, capped + deduped).
     #[serde(default)]
     pub recent_packs: Vec<PathBuf>,
+    /// Relative pack paths (library-root-relative, `/`-normalized, lowercased) that
+    /// auto-seed from the game stamps folder must not restore. Manual
+    /// „Import from game“ still brings them back and clears the entry.
+    #[serde(default)]
+    pub suppressed_game_imports: Vec<String>,
 }
 
 /// Max number of entries kept in `EditorConfig::recent_packs`.
 pub const RECENT_PACKS_MAX: usize = 8;
+
+/// Cap for [`EditorConfig::suppressed_game_imports`].
+pub const SUPPRESSED_IMPORTS_MAX: usize = 256;
 
 fn default_true() -> bool {
     true
@@ -169,6 +177,7 @@ impl EditorConfig {
             // Only brand-new installs (no config file) open the wizard.
             setup_complete: false,
             recent_packs: Vec::new(),
+            suppressed_game_imports: Vec::new(),
         }
     }
 
@@ -177,6 +186,21 @@ impl EditorConfig {
         self.recent_packs.retain(|p| p != path);
         self.recent_packs.insert(0, path.to_path_buf());
         self.recent_packs.truncate(RECENT_PACKS_MAX);
+    }
+
+    /// Remember a library-relative pack so auto-seed will not restore it.
+    pub fn suppress_game_import(&mut self, rel_key: &str) {
+        if rel_key.is_empty() {
+            return;
+        }
+        self.suppressed_game_imports.retain(|k| k != rel_key);
+        self.suppressed_game_imports.insert(0, rel_key.to_string());
+        self.suppressed_game_imports.truncate(SUPPRESSED_IMPORTS_MAX);
+    }
+
+    /// Allow auto-seed / keep a pack after the user explicitly re-imported or re-saved it.
+    pub fn allow_game_import(&mut self, rel_key: &str) {
+        self.suppressed_game_imports.retain(|k| k != rel_key);
     }
 
     pub fn save(&self) -> std::io::Result<()> {
@@ -213,29 +237,53 @@ fn path_looks_like_documents_stamps(path: &Path) -> bool {
     s.contains("anno 117") && s.contains("stamps") && s.contains("documents")
 }
 
+/// Library-relative pack key for suppress/allow lists (`region/foo.json`, lowercased `/`).
+pub fn pack_rel_key(root: &Path, pack_path: &Path) -> Option<String> {
+    pack_path.strip_prefix(root).ok().map(|rel| {
+        rel.to_string_lossy()
+            .replace('\\', "/")
+            .to_ascii_lowercase()
+    })
+}
+
+fn rel_key_from_strip(rel: &Path) -> String {
+    rel.to_string_lossy()
+        .replace('\\', "/")
+        .to_ascii_lowercase()
+}
+
 /// Copy pack JSON files from the live game stamps folder into `library_root`.
-/// - Always copies files that are missing in the library.
+/// - Always copies files that are missing in the library (unless suppressed).
 /// - If `overwrite_newer`, also replaces library files when the game copy is newer (mtime).
+/// - `suppressed` skips auto-restore of packs the user deleted in the library.
+/// - Returns `(copied_count, keys_copied)` so callers can clear suppressions on manual import.
 pub fn seed_library_from_game(library_root: &Path, game_stamps_root: &Path) -> Result<usize, String> {
-    import_packs_from_game(library_root, game_stamps_root, false)
+    import_packs_from_game(library_root, game_stamps_root, false, &[])
+        .map(|(n, _)| n)
 }
 
 pub fn import_packs_from_game(
     library_root: &Path,
     game_stamps_root: &Path,
     overwrite_newer: bool,
-) -> Result<usize, String> {
+    suppressed: &[String],
+) -> Result<(usize, Vec<String>), String> {
     if !game_stamps_root.is_dir() {
-        return Ok(0);
+        return Ok((0, Vec::new()));
     }
     fs::create_dir_all(library_root).map_err(|e| e.to_string())?;
     let mut copied = 0usize;
+    let mut keys = Vec::new();
     let packs = scan_library(game_stamps_root);
     for pack in packs {
         let rel = pack
             .path
             .strip_prefix(game_stamps_root)
             .unwrap_or(Path::new(&pack.file_name));
+        let key = rel_key_from_strip(rel);
+        if !overwrite_newer && suppressed.iter().any(|s| s == &key) {
+            continue;
+        }
         let dest = library_root.join(rel);
         if dest.exists() {
             if !overwrite_newer {
@@ -255,8 +303,26 @@ pub fn import_packs_from_game(
         }
         fs::copy(&pack.path, &dest).map_err(|e| e.to_string())?;
         copied += 1;
+        keys.push(key);
     }
-    Ok(copied)
+    Ok((copied, keys))
+}
+
+/// Delete a library pack and its Documents-stamps mirror (same relative path), if present.
+pub fn delete_pack_and_mirror(
+    library_root: &Path,
+    game_stamps_root: &Path,
+    pack_path: &Path,
+) -> Result<Option<String>, String> {
+    let key = pack_rel_key(library_root, pack_path);
+    delete_pack_file(pack_path)?;
+    if let Ok(rel) = pack_path.strip_prefix(library_root) {
+        let game_path = game_stamps_root.join(rel);
+        if game_path.is_file() {
+            let _ = fs::remove_file(&game_path);
+        }
+    }
+    Ok(key)
 }
 
 /// Copy one library pack file into the live game stamps folder (same relative path).

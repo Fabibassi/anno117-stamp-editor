@@ -1,9 +1,11 @@
 use crate::catalog::{
     blocker_min_for, is_aqueduct_cistern, oriented_blocker, AQUEDUCT_CISTERN_SIZE,
 };
-use crate::filedb::{dump, load, Attrib, DocumentOrdered, Node, Tag, NONE_ATTRIB_ID};
+use crate::filedb::{
+    dump, load, Attrib, DocumentOrdered, Node, Tag, NONE_ATTRIB_ID, NONE_TAG_ID,
+};
 use crate::meshgraph::{
-    clear_roads, clone_polygon_for_new_building, read_mesh_info, recompute_bounds,
+    clear_all_mesh_paths, clone_polygon_for_new_building, read_mesh_info, recompute_bounds,
     relative_to_tile, sync_after_building_move,
 };
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
@@ -676,7 +678,195 @@ fn ensure_owner_attrib(entry: &mut Tag, owner: u64) {
     }
 }
 
-/// Clone a SubTileGrid polygon template (same field GUID), clear bits, bind owner.
+fn ensure_tag_id(doc: &mut DocumentOrdered, name: &str) -> u16 {
+    if name == "None" {
+        return NONE_TAG_ID;
+    }
+    if let Some((id, _)) = doc.tags.items.iter().find(|(_, n)| n == name) {
+        return *id;
+    }
+    let mut used: HashSet<u16> = doc.tags.items.iter().map(|(id, _)| *id).collect();
+    used.insert(NONE_TAG_ID);
+    used.insert(0);
+    let mut id = 2u16;
+    loop {
+        if !used.contains(&id) && (id & 0x8000) == 0 {
+            doc.tags.items.push((id, name.to_string()));
+            return id;
+        }
+        id = id.wrapping_add(1);
+        if id == 0 || id == NONE_TAG_ID {
+            id = 2;
+        }
+    }
+}
+
+fn write_guid_attrib(entry: &mut Tag, field_guid: u32) {
+    if let Some(g) = find_attrib_mut(&mut entry.children, "GUID") {
+        let mut bytes = g.content.clone();
+        if bytes.len() < 4 {
+            bytes.resize(4, 0);
+        }
+        bytes[0..4].copy_from_slice(&(field_guid as i32).to_le_bytes());
+        g.content = bytes;
+    }
+}
+
+fn bind_field_polygon_seed(doc: &DocumentOrdered, entry: &mut Tag, seed_abs: (i32, i32)) {
+    if let Some(stg) = find_tag_mut(&mut entry.children, "SubTileGrid") {
+        if let Some(origin) = find_attrib_mut(&mut stg.children, "GridOriginWS") {
+            write_i32_pair_attrib(origin, seed_abs.0, seed_abs.1);
+        }
+    }
+    let drag = drag_center(doc);
+    let rx = seed_abs.0 as f32 - drag.0.floor();
+    let ry = seed_abs.1 as f32 - drag.1.floor();
+    if let Some(rel) = find_attrib_mut(&mut entry.children, "RelativePos") {
+        write_f32x2_attrib(rel, rx, ry);
+    }
+    if let Some(cr) = find_tag_mut(&mut entry.children, "CreateRect") {
+        if let Some(rect) = find_tag_mut(&mut cr.children, "Rect") {
+            if let Some(value) = find_attrib_mut(&mut rect.children, "value") {
+                let mut bytes = vec![0u8; 16];
+                bytes[0..4].copy_from_slice(&seed_abs.0.to_le_bytes());
+                bytes[4..8].copy_from_slice(&seed_abs.1.to_le_bytes());
+                bytes[8..12].copy_from_slice(&seed_abs.0.to_le_bytes());
+                bytes[12..16].copy_from_slice(&seed_abs.1.to_le_bytes());
+                value.content = bytes;
+            }
+        }
+    }
+}
+
+/// Minimal empty SubTileGrid field polygon (1 tile extent, all bits clear).
+fn make_empty_field_polygon(
+    doc: &mut DocumentOrdered,
+    owner: u64,
+    field_guid: u32,
+    seed_abs: (i32, i32),
+) -> Tag {
+    let none_id = NONE_TAG_ID;
+    let stg_id = ensure_tag_id(doc, "SubTileGrid");
+    let grid_wrap_id = ensure_tag_id(doc, "Grid");
+    let grid_id = ensure_tag_id(doc, "grid");
+    let create_id = ensure_tag_id(doc, "CreateRect");
+    let rect_id = ensure_tag_id(doc, "Rect");
+
+    let guid_id = ensure_attrib_id(doc, "GUID");
+    let origin_id = ensure_attrib_id(doc, "GridOriginWS");
+    let x_id = ensure_attrib_id(doc, "x");
+    let y_id = ensure_attrib_id(doc, "y");
+    let bits_id = ensure_attrib_id(doc, "bits");
+    let rel_id = ensure_attrib_id(doc, "RelativePos");
+    let owner_id = ensure_attrib_id(doc, "ComplexOwnerID");
+    let index_id = ensure_attrib_id(doc, "index");
+    let value_id = ensure_attrib_id(doc, "value");
+
+    let gx = 4i32; // one tile = 4 quarter-bits in X
+    let gy = 1i32;
+    let stride = subtile_stride(gx as usize);
+    let bits = vec![0u8; (stride * gy as usize + 7) / 8];
+    let drag = drag_center(doc);
+    let rx = seed_abs.0 as f32 - drag.0.floor();
+    let ry = seed_abs.1 as f32 - drag.1.floor();
+
+    Tag {
+        id: none_id,
+        name: "None".into(),
+        children: vec![
+            Node::Attrib(Attrib {
+                id: guid_id,
+                name: "GUID".into(),
+                content: (field_guid as i32).to_le_bytes().to_vec(),
+            }),
+            Node::Tag(Tag {
+                id: stg_id,
+                name: "SubTileGrid".into(),
+                children: vec![
+                    Node::Attrib(Attrib {
+                        id: origin_id,
+                        name: "GridOriginWS".into(),
+                        content: {
+                            let mut b = vec![0u8; 8];
+                            b[0..4].copy_from_slice(&seed_abs.0.to_le_bytes());
+                            b[4..8].copy_from_slice(&seed_abs.1.to_le_bytes());
+                            b
+                        },
+                    }),
+                    Node::Tag(Tag {
+                        id: grid_wrap_id,
+                        name: "Grid".into(),
+                        children: vec![Node::Tag(Tag {
+                            id: grid_id,
+                            name: "grid".into(),
+                            children: vec![
+                                Node::Attrib(Attrib {
+                                    id: x_id,
+                                    name: "x".into(),
+                                    content: gx.to_le_bytes().to_vec(),
+                                }),
+                                Node::Attrib(Attrib {
+                                    id: y_id,
+                                    name: "y".into(),
+                                    content: gy.to_le_bytes().to_vec(),
+                                }),
+                                Node::Attrib(Attrib {
+                                    id: bits_id,
+                                    name: "bits".into(),
+                                    content: bits,
+                                }),
+                            ],
+                        })],
+                    }),
+                ],
+            }),
+            Node::Attrib(Attrib {
+                id: rel_id,
+                name: "RelativePos".into(),
+                content: {
+                    let mut b = vec![0u8; 8];
+                    b[0..4].copy_from_slice(&rx.to_le_bytes());
+                    b[4..8].copy_from_slice(&ry.to_le_bytes());
+                    b
+                },
+            }),
+            Node::Attrib(Attrib {
+                id: owner_id,
+                name: "ComplexOwnerID".into(),
+                content: owner.to_le_bytes().to_vec(),
+            }),
+            Node::Tag(Tag {
+                id: create_id,
+                name: "CreateRect".into(),
+                children: vec![Node::Tag(Tag {
+                    id: rect_id,
+                    name: "Rect".into(),
+                    children: vec![
+                        Node::Attrib(Attrib {
+                            id: index_id,
+                            name: "index".into(),
+                            content: 0i64.to_le_bytes().to_vec(),
+                        }),
+                        Node::Attrib(Attrib {
+                            id: value_id,
+                            name: "value".into(),
+                            content: {
+                                let mut b = vec![0u8; 16];
+                                b[0..4].copy_from_slice(&seed_abs.0.to_le_bytes());
+                                b[4..8].copy_from_slice(&seed_abs.1.to_le_bytes());
+                                b[8..12].copy_from_slice(&seed_abs.0.to_le_bytes());
+                                b[12..16].copy_from_slice(&seed_abs.1.to_le_bytes());
+                                b
+                            },
+                        }),
+                    ],
+                })],
+            }),
+        ],
+    }
+}
+
+/// Ensure an owned SubTileGrid polygon exists (clone template or synthesize).
 fn ensure_field_polygon(
     doc: &mut DocumentOrdered,
     owner: u64,
@@ -708,9 +898,10 @@ fn ensure_field_polygon(
         }
     }
 
-    // Template: any polygon with this field GUID + SubTileGrid.
+    // Prefer same field GUID; otherwise any SubTileGrid (rewrite GUID).
     let template = {
-        let mut found = None;
+        let mut same_guid = None;
+        let mut any_grid = None;
         for root in &doc.roots {
             let Node::Tag(pipette) = root else { continue };
             if pipette.name != "PipetteData" {
@@ -724,40 +915,53 @@ fn ensure_field_polygon(
                 if entry.name != "None" {
                     continue;
                 }
-                let g = find_attrib(&entry.children, "GUID").map(|a| i32_le(&a.content) as u32);
-                if g != Some(field_guid) {
+                if find_tag(&entry.children, "SubTileGrid").is_none() {
                     continue;
                 }
-                if find_tag(&entry.children, "SubTileGrid").is_some() {
-                    found = Some(entry.clone());
+                let g = find_attrib(&entry.children, "GUID").map(|a| i32_le(&a.content) as u32);
+                if g == Some(field_guid) {
+                    same_guid = Some(entry.clone());
                     break;
                 }
+                if any_grid.is_none() {
+                    any_grid = Some(entry.clone());
+                }
             }
-            if found.is_some() {
+            if same_guid.is_some() {
                 break;
             }
         }
-        found
+        same_guid.or(any_grid)
     };
-    let Some(mut entry) = template else {
-        return false;
-    };
-    ensure_owner_attrib(&mut entry, owner);
-    clear_all_subtile_bits(&mut entry);
-    if let Some(stg) = find_tag_mut(&mut entry.children, "SubTileGrid") {
-        if let Some(origin) = find_attrib_mut(&mut stg.children, "GridOriginWS") {
-            write_i32_pair_attrib(origin, seed_abs.0, seed_abs.1);
+
+    let entry = if let Some(mut entry) = template {
+        write_guid_attrib(&mut entry, field_guid);
+        ensure_owner_attrib(&mut entry, owner);
+        clear_all_subtile_bits(&mut entry);
+        // Shrink to a 1×1 empty grid so paint_tile_on_grid can grow from seed.
+        if let Some(stg) = find_tag_mut(&mut entry.children, "SubTileGrid") {
+            if let Some(grid_wrap) = find_tag_mut(&mut stg.children, "Grid") {
+                if let Some(grid) = find_tag_mut(&mut grid_wrap.children, "grid") {
+                    let gx = 4i32;
+                    let gy = 1i32;
+                    let stride = subtile_stride(gx as usize);
+                    if let Some(a) = find_attrib_mut(&mut grid.children, "x") {
+                        write_i32_le(a, gx);
+                    }
+                    if let Some(a) = find_attrib_mut(&mut grid.children, "y") {
+                        write_i32_le(a, gy);
+                    }
+                    if let Some(a) = find_attrib_mut(&mut grid.children, "bits") {
+                        a.content = vec![0u8; (stride * gy as usize + 7) / 8];
+                    }
+                }
+            }
         }
-    }
-    if let Some(rel) = find_attrib_mut(&mut entry.children, "RelativePos") {
-        let drag = drag_center(doc);
-        let rx = seed_abs.0 as f32 - drag.0.floor();
-        let ry = seed_abs.1 as f32 - drag.1.floor();
-        let mut bytes = vec![0u8; 8];
-        bytes[0..4].copy_from_slice(&rx.to_le_bytes());
-        bytes[4..8].copy_from_slice(&ry.to_le_bytes());
-        rel.content = bytes;
-    }
+        bind_field_polygon_seed(doc, &mut entry, seed_abs);
+        entry
+    } else {
+        make_empty_field_polygon(doc, owner, field_guid, seed_abs)
+    };
 
     for root in &mut doc.roots {
         let Node::Tag(pipette) = root else { continue };
@@ -1150,8 +1354,9 @@ impl Stamp {
         stamp.polygon_cells.clear();
         stamp.polygon_area.clear();
         stamp.cistern_fixes_on_load = 0;
-        // Seed pipette still carries MeshGraph streets — wipe them for a true blank.
-        let _ = clear_roads(&mut stamp.document, &stamp.buildings);
+        // Seed pipette still carries MeshGraph streets + aqueduct edges — wipe both.
+        // `clear_roads` alone leaves the aqueduct list (GUID 19723 …) → cyan L on boot.
+        let _ = clear_all_mesh_paths(&mut stamp.document, &stamp.buildings);
         recompute_bounds(&mut stamp.document, &stamp.buildings);
         // Keep Variation in the attrib dictionary even with zero buildings.
         let _ = stamp.document.ensure_attrib_id("Variation");
@@ -1384,6 +1589,10 @@ impl Stamp {
             .get(index)
             .map(|b| (b.x, b.y))
             .ok_or(StampError::MissingField)?;
+        // Drag fires every frame — skip document rewrite when the snap didn't move.
+        if (old.0 - x).abs() < 1e-5 && (old.1 - y).abs() < 1e-5 {
+            return Ok(());
+        }
         let mut count = 0usize;
         for root in &mut self.document.roots {
             let Node::Tag(pipette) = root else { continue };
@@ -1959,6 +2168,17 @@ mod cistern_roundtrip {
         assert_eq!(n, 1);
         let (px, py) = raw_cistern_pos(&stamp, 19753);
         assert!((px - 1.5).abs() < 1e-5 && (py - 1.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn blank_stamp_has_no_mesh_roads_or_aqueducts() {
+        let stamp = Stamp::blank().expect("blank");
+        assert!(stamp.buildings.is_empty());
+        let roads = crate::meshgraph::mesh_road_cells(&stamp.document);
+        assert!(
+            roads.is_empty(),
+            "blank seed must wipe aqueduct MeshGraph too, got {roads:?}"
+        );
     }
 }
 

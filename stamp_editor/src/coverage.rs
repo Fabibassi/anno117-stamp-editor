@@ -193,6 +193,15 @@ fn has_area_effect(def: &BuildingDef) -> bool {
         ) && (def.street_distance.is_some() || def.radius_distance.is_some())
 }
 
+/// True when placing this building should show a live Outgoing coverage preview.
+pub fn building_has_area_effect(def: &BuildingDef) -> bool {
+    has_area_effect(def)
+        && (def.street_distance.is_some()
+            || def.radius_distance.is_some()
+            || !def.effect_bonuses.is_empty()
+            || def.effect_scope.is_some())
+}
+
 fn display_name(def: Option<&BuildingDef>, guid: u32) -> String {
     def.and_then(|d| d.short_name.clone().filter(|s| !s.is_empty()))
         .or_else(|| def.map(|d| d.name.clone()))
@@ -390,6 +399,114 @@ pub fn compute_coverage(
     document: Option<&DocumentOrdered>,
 ) -> CoverageMap {
     compute_coverage_region(buildings, catalog, selected, document, 0)
+}
+
+/// Outgoing coverage as if `source` were already on the stamp (placement ghost preview).
+/// Affected indices refer to `buildings` (the ghost itself is not in the list).
+pub fn compute_outgoing_preview(
+    buildings: &[Building],
+    catalog: &Catalog,
+    source: &Building,
+    document: Option<&DocumentOrdered>,
+    region_guid: u32,
+) -> CoverageMap {
+    let drag = drag_of(document);
+    let roads = build_road_map_region(buildings, catalog, document, region_guid);
+    compute_outgoing_preview_with_roads(
+        buildings,
+        catalog,
+        source,
+        &roads,
+        drag,
+        region_guid,
+        false,
+    )
+}
+
+/// Like [`compute_outgoing_preview`], but reuses a prebuilt road map (hover/drag hot path).
+///
+/// `keep_roads` copies the road map into the result (selection overlay). Ghost preview
+/// leaves it empty — painting only needs `affected` / `reachable_roads` / `hits`.
+pub fn compute_outgoing_preview_with_roads(
+    buildings: &[Building],
+    catalog: &Catalog,
+    source: &Building,
+    roads: &HashMap<Cell, RoadKind>,
+    drag: (f32, f32),
+    region_guid: u32,
+    keep_roads: bool,
+) -> CoverageMap {
+    let mut map = CoverageMap {
+        roads: if keep_roads {
+            roads.clone()
+        } else {
+            HashMap::new()
+        },
+        selected: None,
+        mode: CoverageMode::None,
+        ..CoverageMap::default()
+    };
+    let Some(def) = catalog.building(source.guid) else {
+        return map;
+    };
+    if !building_has_area_effect(def) {
+        return map;
+    }
+
+    let (street_budget, radius, use_street, use_radius) = source_ranges(def);
+    map.mode = CoverageMode::Outgoing;
+    map.street_budget = street_budget.unwrap_or(0.0);
+    map.radius = radius.unwrap_or(0.0);
+
+    let sel_own = footprint_cells_for_region(source, Some(def), region_guid, drag);
+    let seeds = road_seeds(&sel_own, roads);
+    let reach = if use_street {
+        if let Some(budget) = street_budget {
+            street_reach(&seeds, roads, budget)
+        } else {
+            HashMap::new()
+        }
+    } else {
+        HashMap::new()
+    };
+    map.reachable_roads = reach.keys().copied().collect();
+
+    let mut affected = Vec::new();
+    for (i, other) in buildings.iter().enumerate() {
+        let other_def = catalog.building(other.guid);
+        if is_road(other_def).is_some() {
+            continue;
+        }
+        if !effect_applies_to(def, other_def) {
+            continue;
+        }
+        let other_own = footprint_cells_for_region(other, other_def, region_guid, drag);
+        let (via_s, via_r) = covers_target(
+            source,
+            other,
+            &other_own,
+            &reach,
+            use_street,
+            use_radius,
+            radius,
+        );
+        if via_s || via_r {
+            affected.push(i);
+        }
+    }
+    map.affected = affected;
+    map.hits.push(EffectHit {
+        source_index: usize::MAX,
+        source_guid: source.guid,
+        source_name: display_name(Some(def), source.guid),
+        service_kind: def.service_kind.clone(),
+        via_street: use_street,
+        via_radius: use_radius,
+        street_dist: street_budget,
+        radius_dist: radius,
+        bonuses: def.effect_bonuses.clone(),
+    });
+    map
 }
 
 pub fn compute_coverage_region(
@@ -679,6 +796,13 @@ mod regression_footprint {
             tileset_folder: None,
             constructable: None,
             regions: vec![],
+            icon: None,
+            population_level: None,
+            population_icon: None,
+            residence_needs: vec![],
+            upgrade_guids: vec![],
+            base_guids: vec![],
+            upgrade_chain: vec![],
         }
     }
 

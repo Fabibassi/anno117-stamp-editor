@@ -4,20 +4,20 @@ use stamp_editor::catalog::{
 };
 use stamp_editor::icons::{chrome, UiIcons};
 use stamp_editor::coverage::{
-    build_road_map_region, compute_coverage_region, compute_roads_only_region,
-    footprint_cells_for_region, kind_color, layout_stats_region, CoverageMap, CoverageMode,
-    RoadKind,
+    build_road_map_region, building_has_area_effect, compute_coverage_region,
+    compute_outgoing_preview_with_roads, compute_roads_only_region, footprint_cells_for_region,
+    kind_color, layout_stats_region, Cell, CoverageMap, CoverageMode, RoadKind,
 };
 use stamp_editor::needs::{
     analyse_city_needs, provided_need_guids, report_for_building, report_for_def,
-    ResidenceNeedReport,
+    ConsumptionRow, ResidenceNeedReport, ServiceCoverageRow,
 };
 use stamp_editor::area_efficiency::{
     analyze_area_efficiency_with_fields, blocker_map, competition_group,
-    contested_free_cells, is_resource_area_building, radius_cells, resource_need, resource_radius,
-    BlockReason,
+    cell_is_free_for_group, contested_free_cells, field_resource_map, is_resource_area_building,
+    radius_cells, resource_need, resource_radius, AreaEfficiency, BlockReason,
 };
-use stamp_editor::economy::analyze_chain_region;
+use stamp_editor::economy::{analyze_chain_region, ChainReport};
 use stamp_editor::history::{History, Snapshot};
 use stamp_editor::i18n::{self, Language};
 use stamp_editor::library::{self, EditorConfig, LibraryPack};
@@ -28,7 +28,7 @@ use stamp_editor::meshgraph::{
 };
 use stamp_editor::modules::{
     complex_group_indices, complex_main_index, count_progress_for_stamp_area, dist_tiles,
-    is_module_building, module_radius, needed_modules, suggested_modules,
+    is_module_building, module_radius, needed_modules, next_complex_owner_id, suggested_modules,
 };
 use stamp_editor::pack::{
     append_blank_stamp, copy_stamp_to_pack, delete_stamp_entry, duplicate_stamp, move_stamp_to_pack,
@@ -40,8 +40,12 @@ use stamp_editor::stamp::{
     foreign_field_cells, Building,
 };
 use eframe::egui::{self, Color32, Frame, Pos2, Rect, RichText, Sense, Stroke, Vec2};
+use std::cell::RefCell;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
@@ -80,6 +84,28 @@ fn sanitize_stamp_filename(name: &str) -> String {
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// Cached full city analysis, keyed by a fingerprint of the open stamp.
+/// Rebuilt only when the stamp actually changes, so continuous repaints
+/// (panning, hovering) don't re-run the expensive BFS/coverage passes.
+struct CityAnalysisCache {
+    fingerprint: u64,
+    areas: Vec<AreaEfficiency>,
+    chain: ChainReport,
+    city_consumption: Vec<ConsumptionRow>,
+    city_services: Vec<ServiceCoverageRow>,
+    /// Per-residence incoming coverage used to derive `city_services`; retained
+    /// so future UI can drill into it without recomputing.
+    #[allow(dead_code)]
+    incoming_by_index: HashMap<usize, CoverageMap>,
+}
+
+/// Cached area-efficiency pass for the canvas overlay (cheaper subset of the
+/// city analysis above), keyed by the same stamp fingerprint.
+struct AreaAnalysisCache {
+    fingerprint: u64,
+    areas: Vec<AreaEfficiency>,
 }
 
 pub struct StampEditorApp {
@@ -126,6 +152,8 @@ pub struct StampEditorApp {
     road_brush_guid: Option<i32>,
     /// Dedicated road eraser (orthogonal stroke always removes).
     road_erase_mode: bool,
+    /// Radial „Kopieren“: next click / select-rect copies into the hand.
+    copy_pipette_mode: bool,
     /// PlantFarm field brush: ComplexOwnerID + field module GUID.
     field_brush_owner: Option<u64>,
     field_brush_guid: Option<u32>,
@@ -140,6 +168,8 @@ pub struct StampEditorApp {
     game_stamps_root: PathBuf,
     /// Mirror each library save into `game_stamps_root`.
     mirror_to_game: bool,
+    /// Packs the user deleted — auto-seed from Documents must not restore them.
+    suppressed_game_imports: Vec<String>,
     library_packs: Vec<LibraryPack>,
     library_clipboard: Option<LibraryClipboard>,
     move_group: bool,
@@ -209,6 +239,24 @@ pub struct StampEditorApp {
     show_cheatsheet: bool,
     /// Last canvas rect (for zoom-to-fit, which needs the viewport size).
     last_canvas_rect: Option<Rect>,
+    /// Cached full city analysis (analyse panel); rebuilt on stamp change only.
+    city_analysis: Option<CityAnalysisCache>,
+    /// Cached area-efficiency pass for the canvas overlay.
+    area_analysis: Option<AreaAnalysisCache>,
+    /// Cached residence incoming coverage for the service-needs window:
+    /// `(stamp fingerprint, residence index, coverage)`.
+    needs_cov_cache: Option<(u64, usize, CoverageMap)>,
+    /// Bumped whenever stamp geometry that analysis depends on changes.
+    /// Avoids re-hashing the whole stamp (incl. mesh roads) on every hover frame.
+    analysis_gen: u64,
+    /// Shared road map for live place-ghost coverage (`analysis_gen`, roads).
+    place_cov_roads: RefCell<Option<(u64, Arc<HashMap<Cell, RoadKind>>)>>,
+    /// Live Outgoing coverage while a place-ghost is under the cursor:
+    /// `(analysis_gen, guid, direction, x bits, y bits, coverage)`.
+    /// `RefCell` so the canvas can update the cache while `open` is immutably borrowed.
+    place_ghost_cov: RefCell<Option<(u64, u32, i32, u32, u32, CoverageMap)>>,
+    /// Last `(building idx, x bits, y bits)` for which drag refreshed coverage.
+    drag_cov_key: Option<(usize, u32, u32)>,
 }
 
 #[derive(Debug, Clone)]
@@ -248,6 +296,58 @@ fn rect_bounds(a: (i32, i32), b: (i32, i32)) -> (i32, i32, i32, i32) {
         a.0.max(b.0),
         a.1.max(b.1),
     )
+}
+
+/// Top-left tiles for a PlaceRect grid **anchored at drag start**, stepping toward
+/// `cursor`. Only footprints fully inside the drag AABB are included. If the drag
+/// is smaller than one footprint, returns `start` alone (click / tiny drag).
+fn place_rect_top_lefts(
+    start: (i32, i32),
+    cursor: (i32, i32),
+    step_w: i32,
+    step_h: i32,
+) -> Vec<(i32, i32)> {
+    let step_w = step_w.max(1);
+    let step_h = step_h.max(1);
+    let (min_x, min_y, max_x, max_y) = rect_bounds(start, cursor);
+    // Drag too small for even one footprint → single place at start (click).
+    if max_x - min_x + 1 < step_w || max_y - min_y + 1 < step_h {
+        return vec![start];
+    }
+    let dx = if cursor.0 >= start.0 { step_w } else { -step_w };
+    let dy = if cursor.1 >= start.1 { step_h } else { -step_h };
+    let mut out = Vec::new();
+    let mut y = start.1;
+    for _ in 0..512 {
+        let y1 = y + step_h - 1;
+        if y < min_y || y1 > max_y {
+            break;
+        }
+        let mut x = start.0;
+        for _ in 0..512 {
+            let x1 = x + step_w - 1;
+            if x < min_x || x1 > max_x {
+                break;
+            }
+            out.push((x, y));
+            let nx = x + dx;
+            let nx1 = nx + step_w - 1;
+            if nx < min_x || nx1 > max_x {
+                break;
+            }
+            x = nx;
+        }
+        let ny = y + dy;
+        let ny1 = ny + step_h - 1;
+        if ny < min_y || ny1 > max_y {
+            break;
+        }
+        y = ny;
+    }
+    if out.is_empty() {
+        out.push(start);
+    }
+    out
 }
 
 fn rect_cells(min_x: i32, min_y: i32, max_x: i32, max_y: i32) -> Vec<(i32, i32)> {
@@ -540,6 +640,7 @@ impl StampEditorApp {
             suppress_stroke_click: false,
             road_brush_guid: None,
             road_erase_mode: false,
+            copy_pipette_mode: false,
             field_brush_owner: None,
             field_brush_guid: None,
             radial: None,
@@ -549,6 +650,7 @@ impl StampEditorApp {
             game_install,
             game_stamps_root,
             mirror_to_game,
+            suppressed_game_imports: cfg.suppressed_game_imports.clone(),
             library_packs,
             library_clipboard: None,
             move_group: false,
@@ -588,6 +690,13 @@ impl StampEditorApp {
             focus_library_filter: false,
             show_cheatsheet: false,
             last_canvas_rect: None,
+            city_analysis: None,
+            area_analysis: None,
+            needs_cov_cache: None,
+            analysis_gen: 0,
+            place_cov_roads: RefCell::new(None),
+            place_ghost_cov: RefCell::new(None),
+            drag_cov_key: None,
         };
         if cfg.needs_first_run() {
             // Prefill wizard (detect install), but don't load icons/library until confirmed.
@@ -961,10 +1070,14 @@ impl StampEditorApp {
         }
         self.library_watch_at = now + Duration::from_secs(1);
         // Never auto-import game stamps before first-run setup is confirmed.
+        // Skip packs the user deleted in the library (tombstones) so Documents
+        // leftovers / cloud restore do not undo library deletes every second.
         if self.setup_complete && !self.library_is_game_stamps() {
-            if let Ok(n) = library::seed_library_from_game(
+            if let Ok((n, _)) = library::import_packs_from_game(
                 &self.library_root,
                 &self.game_stamps_root,
+                false,
+                &self.suppressed_game_imports,
             ) {
                 if n > 0 {
                     self.refresh_library_silent();
@@ -1009,13 +1122,19 @@ impl StampEditorApp {
             self.status = self.t("status.export_same_folder").into();
             return;
         }
+        // Explicit import may restore previously deleted packs — clear their tombstones.
         match library::import_packs_from_game(
             &self.library_root,
             &self.game_stamps_root,
             true,
+            &[],
         ) {
-            Ok(n) => {
+            Ok((n, keys)) => {
+                for key in keys {
+                    self.suppressed_game_imports.retain(|k| k != &key);
+                }
                 self.refresh_library();
+                self.save_config();
                 self.status = self.tf(
                     "status.imported_from_game",
                     &[("n", &n.to_string())],
@@ -1113,10 +1232,10 @@ impl StampEditorApp {
             Ok(open) => {
                 self.history.clear();
                 self.history_drag_pushed = false;
-                self.module_parent_index = None;
+                self.clear_analysis_caches();
+                // Don't keep Abriss/Weg/Feld from the previous stamp (e.g. after D).
+                self.clear_hand_silent();
                 self.clear_canvas_selection();
-                self.placing_guid = None;
-                self.place_variation = None;
                 self.autosave_at = None;
                 self.open = Some(open);
                 self.center_view();
@@ -1315,6 +1434,7 @@ impl StampEditorApp {
     fn open_fallback_after_delete(&mut self) {
         self.autosave_at = None;
         self.open = None;
+        self.clear_analysis_caches();
         // Prefer a pack that still matches the region filter.
         let region = self.region_filter;
         let pick = self
@@ -1386,12 +1506,41 @@ impl StampEditorApp {
             if hits_open {
                 self.autosave_at = None;
                 self.open = None;
+                self.clear_analysis_caches();
                 deleted_open = true;
             }
             let result = match item {
-                LibItem::Pack(path) => library::delete_pack_file(path),
+                LibItem::Pack(path) => {
+                    // Tombstone + delete Documents mirror so the 1s auto-seed
+                    // cannot resurrect the pack from the game folder.
+                    self.suppress_pack_import(path);
+                    library::delete_pack_and_mirror(
+                        &self.library_root,
+                        &self.game_stamps_root,
+                        path,
+                    )
+                    .map(|_| ())
+                }
                 LibItem::Stamp { pack, name } => {
-                    delete_stamp_entry(pack, name).map_err(|e| e.to_string())
+                    let pack_path = pack.clone();
+                    let res = delete_stamp_entry(pack, name).map_err(|e| e.to_string());
+                    if res.is_ok() {
+                        if pack_path.is_file() {
+                            // Pack still has stamps — sync the trimmed file to Documents.
+                            self.allow_pack_import(&pack_path);
+                            let _ = self.mirror_pack_after_save(&pack_path);
+                        } else {
+                            // Last stamp removed the pack file — same as pack delete.
+                            self.suppress_pack_import(&pack_path);
+                            if let Ok(rel) = pack_path.strip_prefix(&self.library_root) {
+                                let game_path = self.game_stamps_root.join(rel);
+                                if game_path.is_file() {
+                                    let _ = std::fs::remove_file(&game_path);
+                                }
+                            }
+                        }
+                    }
+                    res
                 }
             };
             match result {
@@ -1402,6 +1551,7 @@ impl StampEditorApp {
 
         self.library_selection.clear();
         self.refresh_library();
+        self.save_config();
         if deleted_open {
             self.open_fallback_after_delete();
         }
@@ -1455,6 +1605,7 @@ impl StampEditorApp {
                     // Don't autosave into a file we're about to remove.
                     self.autosave_at = None;
                     self.open = None;
+                    self.clear_analysis_caches();
                 }
                 match library::delete_pack_file(&path) {
                     Ok(()) => {
@@ -1482,6 +1633,7 @@ impl StampEditorApp {
                 if was_open {
                     self.autosave_at = None;
                     self.open = None;
+                    self.clear_analysis_caches();
                 }
                 match delete_stamp_entry(&pack, &name) {
                     Ok(()) => {
@@ -1734,8 +1886,25 @@ impl StampEditorApp {
             language: self.language.as_config().to_string(),
             setup_complete: self.setup_complete,
             recent_packs: self.recent_packs.clone(),
+            suppressed_game_imports: self.suppressed_game_imports.clone(),
         }
         .save();
+    }
+
+    fn suppress_pack_import(&mut self, pack_path: &Path) {
+        let Some(key) = library::pack_rel_key(&self.library_root, pack_path) else {
+            return;
+        };
+        self.suppressed_game_imports.retain(|k| k != &key);
+        self.suppressed_game_imports.insert(0, key);
+        self.suppressed_game_imports
+            .truncate(library::SUPPRESSED_IMPORTS_MAX);
+    }
+
+    fn allow_pack_import(&mut self, pack_path: &Path) {
+        if let Some(key) = library::pack_rel_key(&self.library_root, pack_path) {
+            self.suppressed_game_imports.retain(|k| k != &key);
+        }
     }
 
     fn library_is_game_stamps(&self) -> bool {
@@ -1743,7 +1912,9 @@ impl StampEditorApp {
     }
 
     /// Mirror a just-saved library pack into Documents stamps (best-effort).
-    fn mirror_pack_after_save(&self, pack_path: &std::path::Path) -> String {
+    fn mirror_pack_after_save(&mut self, pack_path: &std::path::Path) -> String {
+        // Saving again means the user wants this pack — lift any delete tombstone.
+        self.allow_pack_import(pack_path);
         if !self.mirror_to_game || self.library_is_game_stamps() {
             return String::new();
         }
@@ -1843,9 +2014,13 @@ impl StampEditorApp {
         self.placing_guid = Some(guid);
         self.module_parent_index = None;
         self.road_brush_guid = None;
+        self.road_erase_mode = false;
         self.field_brush_owner = None;
         self.field_brush_guid = None;
         self.hand_from_clipboard = false;
+        self.drag_stroke = None;
+        // Stale suppress from a prior stroke would eat the first place click.
+        self.suppress_stroke_click = false;
         // Default: land footprint. Marsh (5×5 warehouse) via place_variation = 1 (Taste V).
         self.place_variation = None;
         self.place_direction = 0;
@@ -2049,6 +2224,7 @@ impl StampEditorApp {
             self.placing_guid = None;
             self.place_variation = None;
             self.drag_stroke = None;
+            self.suppress_stroke_click = false;
             self.residence_tier_guids = None;
             // Dirt/stone: collapse the infra category. Aqueduct stays open so
             // Basin / Segment / Cistern remain clickable in the mid-row.
@@ -2313,6 +2489,18 @@ impl StampEditorApp {
             (false, false) => format!("Kopiert: {label} — Ctrl+V → Hand"),
         };
         true
+    }
+
+    /// After pipette click/marquee: clipboard → hand and leave pipette mode.
+    fn finish_copy_pipette(&mut self) {
+        if self.copy_selection_to_clipboard() {
+            self.copy_pipette_mode = false;
+            self.arm_clipboard_in_hand();
+        } else if !self.clipboard_roads.is_empty() {
+            // Roads-only copy still arms a hand if we have a primary building — otherwise keep mode.
+            self.copy_pipette_mode = false;
+            self.arm_clipboard_in_hand();
+        }
     }
 
     /// Put clipboard primary into the placement hand (ghost follows cursor; click to set).
@@ -2635,8 +2823,19 @@ impl StampEditorApp {
                 self.activate_road_eraser();
             }
             RadialAction::Copy => {
-                self.clear_hand();
-                self.copy_selection_to_clipboard();
+                self.clear_hand_silent();
+                // Already have a selection → copy straight into the hand.
+                if !self.selection_indices().is_empty()
+                    || !self.selected_roads.is_empty()
+                    || self.hover_building.is_some()
+                {
+                    if self.copy_selection_to_clipboard() {
+                        self.arm_clipboard_in_hand();
+                    }
+                } else {
+                    self.copy_pipette_mode = true;
+                    self.status = self.t("status.copy_pipette").into();
+                }
             }
             RadialAction::Move => {
                 self.clear_hand();
@@ -2649,20 +2848,27 @@ impl StampEditorApp {
         }
     }
 
-    fn clear_hand(&mut self) {
+    /// Drop active tool / hand state without touching the status line.
+    fn clear_hand_silent(&mut self) {
         self.placing_guid = None;
         self.place_variation = None;
         self.module_parent_index = None;
         self.road_brush_guid = None;
         self.road_erase_mode = false;
+        self.copy_pipette_mode = false;
         self.field_brush_owner = None;
         self.field_brush_guid = None;
         self.hand_from_clipboard = false;
         self.drag_stroke = None;
+        self.suppress_stroke_click = false;
         // Drop infra tile highlight with the tool (was stuck on after RMB).
         self.buildmenu_infra_entry = None;
         self.buildmenu_entry = None;
         self.residence_tier_guids = None;
+    }
+
+    fn clear_hand(&mut self) {
+        self.clear_hand_silent();
         self.status = self.t("status.hand_cleared").into();
     }
 
@@ -2765,21 +2971,11 @@ impl StampEditorApp {
                 })
             });
             StrokeKind::Field { paint_on: !already }
-        } else if let Some(brush) = self.road_brush_guid {
-            // Same GUID under cursor → erase (toggle). Empty or *other* road type →
-            // paint/overwrite so Dirt→Stone upgrades work when starting on Dirt.
-            let existing = self.open.as_ref().and_then(|o| {
-                mesh_road_cells(&o.stamp.document)
-                    .into_iter()
-                    .find(|(x, y, _)| *x == tx && *y == ty)
-                    .map(|(_, _, g)| g)
-            });
-            let paint_on = match existing {
-                None => true,
-                Some(g) if g == brush => false,
-                Some(_) => true,
-            };
-            StrokeKind::Road { paint_on }
+        } else if self.road_brush_guid.is_some() {
+            // Always paint/extend. Starting on an existing road of the same type must
+            // NOT toggle erase — that's what Abriss / road eraser is for. Same cells
+            // are skipped inside apply_road_path; other types are overwritten (Dirt→Stone).
+            StrokeKind::Road { paint_on: true }
         } else if !self.hand_busy() {
             StrokeKind::SelectRect
         } else {
@@ -2946,26 +3142,34 @@ impl StampEditorApp {
                 let n_fields = field_hits.len();
                 self.set_canvas_selection_full(hits, road_hits, field_hits);
                 self.refresh_coverage();
-                self.status = match (n == 0, n_roads == 0, n_fields == 0) {
-                    (true, true, true) => self.t("status.sel_empty").into(),
-                    (false, true, true) => {
-                        self.tf("status.sel_buildings", &[("n", &n.to_string())])
+                if self.copy_pipette_mode {
+                    if n > 0 || n_roads > 0 {
+                        self.finish_copy_pipette();
+                    } else {
+                        self.status = self.t("status.copy_pipette_miss").into();
                     }
-                    (true, false, true) => {
-                        self.tf("status.sel_roads", &[("n", &n_roads.to_string())])
-                    }
-                    (true, true, false) => {
-                        self.tf("status.sel_fields", &[("n", &n_fields.to_string())])
-                    }
-                    _ => self.tf(
-                        "status.sel_mixed",
-                        &[
-                            ("b", &n.to_string()),
-                            ("r", &n_roads.to_string()),
-                            ("f", &n_fields.to_string()),
-                        ],
-                    ),
-                };
+                } else {
+                    self.status = match (n == 0, n_roads == 0, n_fields == 0) {
+                        (true, true, true) => self.t("status.sel_empty").into(),
+                        (false, true, true) => {
+                            self.tf("status.sel_buildings", &[("n", &n.to_string())])
+                        }
+                        (true, false, true) => {
+                            self.tf("status.sel_roads", &[("n", &n_roads.to_string())])
+                        }
+                        (true, true, false) => {
+                            self.tf("status.sel_fields", &[("n", &n_fields.to_string())])
+                        }
+                        _ => self.tf(
+                            "status.sel_mixed",
+                            &[
+                                ("b", &n.to_string()),
+                                ("r", &n_roads.to_string()),
+                                ("f", &n_fields.to_string()),
+                            ],
+                        ),
+                    };
+                }
             }
             StrokeKind::DemolishRect => {
                 let (min_x, min_y, max_x, max_y) = rect_bounds(stroke.start, stroke.cursor);
@@ -3022,18 +3226,22 @@ impl StampEditorApp {
                 };
                 let variation = self.place_variation;
                 let from_clipboard = self.hand_from_clipboard;
+                let place_dir = self.place_direction;
                 let (bw, bh) = if from_clipboard {
                     self.clipboard
                         .iter()
                         .find(|c| c.is_primary)
                         .map(|p| self.clipboard_oriented_size(p))
-                        .unwrap_or_else(|| self.building_size(guid, variation))
+                        .unwrap_or_else(|| {
+                            let (w0, h0) = self.building_size(guid, variation);
+                            oriented_size(w0, h0, place_dir)
+                        })
                 } else {
-                    self.building_size(guid, variation)
+                    let (w0, h0) = self.building_size(guid, variation);
+                    oriented_size(w0, h0, place_dir)
                 };
                 let bw_i = bw.round().max(1.0) as i32;
                 let bh_i = bh.round().max(1.0) as i32;
-                let (min_x, min_y, max_x, max_y) = rect_bounds(stroke.start, stroke.cursor);
                 // Clipboard groups step by the whole group AABB so a marquee the size of
                 // the selection places one copy — not a broken primary-sized grid.
                 let (step_w, step_h) = if from_clipboard {
@@ -3041,51 +3249,25 @@ impl StampEditorApp {
                 } else {
                     (bw_i, bh_i)
                 };
-                let place_dir = 0i32;
-                let mut centers = Vec::new();
-                let mut gy = min_y;
-                while gy + step_h - 1 <= max_y {
-                    let mut gx = min_x;
-                    while gx + step_w - 1 <= max_x {
-                        if from_clipboard {
-                            if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
-                                centers.push(self.place_pos_for_tl(
-                                    gx,
-                                    gy,
-                                    p.guid,
-                                    p.variation,
-                                    p.direction,
-                                ));
-                            } else {
-                                centers.push(place_center_from_top_left(gx, gy, bw_i, bh_i));
-                            }
-                        } else {
-                            centers.push(self.place_pos_for_tl(
-                                gx, gy, guid, variation, place_dir,
-                            ));
-                        }
-                        gx += step_w;
-                    }
-                    gy += step_h;
-                }
-                if centers.is_empty() {
-                    // start/cursor are footprint top-left tiles — never treat them as centers.
-                    let (sx, sy) = (stroke.start.0, stroke.start.1);
+                let origins =
+                    place_rect_top_lefts(stroke.start, stroke.cursor, step_w, step_h);
+                let mut centers = Vec::with_capacity(origins.len());
+                for (gx, gy) in origins {
                     if from_clipboard {
                         if let Some(p) = self.clipboard.iter().find(|c| c.is_primary) {
                             centers.push(self.place_pos_for_tl(
-                                sx,
-                                sy,
+                                gx,
+                                gy,
                                 p.guid,
                                 p.variation,
                                 p.direction,
                             ));
                         } else {
-                            centers.push(place_center_from_top_left(sx, sy, bw_i, bh_i));
+                            centers.push(place_center_from_top_left(gx, gy, bw_i, bh_i));
                         }
                     } else {
                         centers.push(self.place_pos_for_tl(
-                            sx, sy, guid, variation, place_dir,
+                            gx, gy, guid, variation, place_dir,
                         ));
                     }
                 }
@@ -3140,7 +3322,6 @@ impl StampEditorApp {
                     return;
                 }
 
-                let place_dir = self.place_direction;
                 let parent_idx = self.module_parent_index;
                 let mut occupied = self.occupied_footprint_cells(&[]);
                 let place_drag = self.stamp_drag();
@@ -3192,10 +3373,22 @@ impl StampEditorApp {
                                 if let Some(pi) = parent_idx {
                                     let oid = open_mut.stamp.buildings[pi]
                                         .complex_owner_id
+                                        .filter(|o| *o != 0)
                                         .unwrap_or_else(|| {
-                                            (pi as u64).wrapping_mul(1009).wrapping_add(7)
+                                            next_complex_owner_id(
+                                                &open_mut.stamp.buildings,
+                                                &open_mut.stamp.polygon_cells,
+                                            )
                                         });
                                     let _ = open_mut.stamp.set_building_owner(pi, oid);
+                                    let _ = open_mut.stamp.set_building_owner(new_idx, oid);
+                                } else if needed_modules(place_def) > 0 {
+                                    // Plant/Animal farms need a ComplexOwnerID so field
+                                    // painting / Untergebäude overlay can attach modules.
+                                    let oid = next_complex_owner_id(
+                                        &open_mut.stamp.buildings,
+                                        &open_mut.stamp.polygon_cells,
+                                    );
                                     let _ = open_mut.stamp.set_building_owner(new_idx, oid);
                                 }
                                 for c in cells {
@@ -3422,7 +3615,9 @@ impl StampEditorApp {
         }
     }
 
-    /// Footprint tiles of non-road buildings, optionally skipping indices.
+    /// Footprint tiles that block placing/moving a building.
+    /// Includes other buildings plus MeshGraph roads/aqueducts (not street BuildingInfo —
+    /// those are already in the mesh).
     fn occupied_footprint_cells(&self, exclude: &[usize]) -> HashSet<(i32, i32)> {
         let mut out = HashSet::new();
         let Some(open) = self.open.as_ref() else {
@@ -3448,6 +3643,9 @@ impl StampEditorApp {
             ) {
                 out.insert((c.x, c.y));
             }
+        }
+        for (x, y, _) in mesh_road_cells(&open.stamp.document) {
+            out.insert((x, y));
         }
         out
     }
@@ -3988,7 +4186,17 @@ impl StampEditorApp {
             self.selected_roads.extend(self.drag_group_roads_live.iter().copied());
         }
         self.schedule_autosave();
-        self.refresh_coverage();
+        let cov_key = (_primary_idx, sx.to_bits(), sy.to_bits());
+        if self.drag_cov_key != Some(cov_key) {
+            self.drag_cov_key = Some(cov_key);
+            self.analysis_gen = self.analysis_gen.wrapping_add(1);
+            *self.place_cov_roads.borrow_mut() = None;
+            *self.place_ghost_cov.borrow_mut() = None;
+            self.city_analysis = None;
+            self.area_analysis = None;
+            self.needs_cov_cache = None;
+            self.refresh_coverage();
+        }
         let n = self.drag_group_origins.len();
         let nr = self.drag_group_roads.len();
         if n > 1 || nr > 0 {
@@ -4362,9 +4570,253 @@ impl StampEditorApp {
         self.save_config();
     }
 
+    /// Hash of everything the analysis passes depend on. When this is unchanged
+    /// the cached results stay valid, so repaints (pan/hover) are cheap.
+    fn stamp_analysis_fingerprint(open: &OpenStamp, lang: Language) -> u64 {
+        let mut h = DefaultHasher::new();
+        (lang as u8).hash(&mut h);
+        open.region_guid.hash(&mut h);
+        for b in &open.stamp.buildings {
+            b.guid.hash(&mut h);
+            b.x.to_bits().hash(&mut h);
+            b.y.to_bits().hash(&mut h);
+            b.direction.hash(&mut h);
+            b.variation.hash(&mut h);
+            b.complex_owner_id.hash(&mut h);
+        }
+        for c in &open.stamp.polygon_cells {
+            c.guid.hash(&mut h);
+            c.x.hash(&mut h);
+            c.y.hash(&mut h);
+            c.complex_owner_id.hash(&mut h);
+        }
+        // Road edits must invalidate too; sort so order changes don't matter.
+        let mut roads = mesh_road_cells(&open.stamp.document);
+        roads.sort_unstable();
+        roads.hash(&mut h);
+        h.finish()
+    }
+
+    /// Drop all cached analysis (on stamp open/close/switch).
+    fn clear_analysis_caches(&mut self) {
+        self.city_analysis = None;
+        self.area_analysis = None;
+        self.needs_cov_cache = None;
+        self.analysis_gen = self.analysis_gen.wrapping_add(1);
+        *self.place_cov_roads.borrow_mut() = None;
+        *self.place_ghost_cov.borrow_mut() = None;
+        self.drag_cov_key = None;
+    }
+
+    fn place_cov_road_map(&self, open: &OpenStamp) -> Arc<HashMap<Cell, RoadKind>> {
+        let gen = self.analysis_gen;
+        if let Some((g, roads)) = self.place_cov_roads.borrow().as_ref() {
+            if *g == gen {
+                return Arc::clone(roads);
+            }
+        }
+        let roads = Arc::new(build_road_map_region(
+            &open.stamp.buildings,
+            &self.catalog,
+            Some(&open.stamp.document),
+            open.region_guid,
+        ));
+        *self.place_cov_roads.borrow_mut() = Some((gen, Arc::clone(&roads)));
+        roads
+    }
+
+    /// Outgoing coverage for a building held in hand at a snapped ghost pose.
+    fn place_ghost_coverage(&self, open: &OpenStamp, source: &Building) -> CoverageMap {
+        let empty = CoverageMap::default();
+        let Some(def) = self.catalog.building(source.guid) else {
+            return empty;
+        };
+        if !building_has_area_effect(def) {
+            return empty;
+        }
+        let gen = self.analysis_gen;
+        let xb = source.x.to_bits();
+        let yb = source.y.to_bits();
+        {
+            let cache = self.place_ghost_cov.borrow();
+            if let Some((cgen, g, d, cx, cy, map)) = cache.as_ref() {
+                if *cgen == gen
+                    && *g == source.guid
+                    && *d == source.direction
+                    && *cx == xb
+                    && *cy == yb
+                {
+                    return map.clone();
+                }
+            }
+        }
+        let roads = self.place_cov_road_map(open);
+        let map = compute_outgoing_preview_with_roads(
+            &open.stamp.buildings,
+            &self.catalog,
+            source,
+            roads.as_ref(),
+            self.stamp_drag(),
+            open.region_guid,
+            false,
+        );
+        *self.place_ghost_cov.borrow_mut() = Some((
+            gen,
+            source.guid,
+            source.direction,
+            xb,
+            yb,
+            map.clone(),
+        ));
+        map
+    }
+
+    fn paint_outgoing_coverage_preview(
+        &self,
+        painter: &egui::Painter,
+        rect: Rect,
+        open: &OpenStamp,
+        cov: &CoverageMap,
+    ) {
+        if !matches!(cov.mode, CoverageMode::Outgoing) {
+            return;
+        }
+        // Skip full road-flood tint on the hot path — chips/dots are enough to see who
+        // gets the bonus, and painting hundreds of road cells every move caused hitching.
+        let Some(hit) = cov.hits.first() else {
+            return;
+        };
+        let (r, g, bl) = kind_color(hit.service_kind.as_deref());
+        let color = Color32::from_rgb(r, g, bl);
+        for &ai in &cov.affected {
+            let Some(tb) = open.stamp.buildings.get(ai) else {
+                continue;
+            };
+            if self.cell_px >= 20.0 {
+                let anchor = self.world_to_screen(rect, tb.x, tb.y - 0.9);
+                let short: Vec<String> = hit
+                    .bonuses
+                    .iter()
+                    .take(2)
+                    .map(|b| self.format_bonus_chip(&b.attr, b.value))
+                    .collect();
+                self.paint_bonus_label(painter, anchor, &short, color);
+            } else if self.cell_px >= 10.0 {
+                let c = self.world_to_screen(rect, tb.x, tb.y);
+                let rad = (self.cell_px * 0.22).clamp(2.5, 5.0);
+                painter.circle_filled(
+                    c,
+                    rad,
+                    Color32::from_rgba_unmultiplied(r, g, bl, 220),
+                );
+                painter.circle_stroke(
+                    c,
+                    rad,
+                    Stroke::new(1.0_f32, Color32::from_rgb(240, 245, 255)),
+                );
+            }
+        }
+    }
+
+    /// Ensure the canvas area-efficiency cache matches the current stamp.
+    fn ensure_area_analysis(&mut self) {
+        let fp = match &self.open {
+            Some(open) => Self::stamp_analysis_fingerprint(open, self.language),
+            None => {
+                self.area_analysis = None;
+                return;
+            }
+        };
+        if self.area_analysis.as_ref().map(|c| c.fingerprint) == Some(fp) {
+            return;
+        }
+        let open = self.open.as_ref().expect("open checked above");
+        let areas = analyze_area_efficiency_with_fields(
+            &open.stamp.buildings,
+            &self.catalog,
+            Some(&open.stamp.document),
+            open.region_guid,
+            &open.stamp.polygon_cells,
+            self.language,
+        );
+        self.area_analysis = Some(AreaAnalysisCache {
+            fingerprint: fp,
+            areas,
+        });
+    }
+
+    /// Ensure the full city-analysis cache matches the current stamp. Only the
+    /// analyse panel needs this, so it is called just when that panel is shown.
+    fn ensure_city_analysis(&mut self) {
+        let fp = match &self.open {
+            Some(open) => Self::stamp_analysis_fingerprint(open, self.language),
+            None => {
+                self.city_analysis = None;
+                return;
+            }
+        };
+        if self.city_analysis.as_ref().map(|c| c.fingerprint) == Some(fp) {
+            return;
+        }
+        let open = self.open.as_ref().expect("open checked above");
+        let lang = self.language;
+        let region_guid = open.region_guid;
+        let areas = analyze_area_efficiency_with_fields(
+            &open.stamp.buildings,
+            &self.catalog,
+            Some(&open.stamp.document),
+            region_guid,
+            &open.stamp.polygon_cells,
+            lang,
+        );
+        let chain = analyze_chain_region(
+            &open.stamp.buildings,
+            &self.catalog,
+            Some(&open.stamp.document),
+            region_guid,
+            &open.stamp.polygon_cells,
+            lang,
+        );
+        let mut incoming_by_index: HashMap<usize, CoverageMap> = HashMap::new();
+        for (idx, b) in open.stamp.buildings.iter().enumerate() {
+            if self
+                .catalog
+                .building(b.guid)
+                .is_some_and(|d| d.is_residence())
+            {
+                incoming_by_index.insert(
+                    idx,
+                    compute_coverage_region(
+                        &open.stamp.buildings,
+                        &self.catalog,
+                        idx,
+                        Some(&open.stamp.document),
+                        region_guid,
+                    ),
+                );
+            }
+        }
+        let (city_consumption, city_services) = analyse_city_needs(
+            &self.catalog,
+            &open.stamp.buildings,
+            &incoming_by_index,
+            lang,
+        );
+        self.city_analysis = Some(CityAnalysisCache {
+            fingerprint: fp,
+            areas,
+            chain,
+            city_consumption,
+            city_services,
+            incoming_by_index,
+        });
+    }
+
     fn set_open(&mut self, open: OpenStamp, path: &Path) {
+        self.clear_analysis_caches();
         self.history.clear();
         self.history_drag_pushed = false;
+        self.clear_hand_silent();
         self.module_parent_index = None;
         self.residence_needs_pin = None;
         // Only auto-pick region when opening a pack (global filter stays user-controlled after).
@@ -4424,6 +4876,7 @@ impl StampEditorApp {
                     open.stamp.buildings.len(),
                     self.region_filter.label_lang(self.language)
                 );
+                self.clear_hand_silent();
                 self.clear_canvas_selection();
                 self.module_parent_index = None;
                 self.open = Some(open);
@@ -5050,15 +5503,32 @@ impl StampEditorApp {
         let report = if self.selected_building == Some(sel)
             && matches!(self.coverage.mode, CoverageMode::Incoming)
         {
+            // Selected residence already has live Incoming coverage — use it.
             report_for_def(def, &provided_need_guids(&self.coverage.hits))
         } else {
-            let cov = compute_coverage_region(
-                &open.stamp.buildings,
-                &self.catalog,
-                sel,
-                Some(&open.stamp.document),
-                open.region_guid,
-            );
+            // Otherwise reuse a cached coverage for this (stamp, residence);
+            // only recompute the BFS when the stamp or focus actually changes.
+            let fp = Self::stamp_analysis_fingerprint(open, lang);
+            let stale = self
+                .needs_cov_cache
+                .as_ref()
+                .map(|(cfp, cidx, _)| *cfp != fp || *cidx != sel)
+                .unwrap_or(true);
+            if stale {
+                let cov = compute_coverage_region(
+                    &open.stamp.buildings,
+                    &self.catalog,
+                    sel,
+                    Some(&open.stamp.document),
+                    open.region_guid,
+                );
+                self.needs_cov_cache = Some((fp, sel, cov));
+            }
+            let cov = &self
+                .needs_cov_cache
+                .as_ref()
+                .expect("needs coverage just cached")
+                .2;
             report_for_def(def, &provided_need_guids(&cov.hits))
         };
         if report.services.is_empty() {
@@ -5205,26 +5675,53 @@ impl StampEditorApp {
         }
     }
 
+    /// Assign a ComplexOwnerID to a farm main that still lacks one (needed for field paint).
+    fn ensure_farm_complex_owner(&mut self, main_idx: usize) -> Option<u64> {
+        let open = self.open.as_mut()?;
+        let b = open.stamp.buildings.get(main_idx)?;
+        if let Some(oid) = b.complex_owner_id.filter(|o| *o != 0) {
+            return Some(oid);
+        }
+        let def = self.catalog.building(b.guid)?;
+        if needed_modules(Some(def)) == 0 {
+            return None;
+        }
+        let oid = next_complex_owner_id(&open.stamp.buildings, &open.stamp.polygon_cells);
+        open.stamp.set_building_owner(main_idx, oid).ok()?;
+        open.dirty = true;
+        self.schedule_autosave();
+        Some(oid)
+    }
+
     fn show_complex_module_ui(&mut self, ctx: &egui::Context) {
-        let Some(open) = self.open.as_ref() else {
-            return;
-        };
         let Some(sel) = self.selected_building.or(self.hover_building) else {
             return;
         };
-        // Only farms/pastures with a ComplexOwnerID — kitchens without owner stay quiet.
-        let Some(main_idx) = complex_main_index(&open.stamp.buildings, &self.catalog, sel) else {
+        let (main_idx, main_guid, need) = {
+            let Some(open) = self.open.as_ref() else {
+                return;
+            };
+            // Farms needing modules/fields — also when ComplexOwnerID is still missing
+            // (fresh place); kitchens without a quota stay quiet.
+            let Some(main_idx) = complex_main_index(&open.stamp.buildings, &self.catalog, sel)
+            else {
+                return;
+            };
+            let Some(main_b) = open.stamp.buildings.get(main_idx) else {
+                return;
+            };
+            let main_guid = main_b.guid;
+            let need = needed_modules(self.catalog.building(main_guid));
+            if need == 0 {
+                return;
+            }
+            (main_idx, main_guid, need)
+        };
+        let farm_owner = self.ensure_farm_complex_owner(main_idx);
+        let Some(open) = self.open.as_ref() else {
             return;
         };
-        let Some(main_b) = open.stamp.buildings.get(main_idx) else {
-            return;
-        };
-        let main_guid = main_b.guid;
         let main_def = self.catalog.building(main_guid);
-        let need = needed_modules(main_def);
-        if need == 0 {
-            return;
-        }
         let region = open.region_guid;
         let mod_btns: Vec<(u32, String)> = main_def
             .map(|d| {
@@ -5241,17 +5738,16 @@ impl StampEditorApp {
             })
             .unwrap_or_default();
         let have = count_progress_for_stamp_area(
-                            &open.stamp.buildings,
-                            &open.stamp.polygon_modules,
-                            &open.stamp.polygon_cells,
-                            &open.stamp.polygon_area,
+            &open.stamp.buildings,
+            &open.stamp.polygon_modules,
+            &open.stamp.polygon_cells,
+            &open.stamp.polygon_area,
             main_idx,
             main_def,
         );
         let main_label = self.catalog.label(main_guid, self.language);
         let ready = need > 0 && have as u32 >= need;
         let area_farm = stamp_editor::modules::uses_area_progress(main_def);
-        let farm_owner = main_b.complex_owner_id.filter(|o| *o != 0);
 
         // Area (not Window): cannot be dismissed/persisted-closed; always visible while focused.
         egui::Area::new(egui::Id::new("complex_module_ui"))
@@ -5288,13 +5784,13 @@ impl StampEditorApp {
                             if let Some((fg, fl)) = mod_btns.first().cloned() {
                                 let active = self.field_brush_owner == farm_owner
                                     && self.field_brush_guid == Some(fg);
-                                let label = if active {
-                                    format!("Feld malen: {fl} (aktiv)")
-                                } else {
-                                    format!("Feld malen: {fl}")
-                                };
-                                if ui.button(label).clicked() {
-                                    if let Some(oid) = farm_owner {
+                                let btn = ui.add(
+                                    egui::Button::new(format!("Feld malen: {fl}")).selected(active),
+                                );
+                                if btn.clicked() {
+                                    if active {
+                                        self.clear_hand();
+                                    } else if let Some(oid) = farm_owner {
                                         self.activate_field_brush(oid, fg, &fl);
                                     } else {
                                         self.status =
@@ -6859,6 +7355,9 @@ impl eframe::App for StampEditorApp {
                     }
                 });
             });
+            // Rebuild the (expensive) city analysis only when the stamp changed;
+            // otherwise reuse the cache so panning/hovering stays smooth.
+            self.ensure_city_analysis();
             if let Some(open) = &self.open {
                 let placed: Vec<_> = open.stamp.all_draw_buildings().cloned().collect();
                 let stats = layout_stats_region(
@@ -6914,48 +7413,16 @@ impl eframe::App for StampEditorApp {
                     ));
                 });
 
-                let areas = analyze_area_efficiency_with_fields(
-                    &open.stamp.buildings,
-                    &self.catalog,
-                    Some(&open.stamp.document),
-                    open.region_guid,
-                    &open.stamp.polygon_cells,
-                    lang,
-                );
-                let chain = analyze_chain_region(
-                    &open.stamp.buildings,
-                    &self.catalog,
-                    Some(&open.stamp.document),
-                    open.region_guid,
-                    &open.stamp.polygon_cells,
-                    lang,
-                );
-                let region_guid = open.region_guid;
-                let mut incoming_by_index: HashMap<usize, CoverageMap> = HashMap::new();
-                for (idx, b) in open.stamp.buildings.iter().enumerate() {
-                    if self
-                        .catalog
-                        .building(b.guid)
-                        .is_some_and(|d| d.is_residence())
-                    {
-                        incoming_by_index.insert(
-                            idx,
-                            compute_coverage_region(
-                                &open.stamp.buildings,
-                                &self.catalog,
-                                idx,
-                                Some(&open.stamp.document),
-                                region_guid,
-                            ),
-                        );
-                    }
-                }
-                let (city_consumption, city_services) = analyse_city_needs(
-                    &self.catalog,
-                    &open.stamp.buildings,
-                    &incoming_by_index,
-                    lang,
-                );
+                // Read precomputed results from the cache built by
+                // `ensure_city_analysis()` above (cheap clone vs. recompute).
+                let analysis = self
+                    .city_analysis
+                    .as_ref()
+                    .expect("city analysis ensured above");
+                let areas = analysis.areas.clone();
+                let chain = analysis.chain.clone();
+                let city_consumption = analysis.city_consumption.clone();
+                let city_services = analysis.city_services.clone();
                 ui.add_space(8.0);
                 ui.group(|ui| {
                     ui.label(
@@ -7862,84 +8329,51 @@ impl eframe::App for StampEditorApp {
                     StrokeKind::PlaceRect => {
                         if let Some(guid) = self.placing_guid {
                             let variation = self.place_variation;
-                            let from_clip = self.hand_from_clipboard;
-                            let (bw, bh) = if from_clip {
+                            let from_clipboard = self.hand_from_clipboard;
+                            let place_dir = self.place_direction;
+                            let (bw, bh) = if from_clipboard {
                                 self.clipboard
                                     .iter()
                                     .find(|c| c.is_primary)
                                     .map(|p| self.clipboard_oriented_size(p))
                                     .unwrap_or_else(|| {
                                         let (w0, h0) = self.building_size(guid, variation);
-                                        oriented_size(w0, h0, self.place_direction)
+                                        oriented_size(w0, h0, place_dir)
                                     })
                             } else {
                                 let (w0, h0) = self.building_size(guid, variation);
-                                oriented_size(w0, h0, self.place_direction)
+                                oriented_size(w0, h0, place_dir)
                             };
                             let bw_i = bw.round().max(1.0) as i32;
                             let bh_i = bh.round().max(1.0) as i32;
-                            let (min_x, min_y, max_x, max_y) =
-                                rect_bounds(stroke.start, stroke.cursor);
-                            let outline =
-                                self.cells_screen_rect(rect, min_x, min_y, max_x, max_y);
-                            painter.rect_stroke(
-                                outline,
-                                0.0,
-                                Stroke::new(
-                                    1.5_f32,
-                                    Color32::from_rgba_unmultiplied(140, 210, 255, 200),
-                                ),
-                                egui::StrokeKind::Outside,
-                            );
-                            let from_clipboard = self.hand_from_clipboard;
                             let (step_w, step_h) = if from_clipboard {
                                 self.clipboard_group_span()
                             } else {
                                 (bw_i, bh_i)
                             };
-                            let mut centers = Vec::new();
-                            let mut gy = min_y;
-                            while gy + step_h - 1 <= max_y {
-                                let mut gx = min_x;
-                                while gx + step_w - 1 <= max_x {
-                                    if from_clipboard {
-                                        if let Some(p) =
-                                            self.clipboard.iter().find(|c| c.is_primary)
-                                        {
-                                            centers.push(self.place_pos_for_tl(
-                                                gx, gy, p.guid, p.variation, p.direction,
-                                            ));
-                                        } else {
-                                            centers.push(place_center_from_top_left(
-                                                gx, gy, bw_i, bh_i,
-                                            ));
-                                        }
-                                    } else {
-                                        centers.push(self.place_pos_for_tl(
-                                            gx, gy, guid, variation, 0,
-                                        ));
-                                    }
-                                    gx += step_w;
-                                }
-                                gy += step_h;
-                            }
-                            if centers.is_empty() {
-                                let (sx0, sy0) = (stroke.start.0, stroke.start.1);
+                            let origins = place_rect_top_lefts(
+                                stroke.start,
+                                stroke.cursor,
+                                step_w,
+                                step_h,
+                            );
+                            let mut centers = Vec::with_capacity(origins.len());
+                            for (gx, gy) in &origins {
                                 if from_clipboard {
                                     if let Some(p) =
                                         self.clipboard.iter().find(|c| c.is_primary)
                                     {
                                         centers.push(self.place_pos_for_tl(
-                                            sx0, sy0, p.guid, p.variation, p.direction,
+                                            *gx, *gy, p.guid, p.variation, p.direction,
                                         ));
                                     } else {
                                         centers.push(place_center_from_top_left(
-                                            sx0, sy0, bw_i, bh_i,
+                                            *gx, *gy, bw_i, bh_i,
                                         ));
                                     }
                                 } else {
                                     centers.push(self.place_pos_for_tl(
-                                        sx0, sy0, guid, variation, 0,
+                                        *gx, *gy, guid, variation, place_dir,
                                     ));
                                 }
                             }
@@ -7954,17 +8388,36 @@ impl eframe::App for StampEditorApp {
                                 Color32::from_rgba_unmultiplied(90, 180, 255, 80);
                             let road_fill =
                                 Color32::from_rgba_unmultiplied(200, 170, 90, 110);
-                            for (sx, sy) in centers {
+                            // Faint raw drag AABB (what the mouse covers).
+                            let (dmin_x, dmin_y, dmax_x, dmax_y) =
+                                rect_bounds(stroke.start, stroke.cursor);
+                            let raw_outline = self.cells_screen_rect(
+                                rect, dmin_x, dmin_y, dmax_x, dmax_y,
+                            );
+                            painter.rect_stroke(
+                                raw_outline,
+                                0.0,
+                                Stroke::new(
+                                    1.0_f32,
+                                    Color32::from_rgba_unmultiplied(140, 210, 255, 90),
+                                ),
+                                egui::StrokeKind::Outside,
+                            );
+                            let mut union_min_x = i32::MAX;
+                            let mut union_max_x = i32::MIN;
+                            let mut union_min_y = i32::MAX;
+                            let mut union_max_y = i32::MIN;
+                            for (sx, sy) in &centers {
                                 let parts: Vec<(u32, f32, f32, i32, Option<u32>)> =
                                     if from_clipboard {
-                                        self.clipboard_building_centers(sx, sy)
+                                        self.clipboard_building_centers(*sx, *sy)
                                             .into_iter()
                                             .map(|(c, cx, cy)| {
                                                 (c.guid, cx, cy, c.direction, c.variation)
                                             })
                                             .collect()
                                     } else {
-                                        vec![(guid, sx, sy, self.place_direction, variation)]
+                                        vec![(guid, *sx, *sy, place_dir, variation)]
                                     };
                                 for (g_guid, gx, gy, g_dir, g_var) in parts {
                                     let ghost = Building {
@@ -7987,6 +8440,10 @@ impl eframe::App for StampEditorApp {
                                         max_x = max_x.max(c.x);
                                         min_y = min_y.min(c.y);
                                         max_y = max_y.max(c.y);
+                                        union_min_x = union_min_x.min(c.x);
+                                        union_max_x = union_max_x.max(c.x);
+                                        union_min_y = union_min_y.min(c.y);
+                                        union_max_y = union_max_y.max(c.y);
                                         let r = self.cell_screen_rect(rect, c.x, c.y);
                                         painter.rect_filled(r, 0.0, fill);
                                     }
@@ -7999,7 +8456,11 @@ impl eframe::App for StampEditorApp {
                                     }
                                 }
                                 if from_clipboard {
-                                    for (rx, ry, _) in self.clipboard_road_cells(sx, sy) {
+                                    for (rx, ry, _) in self.clipboard_road_cells(*sx, *sy) {
+                                        union_min_x = union_min_x.min(rx);
+                                        union_max_x = union_max_x.max(rx);
+                                        union_min_y = union_min_y.min(ry);
+                                        union_max_y = union_max_y.max(ry);
                                         painter.rect_filled(
                                             self.cell_screen_rect(rect, rx, ry),
                                             0.0,
@@ -8008,13 +8469,32 @@ impl eframe::App for StampEditorApp {
                                     }
                                 }
                             }
-                            painter.text(
-                                outline.min + Vec2::new(6.0, 4.0),
-                                egui::Align2::LEFT_TOP,
-                                format!("{center_count}×"),
-                                egui::FontId::proportional(13.0),
-                                Color32::from_rgb(200, 230, 255),
-                            );
+                            // Strong outline around what will actually be placed.
+                            if union_min_x <= union_max_x {
+                                let placed_outline = self.cells_screen_rect(
+                                    rect,
+                                    union_min_x,
+                                    union_min_y,
+                                    union_max_x,
+                                    union_max_y,
+                                );
+                                painter.rect_stroke(
+                                    placed_outline,
+                                    0.0,
+                                    Stroke::new(
+                                        2.0_f32,
+                                        Color32::from_rgba_unmultiplied(160, 220, 255, 230),
+                                    ),
+                                    egui::StrokeKind::Outside,
+                                );
+                                painter.text(
+                                    placed_outline.min + Vec2::new(6.0, 4.0),
+                                    egui::Align2::LEFT_TOP,
+                                    format!("{center_count}×"),
+                                    egui::FontId::proportional(13.0),
+                                    Color32::from_rgb(200, 230, 255),
+                                );
+                            }
                         }
                     }
                 }
@@ -8439,14 +8919,16 @@ impl eframe::App for StampEditorApp {
                             open.region_guid,
                             &open.stamp.polygon_cells,
                         );
-                        let area_hits = analyze_area_efficiency_with_fields(
-                            &open.stamp.buildings,
-                            &self.catalog,
-                            Some(&open.stamp.document),
-                            open.region_guid,
-                            &open.stamp.polygon_cells,
-                            self.language,
-                        );
+                        let field_res =
+                            field_resource_map(&open.stamp.polygon_cells, &self.catalog);
+                        // Reuse the cached area-efficiency pass instead of
+                        // recomputing it on every repaint (pan/select/hover).
+                        self.ensure_area_analysis();
+                        let area_hits: Vec<AreaEfficiency> = self
+                            .area_analysis
+                            .as_ref()
+                            .map(|c| c.areas.clone())
+                            .unwrap_or_default();
                         // Seeds: selected/focused resource buildings with group + radius.
                         let mut seeds: Vec<(usize, f32, f32, f32, &'static str)> = Vec::new();
                         for &fi in &area_targets {
@@ -8525,31 +9007,44 @@ impl eframe::App for StampEditorApp {
                                 for (cell, reason) in radius_cells(b.x, b.y, radius, &blocked)
                                 {
                                     let r = self.cell_screen_rect(rect, cell.x, cell.y);
-                                    let fill = match reason {
-                                        None if contested
-                                            .is_some_and(|m| m.contains_key(&cell)) =>
-                                        {
+                                    let free = cell_is_free_for_group(
+                                        reason, cell, group, &field_res,
+                                    );
+                                    let fill = if free {
+                                        if contested.is_some_and(|m| m.contains_key(&cell)) {
                                             Color32::from_rgba_unmultiplied(
                                                 230, 170, 50, if multi { 50 } else { 95 },
                                             )
-                                        }
-                                        None => Color32::from_rgba_unmultiplied(
-                                            70, 180, 90, if multi { 28 } else { 55 },
-                                        ),
-                                        Some(BlockReason::Road) => {
+                                        } else if matches!(reason, Some(BlockReason::Field)) {
+                                            // Flower fields that count for this class.
                                             Color32::from_rgba_unmultiplied(
-                                                180, 120, 50, if multi { 40 } else { 90 },
+                                                90, 200, 120, if multi { 35 } else { 70 },
+                                            )
+                                        } else {
+                                            Color32::from_rgba_unmultiplied(
+                                                70, 180, 90, if multi { 28 } else { 55 },
                                             )
                                         }
-                                        Some(BlockReason::Building) => {
-                                            Color32::from_rgba_unmultiplied(
-                                                200, 70, 70, if multi { 40 } else { 90 },
-                                            )
-                                        }
-                                        Some(BlockReason::Field) => {
-                                            Color32::from_rgba_unmultiplied(
-                                                140, 160, 60, if multi { 35 } else { 80 },
-                                            )
+                                    } else {
+                                        match reason {
+                                            Some(BlockReason::Road) => {
+                                                Color32::from_rgba_unmultiplied(
+                                                    180, 120, 50, if multi { 40 } else { 90 },
+                                                )
+                                            }
+                                            Some(BlockReason::Building) => {
+                                                Color32::from_rgba_unmultiplied(
+                                                    200, 70, 70, if multi { 40 } else { 90 },
+                                                )
+                                            }
+                                            Some(BlockReason::Field) => {
+                                                Color32::from_rgba_unmultiplied(
+                                                    140, 160, 60, if multi { 35 } else { 80 },
+                                                )
+                                            }
+                                            None => Color32::from_rgba_unmultiplied(
+                                                70, 180, 90, if multi { 28 } else { 55 },
+                                            ),
                                         }
                                     };
                                     painter.rect_filled(r, 0.0, fill);
@@ -8717,7 +9212,11 @@ impl eframe::App for StampEditorApp {
                 }
 
                 // Hover tooltip: name + live buffs (compute coverage for hovered building).
-                if response.hovered() {
+                // Skip while placing/dragging — those paths already run their own coverage.
+                if response.hovered()
+                    && self.placing_guid.is_none()
+                    && self.dragging_building.is_none()
+                {
                     if let Some(pointer) = response.hover_pos() {
                         let mut tip: Option<(usize, String)> = None;
                         for (idx, b) in open.stamp.buildings.iter().enumerate() {
@@ -8903,7 +9402,7 @@ impl eframe::App for StampEditorApp {
                                 wy,
                                 guid,
                                 self.place_variation,
-                                0,
+                                self.place_direction,
                                 bw,
                                 bh,
                             )
@@ -9036,6 +9535,27 @@ impl eframe::App for StampEditorApp {
                                 );
                             }
                         }
+
+                        // Live Outgoing bonus/malus range while the building is in hand.
+                        for (g_guid, gx, gy, g_dir, g_var) in &ghost_parts {
+                            let source = Building {
+                                guid: *g_guid,
+                                x: *gx,
+                                y: *gy,
+                                direction: *g_dir,
+                                complex_owner_id: None,
+                                variation: *g_var,
+                            };
+                            if !self
+                                .catalog
+                                .building(*g_guid)
+                                .is_some_and(building_has_area_effect)
+                            {
+                                continue;
+                            }
+                            let cov = self.place_ghost_coverage(&open, &source);
+                            self.paint_outgoing_coverage_preview(&painter, rect, &open, &cov);
+                        }
                     }
                     }
                 }
@@ -9051,6 +9571,18 @@ impl eframe::App for StampEditorApp {
                             self.building_at_pointer(rect, &open.stamp.buildings, pointer);
                         if self.suppress_stroke_click {
                             self.suppress_stroke_click = false;
+                        } else if self.copy_pipette_mode {
+                            if let Some(i) = bld_hit {
+                                self.select_only(i);
+                                self.refresh_coverage();
+                                self.finish_copy_pipette();
+                            } else if let Some(cell) = field_hit {
+                                // Field-only pipette: select tile then copy if a farm is implied — skip.
+                                let _ = cell;
+                                self.status = self.t("status.copy_pipette_miss").into();
+                            } else {
+                                self.status = self.t("status.copy_pipette_miss").into();
+                            }
                         } else if self.placing_guid.is_some()
                             || self.road_tool_active()
                             || self.field_tool_active()
@@ -9408,20 +9940,41 @@ impl eframe::App for StampEditorApp {
                         if collides {
                             self.status = self.t("status.place_blocked").into();
                         } else if let Some(open_mut) = self.open.as_mut() {
+                            let prev = open_mut
+                                .stamp
+                                .buildings
+                                .get(idx)
+                                .map(|b| (b.x.to_bits(), b.y.to_bits()));
                             if open_mut
                                 .stamp
                                 .set_building_pos_ex(idx, sx, sy, move_linked)
                                 .is_ok()
                             {
-                                open_mut.dirty = true;
-                                self.schedule_autosave();
+                                let now = open_mut
+                                    .stamp
+                                    .buildings
+                                    .get(idx)
+                                    .map(|b| (b.x.to_bits(), b.y.to_bits()));
+                                // Only rewrite coverage when the snap tile actually changed —
+                                // drag events fire every frame and were hitching large stamps.
+                                if prev != now {
+                                    open_mut.dirty = true;
+                                    self.schedule_autosave();
+                                    self.analysis_gen = self.analysis_gen.wrapping_add(1);
+                                    *self.place_cov_roads.borrow_mut() = None;
+                                    *self.place_ghost_cov.borrow_mut() = None;
+                                    self.city_analysis = None;
+                                    self.area_analysis = None;
+                                    self.needs_cov_cache = None;
+                                    self.drag_cov_key = Some((idx, sx.to_bits(), sy.to_bits()));
+                                    self.refresh_coverage();
+                                }
                             }
                         }
                         if !collides {
                             if let Some(msg) = radius_clamp_msg {
                                 self.status = msg;
                             }
-                            self.refresh_coverage();
                         }
                         }
                     } else if self.drag_stroke.is_some() && self.dragging_building.is_none() {
@@ -9438,6 +9991,9 @@ impl eframe::App for StampEditorApp {
                     } else if self.drag_stroke.is_some() && self.dragging_building.is_none() {
                         self.commit_drag_stroke();
                     }
+                    // Always clear — otherwise a stroke without a following `clicked()`
+                    // leaves suppress set and the next place/road click does nothing.
+                    self.suppress_stroke_click = false;
                     self.dragging_building = None;
                     self.history_drag_pushed = false;
                     self.clear_selection_drag();

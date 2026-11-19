@@ -12,7 +12,9 @@
 //!    compete.
 //!
 //! Stamps have no terrain — we approximate dense resource cover on every tile
-//! that is not occupied by a building footprint, a road, or a farm field polygon.
+//! that is not occupied by a building footprint or a road. Farm field polygons
+//! normally block (wheat/grapes/…), except **flower fields** (flax, lavender)
+//! which count as meadow tiles for apiaries / other meadow gatherers.
 
 use crate::catalog::{BuildingDef, Catalog};
 use crate::coverage::{build_road_map_region, footprint_cells_for_region, Cell};
@@ -113,6 +115,65 @@ pub fn competition_group(def: &BuildingDef) -> &'static str {
     }
 }
 
+/// Farm fields that count as resource tiles for a competition class (not blockers).
+///
+/// Ingame: flax / lavender flower fields count as meadow for apiaries; grapes,
+/// hemp, oats, wheat, etc. do not.
+pub fn field_resource_group(def: Option<&BuildingDef>) -> Option<&'static str> {
+    let def = def?;
+    let name = def
+        .short_name
+        .as_deref()
+        .unwrap_or(def.name.as_str())
+        .to_ascii_lowercase();
+    if name.contains("flax") || name.contains("lavender") {
+        Some("meadow")
+    } else {
+        None
+    }
+}
+
+/// True when a field module GUID counts as free resource for `group`.
+pub fn field_counts_for_group(def: Option<&BuildingDef>, group: &str) -> bool {
+    matches!(field_resource_group(def), Some(g) if g == group)
+}
+
+/// Cell → resource group this farm field counts as (`None` = always blocks).
+pub fn field_resource_map(
+    polygon_cells: &[PolygonCell],
+    catalog: &Catalog,
+) -> HashMap<Cell, Option<&'static str>> {
+    let mut map: HashMap<Cell, Option<&'static str>> = HashMap::new();
+    for pc in polygon_cells {
+        let cell = Cell { x: pc.x, y: pc.y };
+        let g = field_resource_group(catalog.building(pc.guid));
+        map.entry(cell)
+            .and_modify(|prev| {
+                if prev.is_none() && g.is_some() {
+                    *prev = g;
+                }
+            })
+            .or_insert(g);
+    }
+    map
+}
+
+/// Whether a radius cell is usable resource for `group` (empty terrain or matching flower field).
+pub fn cell_is_free_for_group(
+    reason: Option<BlockReason>,
+    cell: Cell,
+    group: &str,
+    field_res: &HashMap<Cell, Option<&'static str>>,
+) -> bool {
+    match reason {
+        None => true,
+        Some(BlockReason::Field) => {
+            matches!(field_res.get(&cell).copied().flatten(), Some(g) if g == group)
+        }
+        Some(BlockReason::Building) | Some(BlockReason::Road) => false,
+    }
+}
+
 fn drag_of(document: Option<&DocumentOrdered>) -> (f32, f32) {
     document
         .and_then(read_mesh_info)
@@ -194,6 +255,7 @@ pub fn analyze_area_efficiency_with_fields(
     lang: Language,
 ) -> Vec<AreaEfficiency> {
     let blocked = blocker_map(buildings, catalog, document, region_guid, polygon_cells);
+    let field_res = field_resource_map(polygon_cells, catalog);
 
     let mut claimants: Vec<Claimant> = Vec::new();
     for (i, b) in buildings.iter().enumerate() {
@@ -228,6 +290,10 @@ pub fn analyze_area_efficiency_with_fields(
         let mut cells = Vec::new();
         for (cell, reason) in radius_cells(c.x, c.y, c.radius, &blocked) {
             *raw.entry(c.index).or_default() += 1.0;
+            if cell_is_free_for_group(reason, cell, c.group, &field_res) {
+                cells.push(cell);
+                continue;
+            }
             match reason {
                 Some(BlockReason::Building) => {
                     *blocked_b.entry(c.index).or_default() += 1.0;
@@ -238,7 +304,7 @@ pub fn analyze_area_efficiency_with_fields(
                 Some(BlockReason::Field) => {
                     *blocked_f.entry(c.index).or_default() += 1.0;
                 }
-                None => cells.push(cell),
+                None => {}
             }
         }
         free_cells.insert(c.index, cells);
@@ -427,6 +493,7 @@ pub fn contested_free_cells(
     group: &str,
 ) -> HashMap<Cell, usize> {
     let blocked = blocker_map(buildings, catalog, document, region_guid, polygon_cells);
+    let field_res = field_resource_map(polygon_cells, catalog);
     let mut cover: HashMap<Cell, usize> = HashMap::new();
     for b in buildings {
         let Some(def) = catalog.building(b.guid) else {
@@ -442,7 +509,7 @@ pub fn contested_free_cells(
             continue;
         };
         for (cell, reason) in radius_cells(b.x, b.y, radius, &blocked) {
-            if reason.is_none() {
+            if cell_is_free_for_group(reason, cell, group, &field_res) {
                 *cover.entry(cell).or_insert(0) += 1;
             }
         }
@@ -501,6 +568,13 @@ mod tests {
             tileset_folder: None,
             constructable: Some(true),
             regions: vec![],
+            icon: None,
+            population_level: None,
+            population_icon: None,
+            residence_needs: vec![],
+            upgrade_guids: vec![],
+            base_guids: vec![],
+            upgrade_chain: vec![],
         }
     }
 
@@ -558,6 +632,7 @@ mod tests {
         let catalog = Catalog {
             buildings: map,
             products: HashMap::new(),
+            needs: HashMap::new(),
         };
         let buildings = vec![Building {
             guid: 2878,
@@ -583,6 +658,7 @@ mod tests {
         let catalog = Catalog {
             buildings: map,
             products: HashMap::new(),
+            needs: HashMap::new(),
         };
         let alone = vec![Building {
             guid: 2878,
@@ -655,6 +731,7 @@ mod tests {
         let catalog = Catalog {
             buildings: map,
             products: HashMap::new(),
+            needs: HashMap::new(),
         };
         let pair = vec![
             Building {
@@ -691,6 +768,7 @@ mod tests {
         let catalog = Catalog {
             buildings: map,
             products: HashMap::new(),
+            needs: HashMap::new(),
         };
         let buildings = vec![
             Building {
@@ -739,6 +817,7 @@ mod tests {
         let catalog = Catalog {
             buildings: map,
             products: HashMap::new(),
+            needs: HashMap::new(),
         };
         let pair = vec![
             Building {
@@ -783,6 +862,7 @@ mod tests {
         let catalog = Catalog {
             buildings: map,
             products: HashMap::new(),
+            needs: HashMap::new(),
         };
 
         let alone = vec![Building {
@@ -829,14 +909,38 @@ mod tests {
         );
     }
 
+    fn field_module(guid: u32, short: &str) -> BuildingDef {
+        let mut d = area_def(guid, "ModulePolygonField", short, [1.0, 1.0], 0.0, 0.0);
+        d.category = "module".into();
+        d.influence_radius = None;
+        d.needed_area = None;
+        d
+    }
+
+    fn field_patch(guid: u32, x0: i32, y0: i32, w: i32, h: i32) -> Vec<PolygonCell> {
+        (0..w)
+            .flat_map(|dx| {
+                (0..h).map(move |dy| PolygonCell {
+                    guid,
+                    x: x0 + dx,
+                    y: y0 + dy,
+                    complex_owner_id: None,
+                })
+            })
+            .collect()
+    }
+
     #[test]
     fn field_polygons_block_resource_tiles() {
         let wood = area_def(2878, "Production Area", "Forest Roman Wood", [2.0, 2.0], 8.0, 80.0);
+        let wheat = field_module(2732, "Field Roman Wheat");
         let mut map = HashMap::new();
         map.insert(2878, wood);
+        map.insert(2732, wheat);
         let catalog = Catalog {
             buildings: map,
             products: HashMap::new(),
+            needs: HashMap::new(),
         };
         let buildings = vec![Building {
             guid: 2878,
@@ -846,16 +950,131 @@ mod tests {
             variation: None,
             complex_owner_id: None,
         }];
-        let fields: Vec<PolygonCell> = (0..5)
-            .flat_map(|dx| {
-                (0..5).map(move |dy| PolygonCell {
-                    guid: 1,
-                    x: 10 + dx,
-                    y: 10 + dy,
-                    complex_owner_id: None,
-                })
-            })
-            .collect();
+        let fields = field_patch(2732, 10, 10, 5, 5);
+        let without = analyze_area_efficiency_with_fields(
+            &buildings, &catalog, None, 0, &[], Language::De,
+        )[0]
+        .have;
+        let with = analyze_area_efficiency_with_fields(
+            &buildings, &catalog, None, 0, &fields, Language::De,
+        )[0]
+        .clone();
+        assert!(with.have < without);
+        assert!(with.blocked_fields >= 20.0);
+    }
+
+    #[test]
+    fn flax_fields_count_as_meadow_for_apiary() {
+        let honey = area_def(
+            2795,
+            "Production Area",
+            "Meadow Roman Honeycombs",
+            [5.0, 5.0],
+            8.0,
+            80.0,
+        );
+        let flax = field_module(2682, "Field Roman Flax");
+        let mut map = HashMap::new();
+        map.insert(2795, honey);
+        map.insert(2682, flax);
+        let catalog = Catalog {
+            buildings: map,
+            products: HashMap::new(),
+            needs: HashMap::new(),
+        };
+        let buildings = vec![Building {
+            guid: 2795,
+            x: 20.0,
+            y: 20.0,
+            direction: 0,
+            variation: None,
+            complex_owner_id: None,
+        }];
+        // Fill most of the radius with flax — must raise have, not block it.
+        let fields = field_patch(2682, 12, 12, 16, 16);
+        let without = analyze_area_efficiency_with_fields(
+            &buildings, &catalog, None, 0, &[], Language::De,
+        )[0]
+        .clone();
+        let with = analyze_area_efficiency_with_fields(
+            &buildings, &catalog, None, 0, &fields, Language::De,
+        )[0]
+        .clone();
+        assert!(
+            with.have + 1e-3 >= without.have,
+            "flax should not reduce meadow have (with={}, without={})",
+            with.have,
+            without.have
+        );
+        assert!(
+            with.blocked_fields < 1.0,
+            "flax must not count as blocked fields, got {}",
+            with.blocked_fields
+        );
+        assert!(with.efficiency >= 0.999, "apiary in flax should hit 100%");
+    }
+
+    #[test]
+    fn grape_fields_still_block_meadow() {
+        let honey = area_def(
+            2795,
+            "Production Area",
+            "Meadow Roman Honeycombs",
+            [5.0, 5.0],
+            8.0,
+            80.0,
+        );
+        let grapes = field_module(2743, "Field Roman Grapes");
+        let mut map = HashMap::new();
+        map.insert(2795, honey);
+        map.insert(2743, grapes);
+        let catalog = Catalog {
+            buildings: map,
+            products: HashMap::new(),
+            needs: HashMap::new(),
+        };
+        let buildings = vec![Building {
+            guid: 2795,
+            x: 20.0,
+            y: 20.0,
+            direction: 0,
+            variation: None,
+            complex_owner_id: None,
+        }];
+        let fields = field_patch(2743, 12, 12, 16, 16);
+        let without = analyze_area_efficiency_with_fields(
+            &buildings, &catalog, None, 0, &[], Language::De,
+        )[0]
+        .have;
+        let with = analyze_area_efficiency_with_fields(
+            &buildings, &catalog, None, 0, &fields, Language::De,
+        )[0]
+        .clone();
+        assert!(with.have < without);
+        assert!(with.blocked_fields > 50.0);
+    }
+
+    #[test]
+    fn flax_still_blocks_forest() {
+        let wood = area_def(2878, "Production Area", "Forest Roman Wood", [2.0, 2.0], 8.0, 80.0);
+        let flax = field_module(2682, "Field Roman Flax");
+        let mut map = HashMap::new();
+        map.insert(2878, wood);
+        map.insert(2682, flax);
+        let catalog = Catalog {
+            buildings: map,
+            products: HashMap::new(),
+            needs: HashMap::new(),
+        };
+        let buildings = vec![Building {
+            guid: 2878,
+            x: 20.0,
+            y: 20.0,
+            direction: 0,
+            variation: None,
+            complex_owner_id: None,
+        }];
+        let fields = field_patch(2682, 16, 16, 8, 8);
         let without = analyze_area_efficiency_with_fields(
             &buildings, &catalog, None, 0, &[], Language::De,
         )[0]

@@ -114,7 +114,29 @@ pub fn count_progress_for_stamp_area(
     count_modules_for_stamp(buildings, polygon_modules, main_index)
 }
 
+/// Next free ComplexOwnerID (max existing + 1). Used when placing/selecting farm mains.
+pub fn next_complex_owner_id(
+    buildings: &[Building],
+    polygon_cells: &[PolygonCell],
+) -> u64 {
+    let mut max = 0u64;
+    for b in buildings {
+        if let Some(o) = b.complex_owner_id {
+            max = max.max(o);
+        }
+    }
+    for c in polygon_cells {
+        if let Some(o) = c.complex_owner_id {
+            max = max.max(o);
+        }
+    }
+    max.saturating_add(1).max(1)
+}
+
 /// Best-effort main building inside a ComplexOwnerID group (farm, not pasture/field).
+///
+/// Farms that still lack a ComplexOwnerID (fresh place) are treated as a solo main when
+/// they need modules/fields — otherwise the Untergebäude overlay never appears.
 pub fn complex_main_index(
     buildings: &[Building],
     catalog: &Catalog,
@@ -122,6 +144,12 @@ pub fn complex_main_index(
 ) -> Option<usize> {
     let group = complex_group_indices(buildings, index);
     if group.is_empty() {
+        let b = buildings.get(index)?;
+        let def = catalog.building(b.guid)?;
+        if needed_modules(Some(def)) > 0 && !is_module_building(def) && def.category != "module"
+        {
+            return Some(index);
+        }
         return None;
     }
     let is_sub = |i: usize| -> bool {
@@ -171,6 +199,11 @@ pub fn needed_modules(def: Option<&BuildingDef>) -> u32 {
     }
     if let Some(a) = d.needed_area {
         return a.round().max(0.0) as u32;
+    }
+    // Some PlantFarms omit ModuleLimits in assets (Roman Hemp / Herbs) but still
+    // need the field overlay + brush — match the common 80-tile PlantFarm quota.
+    if d.farm_type.as_deref() == Some("PlantFarm") {
+        return 80;
     }
     let n = d.name.to_lowercase();
     let animal = d.farm_type.as_deref() == Some("AnimalFarm")
@@ -236,8 +269,8 @@ fn is_placeable_farm_module(d: &BuildingDef) -> bool {
 fn product_token(name: &str) -> Option<&'static str> {
     let n = name.to_lowercase();
     const TOKENS: &[&str] = &[
-        "wheat", "barley", "oats", "flax", "hemp", "grape", "herb", "lavender", "olive", "dye",
-        "reed", "auroch", "pig", "sheep", "wool", "horse", "cattle", "cow", "sau", "camel",
+        "wheat", "barley", "oats", "oat", "flax", "hemp", "grape", "herb", "lavender", "olive",
+        "dye", "reed", "auroch", "pig", "sheep", "wool", "horse", "cattle", "cow", "sau", "camel",
         "lotus", "pony", "ponies", "honey", "charcoal", "resin", "timber", "wood",
     ];
     TOKENS.iter().copied().find(|t| n.contains(t))
@@ -251,12 +284,12 @@ fn product_aliases(token: &str) -> &'static [&'static str] {
         "horse" | "pony" | "ponies" => &["horse", "pony", "ponies"],
         "cattle" | "cow" | "auroch" | "sanga" => &["cattle", "cow", "auroch", "sanga"],
         "wood" | "timber" => &["wood", "timber"],
+        "oat" | "oats" => &["oat", "oats"],
         other => {
             // single-element slices for unknown tokens
             match other {
                 "wheat" => &["wheat"],
                 "barley" => &["barley"],
-                "oats" => &["oats"],
                 "flax" => &["flax"],
                 "hemp" => &["hemp"],
                 "grape" => &["grape"],
@@ -408,6 +441,13 @@ mod tests {
             tileset_folder: None,
             constructable: Some(constructable),
             regions: vec!["Celtic".into()],
+            icon: None,
+            population_level: None,
+            population_icon: None,
+            residence_needs: vec![],
+            upgrade_guids: vec![],
+            base_guids: vec![],
+            upgrade_chain: vec![],
         }
     }
 
@@ -463,6 +503,19 @@ mod tests {
         oats.module_limit = Some(80);
         assert_eq!(needed_modules(Some(&oats)), 80);
         assert!(uses_area_progress(Some(&oats)));
+
+        let mut hemp = def(
+            "Production Field Roman Hemp",
+            "Production Field",
+            "production",
+            true,
+        );
+        hemp.farm_type = Some("PlantFarm".into());
+        assert_eq!(
+            needed_modules(Some(&hemp)),
+            80,
+            "PlantFarm without ModuleLimits still needs field UI"
+        );
 
         let buildings = vec![
             Building {

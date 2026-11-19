@@ -1,6 +1,6 @@
 [package]
 name = "stamp_editor"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 description = "Anno 117 stamp editor with coverage and production-chain tools"
 license = "MIT"

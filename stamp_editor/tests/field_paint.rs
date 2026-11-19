@@ -303,3 +303,57 @@ fn connected_subset_grows_from_seeds() {
     let ok = connected_field_subset(&seeds, &cand);
     assert_eq!(ok, HashSet::from([(1, 0), (2, 0)]));
 }
+
+#[test]
+fn paint_on_blank_stamp_synthesizes_subtile_grid() {
+    use stamp_editor::stamp::Stamp;
+    let cat = catalog();
+    let mut stamp = Stamp::blank().expect("blank");
+    // Roman Oats farm + oats field module GUID.
+    stamp
+        .add_building_from_template(2200, 2.0, 2.0, 0, None)
+        .expect("place farm");
+    let farm_i = 0;
+    let owner = 1u64;
+    stamp.set_building_owner(farm_i, owner).expect("owner");
+    stamp.refresh_buildings();
+
+    let def = cat.building(2200);
+    let drag = read_mesh_info(&stamp.document)
+        .map(|i| i.drag_center)
+        .unwrap_or((0.0, 0.0));
+    let seeds: HashSet<(i32, i32)> = footprint_cells_for_region(
+        &stamp.buildings[farm_i],
+        def,
+        0,
+        drag,
+    )
+    .into_iter()
+    .map(|c| (c.x, c.y))
+    .collect();
+    assert!(!seeds.is_empty(), "farm footprint seeds");
+
+    let candidate = seeds
+        .iter()
+        .flat_map(|&(x, y)| [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+        .find(|p| !seeds.contains(p))
+        .expect("free neighbour of farm footprint");
+
+    let n = apply_field_tiles(
+        &mut stamp,
+        owner,
+        2220,
+        &[candidate],
+        true,
+        &HashSet::new(),
+        Some(&seeds),
+    );
+    assert_eq!(n, 1, "blank stamp must synthesize SubTileGrid and paint");
+    stamp.refresh_buildings();
+    let after = field_cells_of_owner(&stamp, owner);
+    assert!(after.contains(&candidate));
+
+    let enc = encode_pipette_b64(&stamp).expect("encode");
+    let again = decode_pipette_b64(&enc).expect("decode");
+    assert!(field_cells_of_owner(&again, owner).contains(&candidate));
+}

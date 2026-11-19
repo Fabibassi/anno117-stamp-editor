@@ -287,6 +287,8 @@ mod blocker_offset_tests {
             guid: 19753,
             name: "Aqueduct Cistern".into(),
             short_name: None,
+            name_en: None,
+            name_de: None,
             template: "AqueductDistributor".into(),
             category: "other".into(),
             size: [5.0, 5.0],
@@ -310,6 +312,13 @@ mod blocker_offset_tests {
             tileset_folder: None,
             constructable: Some(true),
             regions: vec![],
+            icon: None,
+            population_level: None,
+            population_icon: None,
+            residence_needs: vec![],
+            upgrade_guids: vec![],
+            base_guids: vec![],
+            upgrade_chain: vec![],
         };
         let (mx, my) = blocker_min_for(19753, 5.0, 5.0, Some(&bad), None);
         assert!((mx - (-0.5)).abs() < 1e-5, "mx={mx}");

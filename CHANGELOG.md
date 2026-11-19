@@ -2,6 +2,26 @@
 
 All notable changes to the Anno 117 Stamp Editor are documented here.
 
+## [0.2.4] — 2026-11-19
+
+### Added
+
+- QoL hotkeys: Esc deselect, Ctrl+A, zoom-to-cursor, nudge, multi-rotate, tool keys, panel toggles, F1 cheatsheet
+- Recent packs in the library
+- Live outgoing coverage preview while a building is in hand
+- Field brush synthesizes a SubTileGrid on blank stamps (no prior field polygon required)
+
+### Fixed
+
+- PlantFarm field painting (click/drag) actually places tiles again
+- Field overlay / brush for PlantFarms that omit `ModuleLimits` in assets (e.g. Roman Hemp, Celtic Herbs)
+- Field brush button: selectable toggle instead of confusing “(aktiv)” label
+- Library deletes stay deleted (tombstone + remove Documents mirror; seed skips suppressed packs)
+- Ghost coverage less laggy; placing on roads blocked
+- Blank stamps no longer keep leftover aqueduct mesh from the seed pipette
+- Apiary meadow flower fields count toward coverage area efficiency
+- Oysterbed / harbor BuildBlocker pivot alignment
+
 ## [0.2.3] — 2026-11-15
 
 ### Changed
