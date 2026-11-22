@@ -2,6 +2,29 @@
 
 All notable changes to the Anno 117 Stamp Editor are documented here.
 
+## [0.2.5] — 2026-11-22
+
+### Added
+
+- Selection groups: `Ctrl+Shift+0–9` store, `Ctrl+0–9` recall
+- Flip selection / clipboard hand horizontally (`H`) and vertically (`V`); `Shift+V` for land/marsh
+- Align / Distribute in the Edit menu (left/right/top/bottom, horizontal/vertical)
+- File → Export as PNG… (software raster of stamp bounds)
+- Top-bar **Hotkeys** button (same sheet as F1)
+
+### Changed
+
+- Full DE/EN pass: status and UI strings go through i18n (no leftover German hardcodes in EN UI)
+- Hotkey hint strip removed from the status row (use Hotkeys / F1 instead)
+- Icon extract status messages follow the selected UI language
+
+### Fixed
+
+- Flip H/V now mirrors footprint tiles (not pivot Pos), so mixed buildings stay aligned
+- Selection groups cleared on pack/stamp switch (no stale indices)
+- Align/Distribute no longer push empty undo entries
+- `V` matches Edit → Flip vertical when a selection is active
+
 ## [0.2.4] — 2026-11-19
 
 ### Added

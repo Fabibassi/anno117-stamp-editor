@@ -1,5 +1,6 @@
 //! Load Anno UI icons: PNG cache under `_gamedata/ui_png`, filled from `ui.rda` (lazy + bulk).
 
+use crate::i18n::{self, Language};
 use crate::library::EditorConfig;
 use crate::rda::{
     cache_rel_from_rda_key, candidate_rda_keys, is_bulk_icon_key, open_ui_rda, RdaSet, SharedRda,
@@ -93,7 +94,7 @@ impl UiIcons {
     }
 
     /// Attach UI RDAs (patches + ui.rda) from a game install and kick off bulk extract.
-    pub fn attach_game_install(&mut self, game_install: &Path) {
+    pub fn attach_game_install(&mut self, game_install: &Path, lang: Language) {
         match open_ui_rda(game_install) {
             Ok((rda, summary)) => {
                 let n = rda.len();
@@ -101,14 +102,19 @@ impl UiIcons {
                 // Retry paths that failed when only base ui.rda was linked.
                 self.missing.clear();
                 if let Ok(mut st) = self.status.lock() {
-                    st.message = format!("UI-RDAs indexiert ({n} Dateien) · {summary}");
+                    st.message = i18n::tr_fmt(
+                        lang,
+                        "icon.rda_indexed",
+                        &[("n", &n.to_string()), ("summary", &summary)],
+                    );
                 }
                 self.bulk_started.store(false, Ordering::SeqCst);
-                self.start_bulk_extract();
+                self.start_bulk_extract(lang);
             }
             Err(e) => {
                 if let Ok(mut st) = self.status.lock() {
-                    st.message = format!("ui.rda: {e}");
+                    st.message =
+                        i18n::tr_fmt(lang, "icon.rda_error", &[("err", &e.to_string())]);
                 }
             }
         }
@@ -119,7 +125,7 @@ impl UiIcons {
         self.bulk_started.store(false, Ordering::SeqCst);
     }
 
-    fn start_bulk_extract(&self) {
+    fn start_bulk_extract(&self, lang: Language) {
         let Some(rda) = self.rda.clone() else {
             return;
         };
@@ -181,20 +187,35 @@ impl UiIcons {
                     st.running = true;
                     st.done = 0;
                     st.total = total;
-                    st.message = format!("Icons extrahieren 0/{total}");
+                    st.message = i18n::tr_fmt(
+                        lang,
+                        "icon.extract_progress",
+                        &[("done", "0"), ("total", &total.to_string())],
+                    );
                 }
                 for (i, (arch, key)) in keys.iter().enumerate() {
                     let _ = extract_rda_key_to_cache(arch, &root, key, None);
                     if let Ok(mut st) = status.lock() {
                         st.done = (i + 1) as u32;
                         if i % 25 == 0 || i + 1 == keys.len() {
-                            st.message = format!("Icons extrahieren {}/{total}", i + 1);
+                            st.message = i18n::tr_fmt(
+                                lang,
+                                "icon.extract_progress",
+                                &[
+                                    ("done", &(i + 1).to_string()),
+                                    ("total", &total.to_string()),
+                                ],
+                            );
                         }
                     }
                 }
                 if let Ok(mut st) = status.lock() {
                     st.running = false;
-                    st.message = format!("Icons bereit ({total} geprüft)");
+                    st.message = i18n::tr_fmt(
+                        lang,
+                        "icon.extract_done",
+                        &[("total", &total.to_string())],
+                    );
                 }
                 let _ = started; // keep flag true so we don't re-bulk every frame
             })

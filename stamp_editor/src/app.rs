@@ -71,6 +71,23 @@ struct ClipboardRoad {
 /// Marker written to the OS clipboard so Windows/eframe emits `Event::Paste` on Ctrl+V.
 const OS_CLIPBOARD_MARKER: &str = "rusticus-stamp-clipboard-v1";
 
+/// A saved selection snapshot: building indices + road/field tile sets.
+#[derive(Debug, Clone, Default)]
+struct SelectionGroup {
+    buildings: Vec<usize>,
+    roads: Vec<(i32, i32)>,
+    fields: Vec<(i32, i32)>,
+}
+
+/// Direction for the align-selection operation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AlignKind {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
 fn sanitize_stamp_filename(name: &str) -> String {
     let cleaned: String = name
         .chars()
@@ -257,6 +274,8 @@ pub struct StampEditorApp {
     place_ghost_cov: RefCell<Option<(u64, u32, i32, u32, u32, CoverageMap)>>,
     /// Last `(building idx, x bits, y bits)` for which drag refreshed coverage.
     drag_cov_key: Option<(usize, u32, u32)>,
+    /// Saved selection groups (Ctrl+Shift+0..9 store, Ctrl+0..9 recall).
+    selection_groups: [Option<SelectionGroup>; 10],
 }
 
 #[derive(Debug, Clone)]
@@ -697,6 +716,7 @@ impl StampEditorApp {
             place_cov_roads: RefCell::new(None),
             place_ghost_cov: RefCell::new(None),
             drag_cov_key: None,
+            selection_groups: Default::default(),
         };
         if cfg.needs_first_run() {
             // Prefill wizard (detect install), but don't load icons/library until confirmed.
@@ -717,7 +737,7 @@ impl StampEditorApp {
             app.library_packs.clear();
             app.game_install = None;
         } else if let Some(g) = app.game_install.clone() {
-            app.ui_icons.attach_game_install(&g);
+            app.ui_icons.attach_game_install(&g, app.language);
         }
         // Empty canvas is a blank editable stamp (not a dead "open file" screen).
         // Must live under Region Roman/Celtic/Egyptian — Anno wipe-syncs other folders.
@@ -728,10 +748,12 @@ impl StampEditorApp {
             app.start_new_stamp_in(&boot_dir, false);
         }
         if !catalog_ok {
-            app.status = format!(
-                "Katalog fehlt/kaputt: {} — Footprints/Labels unzuverlässig. {game_note}",
-                app.catalog_path.display()
+            let cat_msg = i18n::tr_fmt(
+                language,
+                "status.catalog_bad",
+                &[("path", &app.catalog_path.display().to_string())],
             );
+            app.status = format!("{} {game_note}", cat_msg.trim_start_matches(" \u{00b7} "));
         }
         app
     }
@@ -836,7 +858,7 @@ impl StampEditorApp {
             .unwrap_or(0);
         self.refresh_library();
         if let Some(g) = game_install {
-            self.ui_icons.attach_game_install(&g);
+            self.ui_icons.attach_game_install(&g, self.language);
         }
         let boot_dir = self.region_stamp_dir();
         let _ = std::fs::create_dir_all(&boot_dir);
@@ -1106,13 +1128,14 @@ impl StampEditorApp {
         });
         let after = self.library_packs.len();
         if before != after {
-            self.status = format!(
-                "Bibliothek aktualisiert (extern): {after} Packs"
+            self.status = self.tf(
+                "status.library_external_changed",
+                &[("n", &after.to_string())],
             );
         } else {
-            self.status = format!(
-                "Bibliothek aktualisiert (extern): {} — {after} Packs",
-                self.library_root.display()
+            self.status = self.tf(
+                "status.library_external_changed_path",
+                &[("path", &self.library_root.display().to_string()), ("n", &after.to_string())],
             );
         }
     }
@@ -1569,12 +1592,13 @@ impl StampEditorApp {
     fn apply_library_action(&mut self, action: LibraryAction) {
         match action {
             LibraryAction::NewFolder { parent } => {
-                match library::create_library_folder(&parent, "Neuer Ordner") {
+                let folder_name = self.t("lib.default_folder_name");
+                match library::create_library_folder(&parent, folder_name) {
                     Ok(dir) => {
                         self.refresh_library();
-                        self.status = format!("Ordner angelegt: {}", dir.display());
+                        self.status = self.tf("status.folder_created", &[("path", &dir.display().to_string())]);
                     }
-                    Err(e) => self.status = format!("Ordner fehlgeschlagen: {e}"),
+                    Err(e) => self.status = self.tf("status.folder_failed", &[("err", &e.to_string())]),
                 }
             }
             LibraryAction::NewStampPack { folder } => {
@@ -1586,9 +1610,9 @@ impl StampEditorApp {
                     Ok(open) => {
                         self.refresh_library();
                         self.set_open(open, &pack);
-                        self.status = "Stamp im Pack angelegt.".into();
+                        self.status = self.t("status.stamp_in_pack").into();
                     }
-                    Err(e) => self.status = format!("Stamp anlegen fehlgeschlagen: {e}"),
+                    Err(e) => self.status = self.tf("status.stamp_create_failed", &[("err", &e.to_string())]),
                 }
             }
             LibraryAction::DeletePack { path } => {
@@ -1657,7 +1681,7 @@ impl StampEditorApp {
                         self.set_open(open, &path);
                         self.status = self.t("status.duplicated").into();
                     }
-                    Err(e) => self.status = format!("Duplizieren fehlgeschlagen: {e}"),
+                    Err(e) => self.status = self.tf("status.duplicate_failed", &[("err", &e.to_string())]),
                 }
             }
             LibraryAction::RenameStamp { pack, name } => {
@@ -1666,16 +1690,14 @@ impl StampEditorApp {
             }
             LibraryAction::CopyPack { path } => {
                 self.library_clipboard = Some(LibraryClipboard::Pack(path.clone()));
-                self.status = format!(
-                    "Pack kopiert: {}",
-                    path.file_name()
-                        .map(|s| s.to_string_lossy().into_owned())
-                        .unwrap_or_default()
-                );
+                let pack_name = path.file_name()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                self.status = self.tf("status.pack_copied", &[("name", &pack_name)]);
             }
             LibraryAction::CopyStamp { pack, name } => {
                 self.library_clipboard = Some(LibraryClipboard::Stamp { pack, name: name.clone() });
-                self.status = format!("Stamp kopiert: {name}");
+                self.status = self.tf("status.stamp_copied", &[("name", &name)]);
             }
             LibraryAction::Paste { target_folder } => {
                 match self.library_clipboard.clone() {
@@ -1683,9 +1705,9 @@ impl StampEditorApp {
                         match library::copy_pack_file(&src, &target_folder) {
                             Ok(dest) => {
                                 self.refresh_library();
-                                self.status = format!("Pack eingefügt: {}", dest.display());
+                                self.status = self.tf("status.pack_pasted", &[("path", &dest.display().to_string())]);
                             }
-                            Err(e) => self.status = format!("Einfügen fehlgeschlagen: {e}"),
+                            Err(e) => self.status = self.tf("status.paste_failed", &[("err", &e.to_string())]),
                         }
                     }
                     Some(LibraryClipboard::Stamp { pack, name }) => {
@@ -1693,12 +1715,12 @@ impl StampEditorApp {
                         match copy_stamp_to_pack(&pack, &name, &dest) {
                             Ok(new_name) => {
                                 self.refresh_library();
-                                self.status = format!(
-                                    "Stamp „{new_name}“ als Pack eingefügt: {}",
-                                    dest.display()
+                                self.status = self.tf(
+                                    "status.stamp_pasted_as_pack",
+                                    &[("name", &new_name), ("path", &dest.display().to_string())],
                                 );
                             }
-                            Err(e) => self.status = format!("Einfügen fehlgeschlagen: {e}"),
+                            Err(e) => self.status = self.tf("status.paste_failed", &[("err", &e.to_string())]),
                         }
                     }
                     None => self.status = self.t("status.clipboard_empty").into(),
@@ -1710,13 +1732,13 @@ impl StampEditorApp {
                         match copy_stamp_to_pack(&pack, &name, &dest) {
                             Ok(new_name) => {
                                 self.refresh_library();
-                                self.status = format!("Stamp „{new_name}“ eingefügt.");
+                                self.status = self.tf("status.stamp_pasted", &[("name", &new_name)]);
                             }
-                            Err(e) => self.status = format!("Einfügen fehlgeschlagen: {e}"),
+                            Err(e) => self.status = self.tf("status.paste_failed", &[("err", &e.to_string())]),
                         }
                     }
                     Some(LibraryClipboard::Pack(_)) => {
-                        self.status = "Pack-Datei bitte in einen Ordner einfügen.".into();
+                        self.status = self.t("status.paste_pack_into_folder").into();
                     }
                     None => self.status = self.t("status.clipboard_empty").into(),
                 }
@@ -1736,9 +1758,9 @@ impl StampEditorApp {
                 match library::delete_library_folder(&path) {
                     Ok(()) => {
                         self.refresh_library();
-                        self.status = format!("Ordner gelöscht: {name}");
+                        self.status = self.tf("status.folder_deleted", &[("name", &name)]);
                     }
-                    Err(e) => self.status = format!("Ordner löschen: {e}"),
+                    Err(e) => self.status = self.tf("status.folder_delete_failed", &[("err", &e.to_string())]),
                 }
             }
             LibraryAction::DropItems { items, target } => {
@@ -1862,9 +1884,9 @@ impl StampEditorApp {
             }
         }
         self.status = if let Some(e) = err {
-            format!("Verschieben teilweise ({moved}): {e}")
+            self.tf("status.library_move_partial", &[("moved", &moved.to_string()), ("err", &e)])
         } else {
-            format!("{moved} Element(e) verschoben")
+            self.tf("status.library_move_ok", &[("moved", &moved.to_string())])
         };
     }
 
@@ -1923,8 +1945,8 @@ impl StampEditorApp {
             &self.game_stamps_root,
             pack_path,
         ) {
-            Ok(dest) => format!(" · Spiegel → {}", dest.display()),
-            Err(e) => format!(" · Spiegel fehlgeschlagen: {e}"),
+            Ok(dest) => self.tf("status.mirror_ok", &[("dest", &dest.display().to_string())]),
+            Err(e) => self.tf("status.mirror_failed", &[("err", &e.to_string())]),
         }
     }
 
@@ -1996,16 +2018,10 @@ impl StampEditorApp {
         if EditorConfig::looks_like_anno_install(&path) {
             self.game_install = Some(path.clone());
             self.save_config();
-            self.ui_icons.attach_game_install(&path);
-            self.status = format!(
-                "Spiel verknüpft: {} — Icons werden aus ui.rda geladen/gecacht…",
-                path.display()
-            );
+            self.ui_icons.attach_game_install(&path, self.language);
+            self.status = self.tf("status.game_linked_loading", &[("path", &path.display().to_string())]);
         } else {
-            self.status = format!(
-                "Kein gültiger Anno-117-Ordner (erwartet maindata\\ui.rda): {}",
-                path.display()
-            );
+            self.status = self.tf("status.game_invalid", &[("path", &path.display().to_string())]);
         }
     }
 
@@ -2046,12 +2062,12 @@ impl StampEditorApp {
                     } else {
                         "Land"
                     };
-                    t.push_str(&format!(" · {kind} · V = Land/Marsh"));
+                    t.push_str(&i18n::tr_fmt(self.language, "place.size_marsh_hint", &[("kind", kind)]));
                 }
                 t
             })
             .unwrap_or_default();
-        size_hint.push_str(&format!(" · Dir {dir} · R drehen"));
+        size_hint.push_str(&i18n::tr_fmt(self.language, "place.size_rotate_hint", &[("dir", &dir.to_string())]));
         if self
             .catalog
             .building(guid)
@@ -2063,7 +2079,7 @@ impl StampEditorApp {
                 CisternInlet::West => "W",
                 CisternInlet::East => "O",
             };
-            size_hint.push_str(&format!(" · Anschluss {side}"));
+            size_hint.push_str(&i18n::tr_fmt(self.language, "place.size_inlet_hint", &[("side", side)]));
         }
         self.status = if size_hint.is_empty() {
             self.tf("status.hand_place", &[("label", label)])
@@ -2140,10 +2156,7 @@ impl StampEditorApp {
             return;
         };
         if def.size_marsh.is_none() {
-            self.status = format!(
-                "{} hat keine Marsh-Variante",
-                self.catalog.label(guid, self.language)
-            );
+            self.status = self.tf("status.no_marsh_variant", &[("label", &self.catalog.label(guid, self.language))]);
             return;
         }
         self.place_variation = match self.place_variation {
@@ -2168,10 +2181,7 @@ impl StampEditorApp {
             return;
         };
         if def.size_marsh.is_none() {
-            self.status = format!(
-                "{} hat keine Marsh-Variante",
-                self.catalog.label(guid, self.language)
-            );
+            self.status = self.tf("status.no_marsh_variant", &[("label", &self.catalog.label(guid, self.language))]);
             return;
         }
         let next = match cur {
@@ -2192,14 +2202,14 @@ impl StampEditorApp {
                     "Land"
                 };
                 let (w, h) = self.building_size(guid, next);
-                self.status = format!(
-                    "{} → {kind} {}×{}",
-                    self.catalog.label(guid, self.language),
-                    w as i32,
-                    h as i32
-                );
+                self.status = self.tf("status.variation_toggled", &[
+                    ("label", &self.catalog.label(guid, self.language)),
+                    ("kind", kind),
+                    ("w", &(w as i32).to_string()),
+                    ("h", &(h as i32).to_string()),
+                ]);
             }
-            Err(e) => self.status = format!("Variation fehlgeschlagen: {e}"),
+            Err(e) => self.status = self.tf("status.variation_failed", &[("err", &e.to_string())]),
         }
     }
 
@@ -2358,14 +2368,14 @@ impl StampEditorApp {
                     is_primary: true,
                 }];
                 self.clipboard_roads.clear();
-                self.status = format!("Kopiert: {label} — Ctrl+V → in die Hand");
+                self.status = self.tf("status.copied_simple", &[("label", &label)]);
                 return true;
             }
             let n = open.stamp.buildings.len();
             self.status = if n == 0 {
-                "Leeres Stamp — Gebäude auf der Karte anklicken, oder Stamp „Woodcutter“ in der Bibliothek öffnen".into()
+                self.t("status.copy_hint_empty_stamp").into()
             } else {
-                "Nichts markiert — Gebäude anklicken oder mit leerer Hand ein Rechteck aufziehen".into()
+                self.t("status.copy_hint_no_selection").into()
             };
             return false;
         }
@@ -2480,13 +2490,10 @@ impl StampEditorApp {
         self.clipboard_roads = roads;
         // Copy only fills the clipboard — Ctrl+V puts it into the hand.
         self.status = match (n > 1, n_roads > 0) {
-            (true, true) => format!(
-                "Kopiert: {label} (+{}) + {n_roads} Wege — Ctrl+V → Hand",
-                n - 1
-            ),
-            (true, false) => format!("Kopiert: {label} (+{}) — Ctrl+V → Hand", n - 1),
-            (false, true) => format!("Kopiert: {label} + {n_roads} Wege — Ctrl+V → Hand"),
-            (false, false) => format!("Kopiert: {label} — Ctrl+V → Hand"),
+            (true, true) => self.tf("status.copied_extra_roads", &[("label", &label), ("n", &(n - 1).to_string()), ("n_roads", &n_roads.to_string())]),
+            (true, false) => self.tf("status.copied_extra", &[("label", &label), ("n", &(n - 1).to_string())]),
+            (false, true) => self.tf("status.copied_roads", &[("label", &label), ("n_roads", &n_roads.to_string())]),
+            (false, false) => self.tf("status.copied_simple", &[("label", &label)]),
         };
         true
     }
@@ -2528,14 +2535,10 @@ impl StampEditorApp {
         let extra = self.clipboard.len().saturating_sub(1);
         let roads = self.clipboard_roads.len();
         self.status = match (extra > 0, roads > 0) {
-            (true, true) => {
-                format!("Hand: {label} (+{extra}, {roads} Wege) — Klick setzt alles")
-            }
-            (true, false) => format!("Hand: {label} (+{extra}) — Klick setzt die ganze Gruppe"),
-            (false, true) => format!("Hand: {label} (+{roads} Wege) — Klick setzt"),
-            (false, false) => {
-                format!("Hand: {label} — Klick zum Platzieren · Esc = ablegen")
-            }
+            (true, true) => self.tf("status.hand_clip_group", &[("label", &label), ("extra", &extra.to_string()), ("roads", &roads.to_string())]),
+            (true, false) => self.tf("status.hand_clip_extra", &[("label", &label), ("extra", &extra.to_string())]),
+            (false, true) => self.tf("status.hand_clip_roads", &[("label", &label), ("roads", &roads.to_string())]),
+            (false, false) => self.tf("status.hand_clip_simple", &[("label", &label)]),
         };
     }
 
@@ -2546,7 +2549,7 @@ impl StampEditorApp {
             && self.selected_fields.is_empty()
             && self.hover_building.is_none()
         {
-            self.status = "Nichts ausgewählt zum Ausschneiden".into();
+            self.status = self.t("status.nothing_to_cut").into();
             return;
         }
         if !self.copy_selection_to_clipboard() && self.clipboard_roads.is_empty() {
@@ -2558,7 +2561,7 @@ impl StampEditorApp {
         // delete_selection also clears selected roads.
         self.delete_selection(self.selected_buildings.len() <= 1);
         if !self.clipboard.is_empty() || n_roads > 0 {
-            self.status = format!("Ausgeschnitten ({n} Gebäude, {n_roads} Wege) — Ctrl+V");
+            self.status = self.tf("status.cut_selection", &[("n", &n.to_string()), ("n_roads", &n_roads.to_string())]);
         }
     }
 
@@ -2731,10 +2734,10 @@ impl StampEditorApp {
     }
 
     /// Instant paste at cursor (Ctrl+Shift+V). Normal Ctrl+V only arms the hand.
-    fn paste_clipboard_at_cursor(&mut self) {
+    fn paste_clipboard_at_cursor(&mut self) -> bool {
         if self.clipboard.is_empty() {
             self.status = self.t("status.clipboard_empty_click").into();
-            return;
+            return false;
         }
         let (base_x, base_y) = self.paste_anchor();
         self.push_history();
@@ -2746,13 +2749,20 @@ impl StampEditorApp {
                 self.arm_clipboard_in_hand();
                 let extra = self.clipboard.len().saturating_sub(1);
                 let roads = self.clipboard_roads.len();
-                self.status = format!(
-                    "Eingefügt bei ({base_x:.0}, {base_y:.0}) — +{extra} Gebäude, {roads} Wege · noch in der Hand"
-                );
-                self.refresh_coverage();
+                self.status = self.tf("status.pasted_at_cursor_hand", &[
+                    ("x", &format!("{base_x:.0}")),
+                    ("y", &format!("{base_y:.0}")),
+                    ("extra", &extra.to_string()),
+                    ("roads", &roads.to_string()),
+                ]);
             }
-            None => self.status = "Einfügen fehlgeschlagen".into(),
+            None => {
+                self.status = self.t("status.paste_failed_generic").into();
+                return false;
+            }
         }
+        self.refresh_coverage();
+        true
     }
 
     /// Push a marker into the OS clipboard so Ctrl+V produces `Event::Paste` on Windows.
@@ -2765,17 +2775,17 @@ impl StampEditorApp {
     fn duplicate_selection(&mut self) {
         let Some(idx) = self.selected_building else {
             if self.clipboard.is_empty() {
-                self.status = "Nichts zum Duplizieren".into();
+                self.status = self.t("status.nothing_to_duplicate").into();
                 return;
             }
             // Nudge paste anchor +2 tiles from last pointer / view center.
             let anchor_was = self.last_pointer_world;
             let (ax, ay) = self.paste_anchor();
             self.last_pointer_world = Some((ax + 2.0, ay));
-            self.paste_clipboard_at_cursor();
+            let paste_ok = self.paste_clipboard_at_cursor();
             self.last_pointer_world = anchor_was;
-            if self.status.starts_with("Eingefügt") {
-                self.status = "Dupliziert — noch in der Hand".into();
+            if paste_ok {
+                self.status = self.t("status.duplicated_in_hand").into();
             }
             return;
         };
@@ -2791,10 +2801,10 @@ impl StampEditorApp {
             .unwrap_or_else(|| self.paste_anchor());
         let anchor_was = self.last_pointer_world;
         self.last_pointer_world = Some((ox, oy));
-        self.paste_clipboard_at_cursor();
+        let paste_ok = self.paste_clipboard_at_cursor();
         self.last_pointer_world = anchor_was;
-        if self.status.starts_with("Eingefügt") {
-            self.status = "Dupliziert — noch in der Hand".into();
+        if paste_ok {
+            self.status = self.t("status.duplicated_in_hand").into();
         }
     }
 
@@ -3028,15 +3038,19 @@ impl StampEditorApp {
                 }
                 self.clear_canvas_selection();
                 self.refresh_coverage();
-                let verb = if paint_on { "gesetzt" } else { "entfernt" };
-                self.status = format!(
-                    "Weg {verb}: {} Zelle(n) · Linie/Knick ({},{})→({},{})",
-                    path.len().max(changed),
-                    stroke.start.0,
-                    stroke.start.1,
-                    stroke.cursor.0,
-                    stroke.cursor.1
-                );
+                self.status = if paint_on {
+                    self.tf("status.road_stroke_set", &[
+                        ("n", &path.len().max(changed).to_string()),
+                        ("x0", &stroke.start.0.to_string()), ("y0", &stroke.start.1.to_string()),
+                        ("x1", &stroke.cursor.0.to_string()), ("y1", &stroke.cursor.1.to_string()),
+                    ])
+                } else {
+                    self.tf("status.road_stroke_clear", &[
+                        ("n", &path.len().max(changed).to_string()),
+                        ("x0", &stroke.start.0.to_string()), ("y0", &stroke.start.1.to_string()),
+                        ("x1", &stroke.cursor.0.to_string()), ("y1", &stroke.cursor.1.to_string()),
+                    ])
+                };
             }
             StrokeKind::Field { paint_on } => {
                 let Some(owner) = self.field_brush_owner else {
@@ -3085,13 +3099,20 @@ impl StampEditorApp {
                     }
                 }
                 self.refresh_coverage();
-                let verb = if paint_on { "gesetzt" } else { "entfernt" };
                 let w = max_x - min_x + 1;
                 let h = max_y - min_y + 1;
-                self.status = format!(
-                    "Feld {verb}: {changed}/{n} frei in {w}×{h}",
-                    n = area.len()
-                );
+                let n = area.len();
+                self.status = if paint_on {
+                    self.tf("status.field_stroke_set", &[
+                        ("changed", &changed.to_string()), ("n", &n.to_string()),
+                        ("w", &w.to_string()), ("h", &h.to_string()),
+                    ])
+                } else {
+                    self.tf("status.field_stroke_clear", &[
+                        ("changed", &changed.to_string()), ("n", &n.to_string()),
+                        ("w", &w.to_string()), ("h", &h.to_string()),
+                    ])
+                };
             }
             StrokeKind::SelectRect => {
                 let (min_x, min_y, max_x, max_y) = rect_bounds(stroke.start, stroke.cursor);
@@ -3216,9 +3237,11 @@ impl StampEditorApp {
                 self.clear_canvas_selection();
                 self.module_parent_index = None;
                 self.refresh_coverage();
-                self.status = format!(
-                    "Abriss-Rechteck: {roads_n} Weg-Zellen, {bld_n} Gebäude · ({min_x},{min_y})–({max_x},{max_y})"
-                );
+                self.status = self.tf("status.demolish_rect", &[
+                    ("roads_n", &roads_n.to_string()), ("bld_n", &bld_n.to_string()),
+                    ("min_x", &min_x.to_string()), ("min_y", &min_y.to_string()),
+                    ("max_x", &max_x.to_string()), ("max_y", &max_y.to_string()),
+                ]);
             }
             StrokeKind::PlaceRect => {
                 let Some(guid) = self.placing_guid else {
@@ -3311,13 +3334,14 @@ impl StampEditorApp {
                     self.refresh_coverage();
                     let label = self.catalog.label(guid, self.language);
                     self.status = if blocked > 0 {
-                        format!("Platziert {placed}× Gruppe (übersprungen {blocked})")
+                        self.tf("status.placed_group_blocked", &[("placed", &placed.to_string()), ("blocked", &blocked.to_string())])
                     } else if extra_n > 0 || road_n > 0 {
-                        format!(
-                            "Platziert {placed}× Gruppe ({label} +{extra_n}, {road_n} Wege)"
-                        )
+                        self.tf("status.placed_group", &[
+                            ("placed", &placed.to_string()), ("label", &label),
+                            ("extra_n", &extra_n.to_string()), ("road_n", &road_n.to_string()),
+                        ])
                     } else {
-                        format!("Platziert {placed}× {label}")
+                        self.tf("status.placed_building", &[("placed", &placed.to_string()), ("label", &label)])
                     };
                     return;
                 }
@@ -3413,9 +3437,9 @@ impl StampEditorApp {
                 self.refresh_coverage();
                 let label = self.catalog.label(guid, self.language);
                 self.status = if blocked > 0 {
-                    format!("Platziert {placed}× {label} (übersprungen {blocked})")
+                    self.tf("status.placed_building_blocked", &[("placed", &placed.to_string()), ("label", &label), ("blocked", &blocked.to_string())])
                 } else {
-                    format!("Platziert {placed}× {label} im Rechteck")
+                    self.tf("status.placed_building_rect", &[("placed", &placed.to_string()), ("label", &label)])
                 };
             }
         }
@@ -4200,7 +4224,7 @@ impl StampEditorApp {
         let n = self.drag_group_origins.len();
         let nr = self.drag_group_roads.len();
         if n > 1 || nr > 0 {
-            self.status = format!("Auswahl verschoben ({n} Gebäude, {nr} Wege)");
+            self.status = self.tf("status.selection_dragged", &[("n", &n.to_string()), ("nr", &nr.to_string())]);
         }
     }
 
@@ -4473,11 +4497,7 @@ impl StampEditorApp {
         self.library_fingerprint = library::library_fingerprint(&self.library_root);
         self.library_watch_at = Instant::now() + Duration::from_secs(1);
         self.save_config();
-        self.status = format!(
-            "Bibliothek: {} — {} Packs",
-            self.library_root.display(),
-            self.library_packs.len()
-        );
+        self.status = self.tf("status.library_rescanned", &[("path", &self.library_root.display().to_string()), ("n", &self.library_packs.len().to_string())]);
     }
 
     fn take_snapshot(&self) -> Option<Snapshot> {
@@ -4546,7 +4566,7 @@ impl StampEditorApp {
                 self.set_open(open, &path);
                 self.push_recent_pack(&path);
             }
-            Err(err) => self.status = format!("Öffnen fehlgeschlagen: {err}"),
+            Err(err) => self.status = self.tf("status.open_failed", &[("err", &err.to_string())]),
         }
     }
 
@@ -4557,7 +4577,7 @@ impl StampEditorApp {
                 self.set_open(open, &path);
                 self.push_recent_pack(&path);
             }
-            Err(err) => self.status = format!("Öffnen fehlgeschlagen: {err}"),
+            Err(err) => self.status = self.tf("status.open_failed", &[("err", &err.to_string())]),
         }
     }
 
@@ -4817,25 +4837,25 @@ impl StampEditorApp {
         self.history.clear();
         self.history_drag_pushed = false;
         self.clear_hand_silent();
+        self.selection_groups = Default::default();
         self.module_parent_index = None;
         self.residence_needs_pin = None;
         // Only auto-pick region when opening a pack (global filter stays user-controlled after).
         self.region_filter = RegionFilter::from_region_guid(open.region_guid);
         let cistern_note = if open.stamp.cistern_fixes_on_load > 0 {
-            format!(
-                " · {} Zisternen-Pos korrigiert (Speichern schreibt Fix)",
-                open.stamp.cistern_fixes_on_load
-            )
+            self.tf("status.open_cistern_fix_note", &[("n", &open.stamp.cistern_fixes_on_load.to_string())])
         } else {
             String::new()
         };
-        self.status = format!(
-            "Geöffnet: {} ({}) — {} Gebäude · Filter {}{}",
-            open.entry_name,
-            path.display(),
-            open.stamp.buildings.len(),
-            self.region_filter.label_lang(self.language),
-            cistern_note
+        self.status = self.tf(
+            "status.opened_stamp",
+            &[
+                ("name", &open.entry_name),
+                ("path", &path.display().to_string()),
+                ("n", &open.stamp.buildings.len().to_string()),
+                ("filter", &self.region_filter.label_lang(self.language).to_string()),
+                ("note", &cistern_note),
+            ],
         );
         // Prefer selecting a farm main that already has a ComplexOwner group.
         self.selected_building = (0..open.stamp.buildings.len()).find(|&i| {
@@ -4870,26 +4890,29 @@ impl StampEditorApp {
         match open_named_stamp(&path, name) {
             Ok(open) => {
                 // Keep global region filter; do not override from stamp.
-                self.status = format!(
-                    "Stamp: {} — {} Gebäude · Filter {}",
-                    open.entry_name,
-                    open.stamp.buildings.len(),
-                    self.region_filter.label_lang(self.language)
+                self.status = self.tf(
+                    "status.switched_stamp",
+                    &[
+                        ("name", &open.entry_name),
+                        ("n", &open.stamp.buildings.len().to_string()),
+                        ("filter", &self.region_filter.label_lang(self.language).to_string()),
+                    ],
                 );
                 self.clear_hand_silent();
                 self.clear_canvas_selection();
+                self.selection_groups = Default::default();
                 self.module_parent_index = None;
                 self.open = Some(open);
                 self.center_view();
                 self.refresh_coverage();
             }
-            Err(err) => self.status = format!("Wechsel fehlgeschlagen: {err}"),
+            Err(err) => self.status = self.tf("status.switch_stamp_failed", &[("err", &err.to_string())]),
         }
     }
 
     fn save_current(&mut self) {
         if self.open.is_none() {
-            self.status = "Nichts zu speichern.".into();
+            self.status = self.t("status.nothing_to_save").into();
             return;
         }
         let region_guid = self.region_filter.stamp_region_guid();
@@ -5207,6 +5230,581 @@ impl StampEditorApp {
             .map(|g| self.catalog.label(g, self.language))
             .unwrap_or_default();
         self.refresh_place_status(&label);
+    }
+
+    // ───────────────────────────────────────────────── Selection groups ─────
+
+    /// Store current canvas selection into slot `slot` (0..9).
+    fn store_selection_group(&mut self, slot: usize) {
+        let buildings = self.selection_indices();
+        let roads: Vec<(i32, i32)> = self.selected_roads.iter().copied().collect();
+        let fields: Vec<(i32, i32)> = self.selected_fields.iter().copied().collect();
+        if buildings.is_empty() && roads.is_empty() && fields.is_empty() {
+            return;
+        }
+        self.selection_groups[slot] = Some(SelectionGroup { buildings, roads, fields });
+        self.status = self.tf("status.group_saved", &[("slot", &slot.to_string())]);
+    }
+
+    /// Recall a previously stored selection group, filtering out stale indices.
+    fn recall_selection_group(&mut self, slot: usize) {
+        let Some(group) = self.selection_groups[slot].clone() else {
+            self.status = self.tf("status.group_empty", &[("slot", &slot.to_string())]);
+            return;
+        };
+        let max_idx = self.open.as_ref().map(|o| o.stamp.buildings.len()).unwrap_or(0);
+        let valid: Vec<usize> = group.buildings.into_iter().filter(|&i| i < max_idx).collect();
+        self.set_canvas_selection_full(valid, group.roads, group.fields);
+        self.status = self.tf("status.group_recalled", &[("slot", &slot.to_string())]);
+        self.refresh_coverage();
+    }
+
+    // ─────────────────────────────────────────────────────── Flip H / V ─────
+
+    /// Flip the current selection (or held-in-hand ghost) horizontally or vertically.
+    fn flip_selection(&mut self, horizontal: bool) {
+        if self.placing_guid.is_some() {
+            if self.hand_from_clipboard {
+                self.flip_clipboard_hand(horizontal);
+            } else {
+                let cur = self.place_direction;
+                self.place_direction = if horizontal {
+                    (8_i32 - cur).rem_euclid(8)
+                } else {
+                    (4_i32 - cur).rem_euclid(8)
+                };
+                let label = self
+                    .placing_guid
+                    .map(|g| self.catalog.label(g, self.language))
+                    .unwrap_or_default();
+                self.refresh_place_status(&label);
+            }
+            return;
+        }
+        let indices = self.selection_indices();
+        if indices.len() > 1 {
+            self.flip_group(&indices.clone(), horizontal);
+        } else if let Some(idx) = self.selected_building {
+            self.flip_single(idx, horizontal);
+        }
+    }
+
+    /// Flip a single building, keeping its footprint top-left tile stable.
+    fn flip_single(&mut self, idx: usize, horizontal: bool) {
+        let cur = self
+            .open
+            .as_ref()
+            .and_then(|o| o.stamp.buildings.get(idx))
+            .map(|b| b.direction);
+        let Some(cur) = cur else { return };
+        let next = if horizontal {
+            (8_i32 - cur).rem_euclid(8)
+        } else {
+            (4_i32 - cur).rem_euclid(8)
+        };
+        let (guid, variation, ox, oy) = self
+            .open
+            .as_ref()
+            .and_then(|o| o.stamp.buildings.get(idx))
+            .map(|b| (b.guid, b.variation, b.x, b.y))
+            .unwrap_or((0, None, 0.0, 0.0));
+        let (tx, ty) = {
+            let (mx, my, _, _) = self.building_oriented_blocker(guid, variation, cur);
+            footprint_top_left_blocker(ox, oy, mx, my, self.stamp_drag())
+        };
+        let (nx, ny) = self.place_pos_for_tl(tx, ty, guid, variation, next);
+        self.push_history();
+        if let Some(open) = self.open.as_mut() {
+            match open.stamp.set_building_direction(idx, next) {
+                Ok(()) => {
+                    let _ = open.stamp.set_building_pos(idx, nx, ny);
+                    open.dirty = true;
+                    self.schedule_autosave();
+                    let mode = if horizontal { "H" } else { "V" };
+                    self.status = self.tf("status.flipped", &[("mode", mode)]);
+                    self.refresh_coverage();
+                }
+                Err(e) => {
+                    self.status = self.tf("status.rotate_failed", &[("err", &e.to_string())]);
+                }
+            }
+        }
+    }
+
+    /// Flip a multi-selection by mirroring **footprint** tiles (not pivot Pos).
+    /// Pivot-mirroring drifts when BuildBlocker offsets differ between buildings.
+    fn flip_group(&mut self, indices: &[usize], horizontal: bool) {
+        let drag = self.stamp_drag();
+        struct Item {
+            idx: usize,
+            tx: i32,
+            ty: i32,
+            bw: i32,
+            bh: i32,
+            guid: u32,
+            variation: Option<u32>,
+            dir: i32,
+        }
+        let mut items: Vec<Item> = Vec::new();
+        {
+            let Some(open) = self.open.as_ref() else {
+                return;
+            };
+            for &i in indices {
+                if let Some(b) = open.stamp.buildings.get(i) {
+                    let (mx, my, w, h) =
+                        self.building_oriented_blocker(b.guid, b.variation, b.direction);
+                    let (tx, ty) = footprint_top_left_blocker(b.x, b.y, mx, my, drag);
+                    items.push(Item {
+                        idx: i,
+                        tx,
+                        ty,
+                        bw: w.round().max(1.0) as i32,
+                        bh: h.round().max(1.0) as i32,
+                        guid: b.guid,
+                        variation: b.variation,
+                        dir: b.direction,
+                    });
+                }
+            }
+        }
+        if items.is_empty() {
+            return;
+        }
+        let min_x = items.iter().map(|a| a.tx).min().unwrap();
+        let max_x = items.iter().map(|a| a.tx + a.bw - 1).max().unwrap();
+        let min_y = items.iter().map(|a| a.ty).min().unwrap();
+        let max_y = items.iter().map(|a| a.ty + a.bh - 1).max().unwrap();
+
+        self.push_history();
+        let mut ok = 0usize;
+        for a in &items {
+            let next = if horizontal {
+                (8_i32 - a.dir).rem_euclid(8)
+            } else {
+                (4_i32 - a.dir).rem_euclid(8)
+            };
+            // Mirror the footprint interval inside the group AABB, keep the mirrored
+            // left/bottom edge as the new top-left (works when dir flip changes w×h).
+            let (new_tx, new_ty) = if horizontal {
+                (min_x + max_x - (a.tx + a.bw - 1), a.ty)
+            } else {
+                (a.tx, min_y + max_y - (a.ty + a.bh - 1))
+            };
+            let (nx, ny) =
+                self.place_pos_for_tl(new_tx, new_ty, a.guid, a.variation, next);
+            if let Some(open) = self.open.as_mut() {
+                if open.stamp.set_building_direction(a.idx, next).is_ok() {
+                    let _ = open.stamp.set_building_pos(a.idx, nx, ny);
+                    ok += 1;
+                }
+            }
+        }
+        if ok > 0 {
+            if let Some(open) = self.open.as_mut() {
+                open.dirty = true;
+            }
+            self.schedule_autosave();
+            self.status = self.tf("status.flipped_group", &[("n", &ok.to_string())]);
+            self.refresh_coverage();
+        }
+    }
+
+    /// Flip the clipboard group held in hand (directions + relative TL offsets + roads).
+    fn flip_clipboard_hand(&mut self, horizontal: bool) {
+        // Footprint sizes at *current* directions — mirror TL intervals, then flip dir.
+        let sizes: Vec<(i32, i32)> = self
+            .clipboard
+            .iter()
+            .map(|c| {
+                let (_, _, w, h) =
+                    self.building_oriented_blocker(c.guid, c.variation, c.direction);
+                (w.round().max(1.0) as i32, h.round().max(1.0) as i32)
+            })
+            .collect();
+        if self.clipboard.is_empty() {
+            return;
+        }
+        let min_x = self
+            .clipboard
+            .iter()
+            .map(|c| c.dtx)
+            .min()
+            .unwrap_or(0);
+        let max_x = self
+            .clipboard
+            .iter()
+            .zip(sizes.iter())
+            .map(|(c, &(bw, _))| c.dtx + bw - 1)
+            .max()
+            .unwrap_or(0);
+        let min_y = self
+            .clipboard
+            .iter()
+            .map(|c| c.dty)
+            .min()
+            .unwrap_or(0);
+        let max_y = self
+            .clipboard
+            .iter()
+            .zip(sizes.iter())
+            .map(|(c, &(_, bh))| c.dty + bh - 1)
+            .max()
+            .unwrap_or(0);
+
+        for (c, &(bw, bh)) in self.clipboard.iter_mut().zip(sizes.iter()) {
+            if horizontal {
+                c.dtx = min_x + max_x - (c.dtx + bw - 1);
+            } else {
+                c.dty = min_y + max_y - (c.dty + bh - 1);
+            }
+            c.direction = if horizontal {
+                (8_i32 - c.direction).rem_euclid(8)
+            } else {
+                (4_i32 - c.direction).rem_euclid(8)
+            };
+        }
+        // Roads are 1×1 cells in the same delta space.
+        for r in &mut self.clipboard_roads {
+            if horizontal {
+                r.dx = min_x + max_x - r.dx;
+            } else {
+                r.dy = min_y + max_y - r.dy;
+            }
+        }
+        self.place_direction = if horizontal {
+            (8_i32 - self.place_direction).rem_euclid(8)
+        } else {
+            (4_i32 - self.place_direction).rem_euclid(8)
+        };
+        let label = self
+            .placing_guid
+            .map(|g| self.catalog.label(g, self.language))
+            .unwrap_or_default();
+        self.refresh_place_status(&label);
+    }
+
+    // ─────────────────────────────────────────────── Align / Distribute ─────
+
+    /// Align all selected buildings to a shared edge.
+    /// Requires ≥ 2 selected buildings; roads/fields are not moved.
+    fn align_selection(&mut self, kind: AlignKind) {
+        let indices = self.selection_indices();
+        if indices.len() < 2 {
+            return;
+        }
+        let drag = self.stamp_drag();
+        // Collect per-building TL + oriented size.
+        struct AlignItem {
+            idx: usize,
+            tx: i32,
+            ty: i32,
+            bw: i32,
+            bh: i32,
+            guid: u32,
+            variation: Option<u32>,
+            direction: i32,
+        }
+        let mut items: Vec<AlignItem> = Vec::new();
+        {
+            let Some(open) = self.open.as_ref() else { return };
+            for &i in &indices {
+                if let Some(b) = open.stamp.buildings.get(i) {
+                    let (mx, my, w, h) =
+                        self.building_oriented_blocker(b.guid, b.variation, b.direction);
+                    let (tx, ty) =
+                        footprint_top_left_blocker(b.x, b.y, mx, my, drag);
+                    items.push(AlignItem {
+                        idx: i,
+                        tx,
+                        ty,
+                        bw: w.round().max(1.0) as i32,
+                        bh: h.round().max(1.0) as i32,
+                        guid: b.guid,
+                        variation: b.variation,
+                        direction: b.direction,
+                    });
+                }
+            }
+        }
+        if items.len() < 2 {
+            return;
+        }
+        // Compute reference edge.
+        // World Y-up: Top = largest Y (top-of-screen), Bottom = smallest Y.
+        let ref_left = items.iter().map(|a| a.tx).min().unwrap();
+        let ref_right = items.iter().map(|a| a.tx + a.bw - 1).max().unwrap();
+        let ref_bottom = items.iter().map(|a| a.ty).min().unwrap();
+        let ref_top = items.iter().map(|a| a.ty + a.bh - 1).max().unwrap();
+
+        // Preview targets; only push history when at least one building actually moves.
+        let mut targets: Vec<(usize, i32, i32, u32, Option<u32>, i32)> = Vec::new();
+        let mut any_move = false;
+        for a in &items {
+            let (new_tx, new_ty) = match kind {
+                AlignKind::Left => (ref_left, a.ty),
+                AlignKind::Right => (ref_right - a.bw + 1, a.ty),
+                AlignKind::Bottom => (a.tx, ref_bottom),
+                AlignKind::Top => (a.tx, ref_top - a.bh + 1),
+            };
+            if new_tx != a.tx || new_ty != a.ty {
+                any_move = true;
+            }
+            targets.push((a.idx, new_tx, new_ty, a.guid, a.variation, a.direction));
+        }
+        if !any_move {
+            return;
+        }
+        self.push_history();
+        let mut moved = 0usize;
+        for (idx, new_tx, new_ty, guid, variation, direction) in targets {
+            let (nx, ny) = self.place_pos_for_tl(new_tx, new_ty, guid, variation, direction);
+            if let Some(open) = self.open.as_mut() {
+                if open.stamp.set_building_pos(idx, nx, ny).is_ok() {
+                    moved += 1;
+                }
+            }
+        }
+        if moved > 0 {
+            if let Some(open) = self.open.as_mut() {
+                open.dirty = true;
+            }
+            self.schedule_autosave();
+            self.status = self.t("status.aligned").into();
+            self.refresh_coverage();
+        }
+    }
+
+    /// Distribute selected buildings evenly along the horizontal or vertical axis.
+    /// Requires ≥ 3 selected buildings; first and last (by center) are anchors.
+    fn distribute_selection(&mut self, horizontal: bool) {
+        let indices = self.selection_indices();
+        if indices.len() < 3 {
+            return;
+        }
+        let drag = self.stamp_drag();
+        struct DistItem {
+            idx: usize,
+            tx: i32,
+            ty: i32,
+            bw: i32,
+            bh: i32,
+            guid: u32,
+            variation: Option<u32>,
+            direction: i32,
+        }
+        let mut items: Vec<DistItem> = Vec::new();
+        {
+            let Some(open) = self.open.as_ref() else { return };
+            for &i in &indices {
+                if let Some(b) = open.stamp.buildings.get(i) {
+                    let (mx, my, w, h) =
+                        self.building_oriented_blocker(b.guid, b.variation, b.direction);
+                    let (tx, ty) = footprint_top_left_blocker(b.x, b.y, mx, my, drag);
+                    items.push(DistItem {
+                        idx: i,
+                        tx,
+                        ty,
+                        bw: w.round().max(1.0) as i32,
+                        bh: h.round().max(1.0) as i32,
+                        guid: b.guid,
+                        variation: b.variation,
+                        direction: b.direction,
+                    });
+                }
+            }
+        }
+        if items.len() < 3 {
+            return;
+        }
+        // Sort by center along the distribution axis.
+        if horizontal {
+            items.sort_by(|a, b| {
+                let ca = a.tx as f32 + a.bw as f32 * 0.5;
+                let cb = b.tx as f32 + b.bw as f32 * 0.5;
+                ca.partial_cmp(&cb).unwrap()
+            });
+        } else {
+            items.sort_by(|a, b| {
+                let ca = a.ty as f32 + a.bh as f32 * 0.5;
+                let cb = b.ty as f32 + b.bh as f32 * 0.5;
+                ca.partial_cmp(&cb).unwrap()
+            });
+        }
+        let n = items.len();
+        let first_center = if horizontal {
+            items[0].tx as f32 + items[0].bw as f32 * 0.5
+        } else {
+            items[0].ty as f32 + items[0].bh as f32 * 0.5
+        };
+        let last_center = if horizontal {
+            items[n - 1].tx as f32 + items[n - 1].bw as f32 * 0.5
+        } else {
+            items[n - 1].ty as f32 + items[n - 1].bh as f32 * 0.5
+        };
+        let gap = (last_center - first_center) / (n - 1) as f32;
+        let mut targets: Vec<(usize, i32, i32, u32, Option<u32>, i32)> = Vec::new();
+        let mut any_move = false;
+        for (k, a) in items.iter().enumerate() {
+            if k == 0 || k == n - 1 {
+                continue; // anchors stay
+            }
+            let target_center = first_center + k as f32 * gap;
+            let (new_tx, new_ty) = if horizontal {
+                let ntx = (target_center - a.bw as f32 * 0.5).round() as i32;
+                (ntx, a.ty)
+            } else {
+                let nty = (target_center - a.bh as f32 * 0.5).round() as i32;
+                (a.tx, nty)
+            };
+            if new_tx != a.tx || new_ty != a.ty {
+                any_move = true;
+            }
+            targets.push((a.idx, new_tx, new_ty, a.guid, a.variation, a.direction));
+        }
+        if !any_move {
+            return;
+        }
+        self.push_history();
+        let mut moved = 0usize;
+        for (idx, new_tx, new_ty, guid, variation, direction) in targets {
+            let (nx, ny) = self.place_pos_for_tl(new_tx, new_ty, guid, variation, direction);
+            if let Some(open) = self.open.as_mut() {
+                if open.stamp.set_building_pos(idx, nx, ny).is_ok() {
+                    moved += 1;
+                }
+            }
+        }
+        if moved > 0 {
+            if let Some(open) = self.open.as_mut() {
+                open.dirty = true;
+            }
+            self.schedule_autosave();
+            self.status = self.t("status.distributed").into();
+            self.refresh_coverage();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────── PNG export ─────
+
+    /// Rasterise the stamp AABB into a PNG and prompt the user for a save path.
+    fn export_stamp_png(&mut self) {
+        let Some(open) = self.open.as_ref() else {
+            self.status = self.t("status.export_image_empty").into();
+            return;
+        };
+        let region = open.region_guid;
+        let drag = self.stamp_drag();
+
+        // --- Collect cells --------------------------------------------------
+        // Building footprint cells, tagged with GUID for colour.
+        let mut bld_cells: Vec<((i32, i32), u32)> = Vec::new();
+        for b in &open.stamp.buildings {
+            let def = self.catalog.building(b.guid);
+            for c in footprint_cells_for_region(b, def, region, drag) {
+                bld_cells.push(((c.x, c.y), b.guid));
+            }
+        }
+        // Road cells from the coverage map (roads are always filled there).
+        let road_cells: Vec<(i32, i32)> =
+            self.coverage.roads.keys().map(|c| (c.x, c.y)).collect();
+        // PlantFarm field tiles.
+        let field_cells: Vec<(i32, i32)> =
+            open.stamp.polygon_cells.iter().map(|c| (c.x, c.y)).collect();
+
+        if bld_cells.is_empty() && road_cells.is_empty() && field_cells.is_empty() {
+            self.status = self.t("status.export_image_empty").into();
+            return;
+        }
+
+        // --- AABB -----------------------------------------------------------
+        let all_x: Vec<i32> = bld_cells
+            .iter()
+            .map(|&((x, _), _)| x)
+            .chain(road_cells.iter().map(|&(x, _)| x))
+            .chain(field_cells.iter().map(|&(x, _)| x))
+            .collect();
+        let all_y: Vec<i32> = bld_cells
+            .iter()
+            .map(|&((_, y), _)| y)
+            .chain(road_cells.iter().map(|&(_, y)| y))
+            .chain(field_cells.iter().map(|&(_, y)| y))
+            .collect();
+        let min_x = all_x.iter().copied().min().unwrap_or(0) - 1;
+        let max_x = all_x.iter().copied().max().unwrap_or(0) + 1;
+        let min_y = all_y.iter().copied().min().unwrap_or(0) - 1;
+        let max_y = all_y.iter().copied().max().unwrap_or(0) + 1;
+
+        let img_w = (max_x - min_x + 1).max(1) as u32;
+        let img_h = (max_y - min_y + 1).max(1) as u32;
+
+        // --- Rasterise ------------------------------------------------------
+        use image::{Rgba, RgbaImage};
+        let mut img = RgbaImage::new(img_w, img_h);
+        // Dark background.
+        for px in img.pixels_mut() {
+            *px = Rgba([28u8, 30, 34, 255]);
+        }
+        // Helper: world (x,y) → pixel (px,py) with Y-flip for Y-up world.
+        let to_px = |wx: i32, wy: i32| -> (u32, u32) {
+            ((wx - min_x) as u32, (max_y - wy) as u32)
+        };
+        // Field tiles (green-ish).
+        for &(x, y) in &field_cells {
+            let (px, py) = to_px(x, y);
+            if px < img_w && py < img_h {
+                *img.get_pixel_mut(px, py) = Rgba([70u8, 150, 55, 255]);
+            }
+        }
+        // Road tiles (gray).
+        for &(x, y) in &road_cells {
+            let (px, py) = to_px(x, y);
+            if px < img_w && py < img_h {
+                *img.get_pixel_mut(px, py) = Rgba([110u8, 110, 110, 255]);
+            }
+        }
+        // Building tiles (colour derived from GUID).
+        for &((x, y), guid) in &bld_cells {
+            let (px, py) = to_px(x, y);
+            if px < img_w && py < img_h {
+                *img.get_pixel_mut(px, py) = Rgba(Self::guid_to_rgba(guid));
+            }
+        }
+
+        // --- Save dialog ----------------------------------------------------
+        let stem = open.entry_name.clone();
+        let path = rfd::FileDialog::new()
+            .set_title(self.t("file.export_image"))
+            .add_filter("PNG Image", &["png"])
+            .set_file_name(&format!("{stem}.png"))
+            .save_file();
+        let Some(path) = path else { return };
+
+        match img.save(&path) {
+            Ok(()) => {
+                self.status = self.tf(
+                    "status.export_image_ok",
+                    &[("path", &path.display().to_string())],
+                );
+            }
+            Err(e) => {
+                self.status = self.tf(
+                    "status.export_image_failed",
+                    &[("err", &e.to_string())],
+                );
+            }
+        }
+    }
+
+    /// Deterministic colour from a building GUID (blue-ish palette).
+    fn guid_to_rgba(guid: u32) -> [u8; 4] {
+        let mut h = DefaultHasher::new();
+        guid.hash(&mut h);
+        let hv = h.finish();
+        let r = 60u8.saturating_add((hv & 0x5F) as u8);
+        let g = 90u8.saturating_add(((hv >> 8) & 0x5F) as u8);
+        let b = 150u8.saturating_add(((hv >> 16) & 0x4F) as u8);
+        [r, g, b, 255]
     }
 
     /// True when something movable (buildings / roads / fields) is selected.
@@ -5768,14 +6366,14 @@ impl StampEditorApp {
                             Color32::GRAY
                         };
                         let unit = if area_farm {
-                            "Fläche (Kacheln)"
+                            self.t("module.area_tiles")
                         } else {
-                            "Felder / Module"
+                            self.t("module.fields_or_modules")
                         };
                         ui.colored_label(color, format!("{unit}: {have}/{need}"));
                         ui.label(
                             RichText::new(
-                                "Zusammengehörige Gebäude sind auf dem Canvas umrandet.",
+                                self.t("module.canvas_outline_hint"),
                             )
                             .small()
                             .weak(),
@@ -5785,7 +6383,7 @@ impl StampEditorApp {
                                 let active = self.field_brush_owner == farm_owner
                                     && self.field_brush_guid == Some(fg);
                                 let btn = ui.add(
-                                    egui::Button::new(format!("Feld malen: {fl}")).selected(active),
+                                    egui::Button::new(self.tf("module.paint_fields", &[("name", &fl)])).selected(active),
                                 );
                                 if btn.clicked() {
                                     if active {
@@ -5794,20 +6392,18 @@ impl StampEditorApp {
                                         self.activate_field_brush(oid, fg, &fl);
                                     } else {
                                         self.status =
-                                            "Farm braucht ComplexOwnerID für Feld-Malen".into();
+                                            self.t("status.farm_needs_owner_for_fields").into();
                                     }
                                 }
                             }
                         } else {
                             for (mg, ml) in &mod_btns {
-                                if ui.button(format!("+ {ml} platzieren")).clicked() {
+                                if ui.button(self.tf("module.place_button", &[("name", ml)])).clicked() {
                                     self.placing_guid = Some(*mg);
                                     self.module_parent_index = Some(main_idx);
                                     self.palette_selected_guid = Some(*mg);
                                     self.hand_from_clipboard = false;
-                                    self.status = format!(
-                                        "Modul „{ml}“ — im Radius der Farm platzieren (Owner-Link)"
-                                    );
+                                    self.status = self.tf("status.place_module_farm", &[("name", ml)]);
                                 }
                             }
                         }
@@ -6118,7 +6714,7 @@ impl StampEditorApp {
                         self.sync_os_clipboard_marker(ctx);
                     }
                 }
-                Chord::ShiftV => self.paste_clipboard_at_cursor(),
+                Chord::ShiftV => { let _ = self.paste_clipboard_at_cursor(); }
                 Chord::V => {
                     // Ctrl+V = into hand (click to place). Ctrl+Shift+V = instant at cursor.
                     self.arm_clipboard_in_hand();
@@ -6399,6 +6995,13 @@ impl eframe::App for StampEditorApp {
                         self.save_current();
                         ui.close_menu();
                     }
+                    if ui
+                        .add_enabled(self.open.is_some(), egui::Button::new(self.t("file.export_image")))
+                        .clicked()
+                    {
+                        self.export_stamp_png();
+                        ui.close_menu();
+                    }
                     if ui.button(self.t("file.reload_catalog")).clicked() {
                         match Catalog::load(&self.catalog_path) {
                             Ok(c) => {
@@ -6491,7 +7094,7 @@ impl eframe::App for StampEditorApp {
                         )
                         .clicked()
                     {
-                        self.paste_clipboard_at_cursor();
+                        let _ = self.paste_clipboard_at_cursor();
                         ui.close_menu();
                     }
                     if ui
@@ -6522,6 +7125,82 @@ impl eframe::App for StampEditorApp {
                         self.rotate_selection(true);
                         ui.close_menu();
                     }
+                    // Flip H / V
+                    let can_flip = self.placing_guid.is_some()
+                        || self.selected_building.is_some()
+                        || !self.selected_buildings.is_empty();
+                    if ui
+                        .add_enabled(can_flip, egui::Button::new(self.t("edit.flip_h")))
+                        .clicked()
+                    {
+                        self.flip_selection(true);
+                        ui.close_menu();
+                    }
+                    if ui
+                        .add_enabled(can_flip, egui::Button::new(self.t("edit.flip_v")))
+                        .clicked()
+                    {
+                        self.flip_selection(false);
+                        ui.close_menu();
+                    }
+                    // Align / Distribute (need ≥2 selected buildings)
+                    let n_sel = self.selection_indices().len();
+                    ui.separator();
+                    ui.menu_button(self.t("edit.align_menu"), |ui| {
+                        if ui
+                            .add_enabled(n_sel >= 2, egui::Button::new(self.t("edit.align_left")))
+                            .clicked()
+                        {
+                            self.align_selection(AlignKind::Left);
+                            ui.close_menu();
+                        }
+                        if ui
+                            .add_enabled(n_sel >= 2, egui::Button::new(self.t("edit.align_right")))
+                            .clicked()
+                        {
+                            self.align_selection(AlignKind::Right);
+                            ui.close_menu();
+                        }
+                        if ui
+                            .add_enabled(n_sel >= 2, egui::Button::new(self.t("edit.align_top")))
+                            .clicked()
+                        {
+                            self.align_selection(AlignKind::Top);
+                            ui.close_menu();
+                        }
+                        if ui
+                            .add_enabled(
+                                n_sel >= 2,
+                                egui::Button::new(self.t("edit.align_bottom")),
+                            )
+                            .clicked()
+                        {
+                            self.align_selection(AlignKind::Bottom);
+                            ui.close_menu();
+                        }
+                        ui.separator();
+                        if ui
+                            .add_enabled(
+                                n_sel >= 3,
+                                egui::Button::new(self.t("edit.distribute_h")),
+                            )
+                            .clicked()
+                        {
+                            self.distribute_selection(true);
+                            ui.close_menu();
+                        }
+                        if ui
+                            .add_enabled(
+                                n_sel >= 3,
+                                egui::Button::new(self.t("edit.distribute_v")),
+                            )
+                            .clicked()
+                        {
+                            self.distribute_selection(false);
+                            ui.close_menu();
+                        }
+                    });
+                    ui.separator();
                     if ui
                         .add_enabled(
                             self.open.is_some(),
@@ -6591,6 +7270,13 @@ impl eframe::App for StampEditorApp {
                         }
                     }
                 });
+                if ui
+                    .button(self.t("menu.hotkeys"))
+                    .on_hover_text(self.t("menu.hotkeys_tip"))
+                    .clicked()
+                {
+                    self.show_cheatsheet = true;
+                }
                 });
                 if let Some(open) = &self.open {
                     ui.separator();
@@ -6662,17 +7348,10 @@ impl eframe::App for StampEditorApp {
                 }
             });
 
-            // Row 3: status + controls hint.
+            // Row 3: status only (hotkeys live under the top-bar Hotkeys button / F1).
             ui.horizontal(|ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.label(RichText::new(&self.status).size(14.0));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(
-                        RichText::new(self.t("canvas.controls"))
-                            .size(11.0)
-                            .weak(),
-                    );
-                });
             });
         });
 
@@ -7816,9 +8495,9 @@ impl eframe::App for StampEditorApp {
                                 ui.label(RichText::new(Self::t_lang(lang, "analyse.sources")).strong());
                                 for h in &cov_hits {
                                     let via = match (h.via_street, h.via_radius) {
-                                        (true, true) => "Straße+Radius",
-                                        (true, false) => "Straße",
-                                        (false, true) => "Radius",
+                                        (true, true) => Self::t_lang(lang, "analyse.via_street_radius"),
+                                        (true, false) => Self::t_lang(lang, "analyse.via_street"),
+                                        (false, true) => Self::t_lang(lang, "analyse.via_radius"),
                                         _ => "?",
                                     };
                                     ui.label(format!("• {} ({via})", h.source_name));
@@ -7896,19 +8575,16 @@ impl eframe::App for StampEditorApp {
                                 } else {
                                     Color32::from_rgb(220, 160, 60)
                                 };
-                                ui.colored_label(color, format!("Produktivität {have}/{need}"));
-                                ui.label(format!(
-                                    "Platzierungsradius (Haupt) ≈ {place_r:.0} Tiles"
-                                ));
+                                ui.colored_label(color, Self::tf_lang(lang, "analyse.productivity", &[("have", &have.to_string()), ("need", &need.to_string())]));
+                                ui.label(Self::tf_lang(lang, "analyse.place_radius_main", &[("r", &format!("{place_r:.0}"))]));
                                 for (mg, ml) in &mod_btns {
-                                    if ui.button(format!("+ {ml}")).clicked() {
+                                    let btn_lbl = Self::tf_lang(lang, "module.place_button", &[("name", ml)]);
+                                    if ui.button(btn_lbl).clicked() {
                                         self.placing_guid = Some(*mg);
                                         self.module_parent_index = Some(main_idx);
                                         self.palette_selected_guid = Some(*mg);
                                         self.hand_from_clipboard = false;
-                                        self.status = format!(
-                                            "Modul „{ml}“ — im Radius des Mains platzieren"
-                                        );
+                                        self.status = Self::tf_lang(lang, "status.place_module_main", &[("name", ml)]);
                                     }
                                 }
                             }
@@ -7969,13 +8645,27 @@ impl eframe::App for StampEditorApp {
                     let _ = self.delete_library_selection();
                 }
             }
-            // Land/Marsh footprint (V): while placing, or on selected building with size_marsh.
+            // V = flip vertical when selection/clipboard hand (matches Edit menu).
+            // Shift+V = Land/Marsh variation (place or single selection).
+            // Bare V while placing a single building (no clipboard) still toggles variation.
             if !mods.ctrl && !mods.command && ctx.input(|i| i.key_pressed(egui::Key::V)) {
-                if self.placing_guid.is_some() {
+                let clip_in_hand = self.placing_guid.is_some() && self.hand_from_clipboard;
+                let has_sel = !self.selection_indices().is_empty();
+                if mods.shift {
+                    if self.placing_guid.is_some() {
+                        self.toggle_place_variation();
+                    } else if let Some(idx) = self.selected_building {
+                        self.toggle_selected_variation(idx);
+                    }
+                } else if has_sel || clip_in_hand {
+                    self.flip_selection(false);
+                } else if self.placing_guid.is_some() {
                     self.toggle_place_variation();
-                } else if let Some(idx) = self.selected_building {
-                    self.toggle_selected_variation(idx);
                 }
+            }
+            // Flip horizontal (H).
+            if !mods.ctrl && !mods.command && ctx.input(|i| i.key_pressed(egui::Key::H)) {
+                self.flip_selection(true);
             }
             // Rotate: hand (building/clipboard group), multi-select, or single building.
             // Shift+R = reverse.
@@ -8036,6 +8726,32 @@ impl eframe::App for StampEditorApp {
                 } else {
                     self.center_view();
                     self.status = self.t("status.view_centered").into();
+                }
+            }
+            // Selection groups: Ctrl+Shift+0..9 = store, Ctrl+0..9 = recall.
+            // Must not interfere with the bare Num1/2/3 tool keys above.
+            if (mods.ctrl || mods.command) && !mods.alt {
+                let num_keys = [
+                    (egui::Key::Num0, 0usize),
+                    (egui::Key::Num1, 1),
+                    (egui::Key::Num2, 2),
+                    (egui::Key::Num3, 3),
+                    (egui::Key::Num4, 4),
+                    (egui::Key::Num5, 5),
+                    (egui::Key::Num6, 6),
+                    (egui::Key::Num7, 7),
+                    (egui::Key::Num8, 8),
+                    (egui::Key::Num9, 9),
+                ];
+                for (key, slot) in num_keys {
+                    if ctx.input(|i| i.key_pressed(key)) {
+                        if mods.shift {
+                            self.store_selection_group(slot);
+                        } else {
+                            self.recall_selection_group(slot);
+                        }
+                        break;
+                    }
                 }
             }
         } else if menu_delete {
@@ -9656,7 +10372,7 @@ impl eframe::App for StampEditorApp {
                             // Selection first: RMB clears it. Tool wheel only with empty hand.
                             self.clear_canvas_selection();
                             self.refresh_coverage();
-                            self.status = "Auswahl aufgehoben".into();
+                            self.status = self.t("status.selection_cleared").into();
                         } else if let Some(new_guid) = self.palette_selected_guid {
                             // Palette-GUID swap when a palette pick is active.
                             let mut hit = None;
@@ -9705,18 +10421,17 @@ impl eframe::App for StampEditorApp {
                                         }
                                         open_mut.dirty = true;
                                         self.schedule_autosave();
-                                        self.status = format!(
-                                            "GUID getauscht → {} ({})",
-                                            self.catalog.label(new_guid, self.language),
-                                            new_guid
-                                        );
+                                        self.status = self.tf("status.guid_swapped", &[
+                                            ("label", &self.catalog.label(new_guid, self.language)),
+                                            ("guid", &new_guid.to_string()),
+                                        ]);
                                         self.selected_building = Some(idx);
                                         self.refresh_coverage();
                                     }
                                 }
                             } else {
                                 self.palette_selected_guid = None;
-                                self.status = "Palette abgewählt".into();
+                                self.status = self.t("status.palette_cleared").into();
                             }
                         } else {
                             // Truly empty hand → Anno-style quick-select wheel.
@@ -9902,9 +10617,7 @@ impl eframe::App for StampEditorApp {
                                                 };
                                                 sx = snapped.0;
                                                 sy = snapped.1;
-                                                radius_clamp_msg = Some(format!(
-                                                    "Zu weit vom Hauptgebäude — begrenzt auf Radius {r:.0}"
-                                                ));
+                                                radius_clamp_msg = Some(self.tf("status.module_radius_clamped", &[("r", &format!("{r:.0}"))]));
                                             }
                                         }
                                     }
@@ -10051,7 +10764,7 @@ impl eframe::App for StampEditorApp {
 
                 let tabs = self.buildmenu.tabs_for(self.region_filter).to_vec();
                 if tabs.is_empty() {
-                    ui.label("Kein Construction-Menu geladen (_gamedata/construction_menu.json).");
+                    ui.label(self.t("buildmenu.missing"));
                     return;
                 }
 
@@ -10530,7 +11243,7 @@ impl eframe::App for StampEditorApp {
                                                         self.road_erase_mode = false;
                                                         self.residence_tier_guids = None;
                                                         self.status =
-                                                            format!("Kategorie: {tip}");
+                                                            self.tf("buildmenu.category", &[("name", &tip)]);
                                                     }
                                                     MenuEntry::Chain {
                                                         buildings, ..
@@ -10586,10 +11299,7 @@ impl eframe::App for StampEditorApp {
                                             self.buildmenu_infra_entry = None;
                                             self.road_brush_guid = None;
                                             self.residence_tier_guids = None;
-                                            self.status = format!(
-                                                "Tier: {}",
-                                                t.short_tier_label()
-                                            );
+                                            self.status = self.tf("status.residence_tier", &[("label", &t.short_tier_label())]);
                                         }
                                     }
 
@@ -10626,4 +11336,6 @@ impl eframe::App for StampEditorApp {
         self.show_residence_needs_ui(ctx);
     }
 }
+
+
 
